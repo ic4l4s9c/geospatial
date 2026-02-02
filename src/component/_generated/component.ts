@@ -141,6 +141,11 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     >;
                   };
                   type: "polygon";
+                }
+              | {
+                  bufferMeters: number;
+                  polyline: Array<{ latitude: number; longitude: number }>;
+                  type: "polyline";
                 };
             sorting: {
               interval: { endExclusive?: number; startInclusive?: number };

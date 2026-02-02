@@ -1,4 +1,4 @@
-import type { Polygon, Rectangle } from "../component/types.js";
+import type { Polygon, Polyline, Rectangle } from "../component/types.js";
 import type { GeospatialDocument, FilterValue, FilterObject } from "./index.js";
 
 /**
@@ -151,4 +151,5 @@ export class FilterBuilderImpl<Doc extends GeospatialDocument> {
 
 export type QueryShape =
   | { type: "rectangle"; rectangle: Rectangle }
-  | { type: "polygon"; polygon: Polygon };
+  | { type: "polygon"; polygon: Polygon }
+  | { type: "polyline"; polyline: Polyline; bufferMeters: number };

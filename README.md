@@ -169,6 +169,34 @@ const example = query({
 Polygons are defined by an `exterior` ring of points. The winding order doesn't
 matter—the library will automatically normalize it.
 
+You can also query for points within a buffer distance of a polyline (useful for
+route-based searches):
+
+```ts
+// convex/index.ts
+
+const example = query({
+  handler: async (ctx) => {
+    const route = [
+      { latitude: 40.7128, longitude: -74.006 }, // NYC
+      { latitude: 40.7589, longitude: -73.9851 }, // Midtown
+      { latitude: 40.7831, longitude: -73.9712 }, // Upper East
+    ];
+    const result = await geospatial.query(ctx, {
+      shape: {
+        type: "polyline",
+        polyline: route,
+        bufferMeters: 500, // 500m corridor
+      },
+      limit: 16,
+    });
+    return result;
+  },
+});
+```
+
+This finds all points within 500 meters of the route path.
+
 You can optionally add filter conditions to queries.
 
 The first type of filter condition is an `in()` filter, which requires that a

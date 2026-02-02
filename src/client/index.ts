@@ -3,14 +3,14 @@ import type {
   FunctionReturnType,
   OptionalRestArgs,
 } from "convex/server";
-import type { Point, Polygon, Primitive, Rectangle } from "../component/types.js";
-import { point, polygon, rectangle } from "../component/types.js";
+import type { Point, Polygon, Polyline, Primitive, Rectangle } from "../component/types.js";
+import { point, polygon, polyline, rectangle } from "../component/types.js";
 import type { LogLevel } from "../component/lib/logging.js";
 import { FilterBuilderImpl, type GeospatialQuery } from "./query.js";
 import type { ComponentApi } from "../component/_generated/component.js";
 
-export type { Point, Polygon, Primitive, GeospatialQuery, Rectangle };
-export { point, polygon, rectangle };
+export type { Point, Polygon, Polyline, Primitive, GeospatialQuery, Rectangle };
+export { point, polygon, polyline, rectangle };
 
 declare global {
   const Convex: Record<string, unknown>;

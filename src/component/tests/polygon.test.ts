@@ -5,6 +5,9 @@ import schema from "../schema.js";
 import { modules } from "../test.setup.js";
 import { S2Bindings } from "../lib/s2Bindings.js";
 import { test as fcTest, fc } from "@fast-check/vitest";
+import type { FunctionReturnType } from "convex/server";
+
+type ExecuteResult = FunctionReturnType<typeof api.query.execute>;
 
 const opts = {
   minLevel: 4,
@@ -353,18 +356,18 @@ test("polygon query - pagination with cursor", async () => {
   // Query with small page size
   const pageSize = 3;
   const allResults: string[] = [];
-  let cursor: string | undefined = undefined;
+  let nextCursor: string | undefined = undefined;
 
   // Paginate through results
   for (let page = 0; page < 5; page++) {
-    const result = await t.query(api.query.execute, {
+    const result: ExecuteResult = await t.query(api.query.execute, {
       query: {
         shape: { type: "polygon" as const, polygon: squarePolygon },
         filtering: [] as { occur: "should" | "must"; filterKey: string; filterValue: string }[],
         sorting: { interval: {} },
         maxResults: pageSize,
       },
-      cursor: cursor as string | undefined,
+      cursor: nextCursor,
       ...opts,
       logLevel: "INFO" as const,
     });
@@ -378,7 +381,7 @@ test("polygon query - pagination with cursor", async () => {
     if (!result.nextCursor) {
       break;
     }
-    cursor = result.nextCursor;
+    nextCursor = result.nextCursor;
   }
 
   // Should have found all 10 points

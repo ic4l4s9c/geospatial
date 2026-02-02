@@ -145,6 +145,63 @@ export class S2Bindings {
     );
   }
 
+  private writePolylineToBuffer(points: Point[]): void {
+    const ptr = this.exports.polylineBufferPtr();
+    const wasmMemory = new Float64Array(this.exports.memory.buffer);
+    for (let i = 0; i < points.length; i++) {
+      wasmMemory[ptr / 8 + i * 2] = points[i].latitude;
+      wasmMemory[ptr / 8 + i * 2 + 1] = points[i].longitude;
+    }
+  }
+
+  coverPolylineBuffered(
+    points: Point[],
+    bufferMeters: number,
+    minLevel: number,
+    maxLevel: number,
+    levelMod: number,
+    maxCells: number,
+    maxLevelDiff: number = 4,
+  ): CellID[] {
+    if (points.length < 2) {
+      throw new Error("Polyline must have at least 2 points");
+    }
+    this.writePolylineToBuffer(points);
+    const len = this.exports.coverPolylineBuffered(
+      points.length,
+      bufferMeters,
+      minLevel,
+      maxLevel,
+      levelMod,
+      maxCells,
+      maxLevelDiff,
+    );
+    if (len < 0) {
+      throw new Error("Failed to coverPolylineBuffered");
+    }
+    const ptr = this.exports.coverRectangleBufferPtr();
+    const wasmMemory = new Uint8Array(this.exports.memory.buffer);
+    const buffer = wasmMemory.slice(ptr + 0, ptr + len * 8);
+    const uint64s = new BigUint64Array(buffer.buffer);
+    return [...uint64s];
+  }
+
+  distanceToPolyline(linePoints: Point[], queryPoint: Point): ChordAngle {
+    if (linePoints.length < 2) {
+      throw new Error("Polyline must have at least 2 points");
+    }
+    this.writePolylineToBuffer(linePoints);
+    const distance = this.exports.distanceToPolyline(
+      linePoints.length,
+      queryPoint.latitude,
+      queryPoint.longitude,
+    );
+    if (distance < 0) {
+      throw new Error("Failed to compute distance to polyline");
+    }
+    return distance;
+  }
+
   cellVertexes(cellID: CellID): Point[] {
     const result = [];
     for (let k = 0; k < 4; k++) {

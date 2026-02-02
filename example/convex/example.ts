@@ -1,4 +1,4 @@
-import { GeospatialIndex, point, polygon, rectangle } from "@convex-dev/geospatial";
+import { GeospatialIndex, point, polygon, polyline, rectangle } from "@convex-dev/geospatial";
 import { Id } from "./_generated/dataModel";
 import { components } from "./_generated/api";
 import { mutation, query } from "./_generated/server";
@@ -131,6 +131,64 @@ export const searchPolygon = query({
         shape: {
           type: "polygon",
           polygon: args.polygon,
+        },
+        filter: (q) => {
+          for (const condition of args.mustFilter) {
+            q = q.eq("name", condition);
+          }
+          if (!args.shouldFilter.length) {
+            return q;
+          }
+          return q.in("name", args.shouldFilter);
+        },
+        limit: args.maxRows,
+      },
+      args.cursor,
+    );
+    const rows = await Promise.all(
+      results.map(async (result) => {
+        const row = await ctx.db.get(result.key);
+        if (!row) {
+          throw new Error("Invalid locationId");
+        }
+        return { ...row, coordinates: result.coordinates };
+      }),
+    );
+    return {
+      rows,
+      nextCursor,
+    };
+  },
+});
+
+export const searchPolyline = query({
+  args: {
+    polyline,
+    bufferMeters: v.number(),
+    mustFilter: v.array(v.string()),
+    shouldFilter: v.array(v.string()),
+    cursor: v.optional(v.string()),
+    maxRows: v.number(),
+  },
+  returns: v.object({
+    rows: v.array(
+      v.object({
+        _id: v.id("locations"),
+        _creationTime: v.number(),
+        name: v.string(),
+        coordinates: point,
+      }),
+    ),
+    nextCursor: v.optional(v.string()),
+  }),
+  async handler(ctx, args) {
+    const { results, nextCursor } = await geospatial.query(
+      ctx,
+      {
+        shape: {
+          type: "polyline",
+          polyline: args.polyline,
+          bufferMeters: args.bufferMeters,
         },
         filter: (q) => {
           for (const condition of args.mustFilter) {

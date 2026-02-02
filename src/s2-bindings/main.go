@@ -241,6 +241,91 @@ func cellIDChildren(cellIDInt uint64, level int) int {
 	return count
 }
 
+// Polyline support: buffer holds interleaved lat/lng pairs (max 1000 vertices)
+const POLYLINE_BUFFER_SIZE int = 2000
+
+var polylineBuffer [POLYLINE_BUFFER_SIZE]float64
+
+//export polylineBufferPtr
+func polylineBufferPtr() *[POLYLINE_BUFFER_SIZE]float64 {
+	return &polylineBuffer
+}
+
+// buildPolylineFromBuffer creates a polyline from the buffer.
+// numPoints is the number of vertices (buffer contains numPoints*2 floats).
+func buildPolylineFromBuffer(numPoints int) *s2.Polyline {
+	points := make([]s2.LatLng, numPoints)
+	for i := 0; i < numPoints; i++ {
+		lat := polylineBuffer[i*2]
+		lng := polylineBuffer[i*2+1]
+		points[i] = s2.LatLngFromDegrees(lat, lng)
+	}
+	polyline := s2.PolylineFromLatLngs(points)
+	return polyline
+}
+
+//export coverPolylineBuffered
+func coverPolylineBuffered(numPoints int, bufferMeters float64, minLevel, maxLevel, levelMod, maxCells, maxLevelDiff int) int {
+	if numPoints < 2 {
+		return -1 // Need at least 2 points for a polyline
+	}
+	if numPoints*2 > POLYLINE_BUFFER_SIZE {
+		return -1 // Too many points
+	}
+
+	polyline := buildPolylineFromBuffer(numPoints)
+
+	// Get initial covering of the polyline
+	rc := s2.RegionCoverer{
+		MinLevel: minLevel,
+		MaxLevel: maxLevel,
+		MaxCells: maxCells,
+		LevelMod: levelMod,
+	}
+	covering := rc.CellUnion(polyline)
+
+	// Expand the covering by the buffer radius
+	// Convert meters to s1.Angle (radians)
+	minRadius := s1.Angle(bufferMeters / EARTH_RADIUS_METERS)
+	// ExpandByRadius modifies in place
+	covering.ExpandByRadius(minRadius, maxLevelDiff)
+
+	if len(covering) > COVER_RECTANGLE_BUFFER_SIZE {
+		return -1
+	}
+	for i, cellID := range covering {
+		coverRectangleBuffer[i] = uint64(cellID)
+	}
+	return len(covering)
+}
+
+//export distanceToPolyline
+func distanceToPolyline(numPoints int, pLat, pLng float64) float64 {
+	if numPoints < 2 || numPoints*2 > POLYLINE_BUFFER_SIZE {
+		return -1 // Invalid polyline
+	}
+
+	polyline := buildPolylineFromBuffer(numPoints)
+
+	// Create a ShapeIndex and add the polyline
+	index := s2.NewShapeIndex()
+	index.Add(polyline)
+
+	// Create closest edge query
+	query := s2.NewClosestEdgeQuery(index, s2.NewClosestEdgeQueryOptions())
+
+	// Find the closest edge to the target point
+	target := s2.NewMinDistanceToPointTarget(s2.PointFromLatLng(s2.LatLngFromDegrees(pLat, pLng)))
+	result := query.FindEdges(target)
+
+	if len(result) == 0 {
+		return -1 // No edges found (shouldn't happen with valid polyline)
+	}
+
+	// Return the distance as a chord angle
+	return float64(result[0].Distance())
+}
+
 // main is required for the `wasip1` target, even if it isn't used.
 func main() {
 }

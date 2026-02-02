@@ -1,6 +1,8 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 import { api } from "../convex/_generated/api";
+import buffer from "@turf/buffer";
+import { lineString } from "@turf/helpers";
 
 import "leaflet/dist/leaflet.css";
 import {
@@ -27,9 +29,10 @@ import { FOOD_EMOJIS } from "../convex/constants.js";
 import { useGeoQuery } from "./useGeoQuery.js";
 import { useNearestQuery } from "./useNearestQuery.js";
 import { usePolygonQuery } from "./usePolygonQuery.js";
+import { usePolylineQuery } from "./usePolylineQuery.js";
 import { FunctionReturnType } from "convex/server";
 
-type SearchMode = "viewport" | "nearest" | "polygon";
+type SearchMode = "viewport" | "nearest" | "polygon" | "polyline";
 
 type Rows = FunctionReturnType<typeof api.example.search>["rows"];
 
@@ -49,6 +52,9 @@ function LocationSearch(props: {
   setNearestPoint: (point: Point | null) => void;
   polygonPoints: Point[];
   setPolygonPoints: (points: Point[]) => void;
+  polylinePoints: Point[];
+  setPolylinePoints: (points: Point[]) => void;
+  bufferMeters: number;
   maxResults: number;
   showDebugCells: boolean;
 }) {
@@ -129,6 +135,12 @@ function LocationSearch(props: {
           ...props.polygonPoints,
           { latitude: latLng.lat, longitude: latLng.lng },
         ]);
+      } else if (props.searchMode === "polyline") {
+        const latLng = map.mouseEventToLatLng(e.originalEvent);
+        props.setPolylinePoints([
+          ...props.polylinePoints,
+          { latitude: latLng.lat, longitude: latLng.lng },
+        ]);
       }
     },
   });
@@ -169,19 +181,44 @@ function LocationSearch(props: {
     96,
   );
 
+  // Build polyline for query (only if we have 2+ points)
+  const polylineForQuery: Point[] | null = useMemo(() => {
+    if (props.polylinePoints.length >= 2) {
+      return props.polylinePoints;
+    }
+    return null;
+  }, [props.polylinePoints]);
+
+  const { rows: polylineRows, loading: polylineLoading } = usePolylineQuery(
+    polylineForQuery,
+    props.bufferMeters,
+    props.mustFilter,
+    props.shouldFilter,
+    96,
+  );
+
   // Select rows based on mode
   const rows =
     props.searchMode === "nearest"
       ? nearestRows
       : props.searchMode === "polygon"
         ? polygonRows
-        : viewportRows;
+        : props.searchMode === "polyline"
+          ? polylineRows
+          : viewportRows;
 
   const currentLoading =
-    props.searchMode === "polygon" ? polygonLoading : loading;
-  if (currentLoading !== props.loading) {
-    props.setLoading(currentLoading);
-  }
+    props.searchMode === "polygon"
+      ? polygonLoading
+      : props.searchMode === "polyline"
+        ? polylineLoading
+        : loading;
+
+  useEffect(() => {
+    if (currentLoading !== props.loading) {
+      props.setLoading(currentLoading);
+    }
+  }, [currentLoading, props.loading, props.setLoading]);
 
   const cells = useQuery(api.example.debugCells, {
     rectangle,
@@ -211,6 +248,25 @@ function LocationSearch(props: {
     p.latitude,
     p.longitude,
   ]);
+
+  // Generate buffer polygon around the polyline using Turf.js
+  const polylineBufferPolygon = useMemo((): LatLngTuple[] | null => {
+    if (props.polylinePoints.length < 2) return null;
+    try {
+      // Convert to GeoJSON LineString (note: GeoJSON uses [lng, lat] order)
+      const coords = props.polylinePoints.map((p) => [p.longitude, p.latitude] as [number, number]);
+      const line = lineString(coords);
+      // Create buffer polygon (distance in meters)
+      const buffered = buffer(line, props.bufferMeters, { units: "meters" });
+      if (!buffered || buffered.geometry.type !== "Polygon") return null;
+      // Convert back to Leaflet format [lat, lng]
+      return buffered.geometry.coordinates[0].map(
+        (coord) => [coord[1], coord[0]] as LatLngTuple
+      );
+    } catch {
+      return null;
+    }
+  }, [props.polylinePoints, props.bufferMeters]);
 
   return (
     <>
@@ -256,6 +312,42 @@ function LocationSearch(props: {
             icon={
               new Icon({
                 iconUrl: `data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2240%22 fill=%22%2322c55e%22 stroke=%22white%22 stroke-width=%228%22/><text x=%2250%22 y=%2258%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2240%22 font-weight=%22bold%22>${i + 1}</text></svg>`,
+                iconSize: [24, 24],
+                iconAnchor: [12, 12],
+              })
+            }
+          />
+        ))}
+      {/* Show buffer zone around polyline */}
+      {props.searchMode === "polyline" && polylineBufferPolygon && (
+        <LeafletPolygon
+          positions={polylineBufferPolygon}
+          pathOptions={{
+            color: "#f59e0b",
+            weight: 2,
+            dashArray: "8, 8",
+            fill: true,
+            fillColor: "#f59e0b",
+            fillOpacity: 0.15,
+          }}
+        />
+      )}
+      {/* Show the polyline being drawn */}
+      {props.searchMode === "polyline" && props.polylinePoints.length >= 2 && (
+        <Polyline
+          positions={props.polylinePoints.map((p) => [p.latitude, p.longitude] as LatLngTuple)}
+          pathOptions={{ color: "#f59e0b", weight: 4 }}
+        />
+      )}
+      {/* Show vertex markers for the polyline */}
+      {props.searchMode === "polyline" &&
+        props.polylinePoints.map((point, i) => (
+          <Marker
+            key={`polyline-vertex-${i}`}
+            position={[point.latitude, point.longitude]}
+            icon={
+              new Icon({
+                iconUrl: `data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2240%22 fill=%22%23f59e0b%22 stroke=%22white%22 stroke-width=%228%22/><text x=%2250%22 y=%2258%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2240%22 font-weight=%22bold%22>${i + 1}</text></svg>`,
                 iconSize: [24, 24],
                 iconAnchor: [12, 12],
               })
@@ -319,6 +411,8 @@ function App() {
   const [searchMode, setSearchMode] = useState<SearchMode>("viewport");
   const [nearestPoint, setNearestPoint] = useState<Point | null>(null);
   const [polygonPoints, setPolygonPoints] = useState<Point[]>([]);
+  const [polylinePoints, setPolylinePoints] = useState<Point[]>([]);
+  const [bufferMeters, setBufferMeters] = useState(500);
   const [maxResults, setMaxResults] = useState(10);
   const [showDebugCells, setShowDebugCells] = useState(false);
 
@@ -385,6 +479,7 @@ function App() {
           onClick={() => {
             setSearchMode("viewport");
             setPolygonPoints([]);
+            setPolylinePoints([]);
           }}
           style={{
             ...commonButtonStyle,
@@ -406,6 +501,7 @@ function App() {
           onClick={() => {
             setSearchMode("nearest");
             setPolygonPoints([]);
+            setPolylinePoints([]);
           }}
           style={{
             ...commonButtonStyle,
@@ -427,6 +523,7 @@ function App() {
           onClick={() => {
             setSearchMode("polygon");
             setNearestPoint(null);
+            setPolylinePoints([]);
           }}
           style={{
             ...commonButtonStyle,
@@ -438,6 +535,23 @@ function App() {
           }}
         >
           Polygon Search
+        </button>
+        <button
+          onClick={() => {
+            setSearchMode("polyline");
+            setNearestPoint(null);
+            setPolygonPoints([]);
+          }}
+          style={{
+            ...commonButtonStyle,
+            marginLeft: 0,
+            backgroundColor:
+              searchMode === "polyline" ? "var(--polyline-primary)" : "var(--bg-secondary)",
+            color: searchMode === "polyline" ? "white" : "var(--text-primary)",
+            border: "1px solid var(--border-color)",
+          }}
+        >
+          Route Search
         </button>
       </div>
 
@@ -552,6 +666,88 @@ function App() {
           {polygonPoints.length > 0 && (
             <button
               onClick={() => setPolygonPoints(polygonPoints.slice(0, -1))}
+              style={{
+                ...commonButtonStyle,
+                backgroundColor: "var(--warning-primary)",
+                marginLeft: 0,
+              }}
+            >
+              ↩ Undo Point
+            </button>
+          )}
+        </div>
+      )}
+
+      {searchMode === "polyline" && (
+        <div
+          style={{
+            marginBottom: "20px",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            gap: "16px",
+            position: "relative",
+            zIndex: 1000,
+            padding: "16px",
+            backgroundColor: "var(--bg-secondary)",
+            borderRadius: "8px",
+            boxShadow: "0 1px 4px var(--shadow-color)",
+            border: "2px solid var(--polyline-primary)",
+            flexWrap: "wrap",
+          }}
+        >
+          <p
+            style={{
+              margin: 0,
+              fontSize: "14px",
+              color: "var(--text-primary)",
+            }}
+          >
+            Click on the map to draw route ({polylinePoints.length} points)
+          </p>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <label style={{ fontSize: "14px", color: "var(--text-primary)" }}>
+              Buffer (m):
+            </label>
+            <input
+              type="number"
+              value={bufferMeters}
+              onChange={(e) =>
+                setBufferMeters(Math.max(1, parseInt(e.target.value) || 1))
+              }
+              style={{
+                ...commonInputStyle,
+                width: "80px",
+              }}
+            />
+          </div>
+          {polylinePoints.length >= 2 && (
+            <div
+              style={{
+                fontSize: "14px",
+                backgroundColor: "var(--polyline-light)",
+                padding: "8px 16px",
+                borderRadius: "6px",
+                border: "1px solid var(--polyline-primary)",
+                color: "var(--polyline-text)",
+              }}
+            >
+              Searching within {bufferMeters}m of route...
+            </div>
+          )}
+          <button
+            onClick={() => setPolylinePoints([])}
+            style={{
+              ...commonButtonStyle,
+              backgroundColor: "var(--danger-primary)",
+              marginLeft: 0,
+            }}
+          >
+            ✕ Clear Route
+          </button>
+          {polylinePoints.length > 0 && (
+            <button
+              onClick={() => setPolylinePoints(polylinePoints.slice(0, -1))}
               style={{
                 ...commonButtonStyle,
                 backgroundColor: "var(--warning-primary)",
@@ -692,6 +888,9 @@ function App() {
             setNearestPoint={setNearestPoint}
             polygonPoints={polygonPoints}
             setPolygonPoints={setPolygonPoints}
+            polylinePoints={polylinePoints}
+            setPolylinePoints={setPolylinePoints}
+            bufferMeters={bufferMeters}
             maxResults={maxResults}
             showDebugCells={showDebugCells}
           />

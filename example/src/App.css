@@ -16,6 +16,10 @@
   --warning-primary: #f59e0b;
   --shadow-color: rgba(0, 0, 0, 0.1);
   --shadow-color-strong: rgba(0, 0, 0, 0.15);
+  /* Polyline/route colors (orange/amber) */
+  --polyline-primary: #f59e0b;
+  --polyline-light: #fef3c7;
+  --polyline-text: #92400e;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -37,6 +41,10 @@
     --warning-primary: #fbbf24;
     --shadow-color: rgba(0, 0, 0, 0.3);
     --shadow-color-strong: rgba(0, 0, 0, 0.4);
+    /* Polyline/route colors (orange/amber) - dark mode */
+    --polyline-primary: #fbbf24;
+    --polyline-light: rgba(251, 191, 36, 0.15);
+    --polyline-text: #fcd34d;
   }
 }
 

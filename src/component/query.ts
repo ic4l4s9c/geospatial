@@ -1,5 +1,5 @@
 import { v, type Infer } from "convex/values";
-import { type Point, point, polygon, primitive, rectangle } from "./types.js";
+import { type Point, point, polygon, polyline, primitive, rectangle } from "./types.js";
 import { query } from "./_generated/server.js";
 import type { PointSet, Stats } from "./streams/zigzag.js";
 import { Intersection } from "./streams/intersection.js";
@@ -26,6 +26,7 @@ const equalityCondition = v.object({
 const queryShape = v.union(
   v.object({ type: v.literal("rectangle"), rectangle }),
   v.object({ type: v.literal("polygon"), polygon }),
+  v.object({ type: v.literal("polyline"), polyline, bufferMeters: v.number() }),
 );
 
 const geospatialQuery = v.object({
@@ -134,16 +135,35 @@ export const execute = query({
         args.maxCells,
       );
       containsPoint = (p) => s2.rectangleContains(shape.rectangle, p);
-    } else {
-      // shape.type === "polygon"
+    } else if (shape.type === "polygon") {
+      const exterior = shape.polygon.exterior;
       cellIDs = s2.coverPolygon(
-        shape.polygon.exterior,
+        exterior,
         args.minLevel,
         args.maxLevel,
         args.levelMod,
         args.maxCells,
       );
-      containsPoint = (p) => s2.polygonContainsPoint(shape.polygon.exterior, p);
+      containsPoint = (p) => s2.polygonContainsPoint(exterior, p);
+    } else {
+      // shape.type === "polyline"
+      const polylinePoints = shape.polyline;
+      const bufferMeters = shape.bufferMeters;
+      const maxLevelDiff = 4; // Internal default - controls accuracy vs cell count
+      cellIDs = s2.coverPolylineBuffered(
+        polylinePoints,
+        bufferMeters,
+        args.minLevel,
+        args.maxLevel,
+        args.levelMod,
+        args.maxCells,
+        maxLevelDiff,
+      );
+      const bufferChordAngle = s2.metersToChordAngle(bufferMeters);
+      containsPoint = (p) => {
+        const distance = s2.distanceToPolyline(polylinePoints, p);
+        return distance <= bufferChordAngle;
+      };
     }
 
     const cells = cellIDs.map((cellID) => s2.cellIDToken(cellID));

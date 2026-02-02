@@ -36,5 +36,9 @@ export const polygon = v.object({
 });
 export type Polygon = Infer<typeof polygon>;
 
+// Polyline defined by an array of points (at least 2)
+export const polyline = v.array(point);
+export type Polyline = Infer<typeof polyline>;
+
 export type Meters = number;
 export type ChordAngle = number;

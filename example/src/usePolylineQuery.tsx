@@ -1,13 +1,14 @@
 import { RequestForQueries, useQueries } from "convex/react";
 import { useState, useMemo, useEffect } from "react";
-import { Polygon } from "@convex-dev/geospatial";
+import { Point } from "@convex-dev/geospatial";
 import { api } from "../convex/_generated/api";
 import { FunctionReturnType } from "convex/server";
 
-type Rows = FunctionReturnType<typeof api.example.searchPolygon>["rows"];
+type Rows = FunctionReturnType<typeof api.example.searchPolyline>["rows"];
 
-export function usePolygonQuery(
-  polygon: Polygon | null,
+export function usePolylineQuery(
+  polyline: Point[] | null,
+  bufferMeters: number,
   mustFilter: string[],
   shouldFilter: string[],
   maxRows: number,
@@ -16,17 +17,18 @@ export function usePolygonQuery(
   const argsKey = useMemo(
     () =>
       JSON.stringify({
-        polygon,
+        polyline,
+        bufferMeters,
         mustFilter,
         shouldFilter,
       }),
-    [polygon, mustFilter, shouldFilter],
+    [polyline, bufferMeters, mustFilter, shouldFilter],
   );
   const queryResults = useQueries(queries);
 
   useEffect(() => {
-    // Don't query if no polygon or polygon has less than 3 points
-    if (!polygon || polygon.exterior.length < 3) {
+    // Don't query if no polyline or polyline has less than 2 points
+    if (!polyline || polyline.length < 2) {
       // Only clear if not already empty to avoid infinite loop
       setQueries((prev) => (Object.keys(prev).length === 0 ? prev : {}));
       return;
@@ -36,9 +38,10 @@ export function usePolygonQuery(
     if (queries[startKey] === undefined) {
       setQueries({
         [startKey]: {
-          query: api.example.searchPolygon,
+          query: api.example.searchPolyline,
           args: {
-            polygon,
+            polyline,
+            bufferMeters,
             mustFilter,
             shouldFilter,
             maxRows,
@@ -67,9 +70,10 @@ export function usePolygonQuery(
         setQueries({
           ...queries,
           [key]: {
-            query: api.example.searchPolygon,
+            query: api.example.searchPolyline,
             args: {
-              polygon,
+              polyline,
+              bufferMeters,
               mustFilter,
               shouldFilter,
               maxRows: maxRows - totalRows,
@@ -93,15 +97,15 @@ export function usePolygonQuery(
       totalRows += result.rows.length;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [queries, argsKey, queryResults, maxRows, polygon]);
+  }, [queries, argsKey, queryResults, maxRows, polyline, bufferMeters]);
 
   const rows: Rows = [];
   const seen = new Set<string>();
   let loading = false;
   let foundAny = false;
 
-  // If no valid polygon, return empty
-  if (!polygon || polygon.exterior.length < 3) {
+  // If no valid polyline, return empty
+  if (!polyline || polyline.length < 2) {
     return { rows: [], loading: false };
   }
 
