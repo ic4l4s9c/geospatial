@@ -228,3 +228,69 @@ export const debugCells = query({
     return await geospatial.debugCells(ctx, args.rectangle, args.maxResolution);
   },
 });
+
+// ============================================================================
+// Geometry Storage API (Phase 3)
+// ============================================================================
+
+/**
+ * List all stored geometries.
+ */
+export const listGeometries = query({
+  args: {},
+  handler: async (ctx) => {
+    return await geospatial.listGeometries(ctx);
+  },
+});
+
+/**
+ * Find all polygons that contain a given point.
+ */
+export const geometryContainsPoint = query({
+  args: {
+    point,
+  },
+  handler: async (ctx, args) => {
+    return await geospatial.containsPoint(ctx, args.point);
+  },
+});
+
+/**
+ * Find all geometries that intersect a given rectangle.
+ */
+export const geometryIntersects = query({
+  args: {
+    rectangle,
+  },
+  handler: async (ctx, args) => {
+    return await geospatial.intersects(ctx, {
+      type: "rectangle",
+      rectangle: args.rectangle,
+    });
+  },
+});
+
+/**
+ * Find geometries near a point within a given distance.
+ */
+export const geometriesNearPoint = query({
+  args: {
+    point,
+    maxDistance: v.number(),
+  },
+  handler: async (ctx, args) => {
+    return await geospatial.geometriesNear(ctx, args.point, args.maxDistance);
+  },
+});
+
+/**
+ * Delete a geometry by key.
+ */
+export const deleteGeometry = mutation({
+  args: {
+    key: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await geospatial.removeGeometry(ctx, args.key);
+  },
+});

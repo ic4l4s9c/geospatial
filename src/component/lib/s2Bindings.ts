@@ -2,6 +2,11 @@ import type { ChordAngle, Point, Rectangle } from "../types.js";
 import { Go } from "./goRuntime.js";
 import { wasmSource } from "./s2wasm.js";
 
+// Cell level bounds matching Go implementation (Standard S2 Inverted Index)
+export const MIN_CELL_LEVEL = 4;
+export const MAX_CELL_LEVEL = 16;
+export const NUM_QUERY_LEVELS = MAX_CELL_LEVEL - MIN_CELL_LEVEL + 1; // 13
+
 // Do some work at import time to speed `vitest` up (since it reuses the same module
 // across tests, unlike the Convex runtime).
 const wasmBinary = atob(wasmSource);
@@ -259,6 +264,165 @@ export class S2Bindings {
     const ptr = this.exports.cellsBufferPtr();
     const wasmMemory = new Uint8Array(this.exports.memory.buffer);
     const buffer = wasmMemory.slice(ptr + 0, ptr + len * 8);
+    const uint64s = new BigUint64Array(buffer.buffer);
+    return [...uint64s];
+  }
+
+  // ============================================================================
+  // Phase 3: Geometry Storage - New methods for polygon/polyline storage
+  // ============================================================================
+
+  /**
+   * Write polygon coordinates to the second buffer (for two-polygon operations).
+   */
+  private writePolygonToBuffer2(points: Point[]): void {
+    const ptr = this.exports.polygonBuffer2Ptr();
+    const wasmMemory = new Float64Array(this.exports.memory.buffer);
+    const offset = ptr / 8;
+
+    for (let i = 0; i < points.length; i++) {
+      wasmMemory[offset + i * 2] = points[i].latitude;
+      wasmMemory[offset + i * 2 + 1] = points[i].longitude;
+    }
+  }
+
+  /**
+   * Test if two polygons intersect (share any area).
+   * Uses S2's Polygon.Intersects() which includes bounding box optimization.
+   */
+  polygonIntersectsPolygon(polygon1: Point[], polygon2: Point[]): boolean {
+    if (polygon1.length < 3 || polygon2.length < 3) {
+      return false;
+    }
+    this.writePolygonToBuffer(polygon1);
+    this.writePolygonToBuffer2(polygon2);
+    return Boolean(
+      this.exports.polygonIntersectsPolygon(polygon1.length, polygon2.length),
+    );
+  }
+
+  /**
+   * Test if polygon1 fully contains polygon2.
+   */
+  polygonContainsPolygon(polygon1: Point[], polygon2: Point[]): boolean {
+    if (polygon1.length < 3 || polygon2.length < 3) {
+      return false;
+    }
+    this.writePolygonToBuffer(polygon1);
+    this.writePolygonToBuffer2(polygon2);
+    return Boolean(
+      this.exports.polygonContainsPolygon(polygon1.length, polygon2.length),
+    );
+  }
+
+  /**
+   * Test if a polyline intersects a polygon.
+   * Properly detects edge crossings, not just vertex containment.
+   */
+  polylineIntersectsPolygon(polyline: Point[], polygon: Point[]): boolean {
+    if (polyline.length < 2 || polygon.length < 3) {
+      return false;
+    }
+    this.writePolylineToBuffer(polyline); // Polyline in polyline buffer
+    this.writePolygonToBuffer(polygon); // Polygon in polygon buffer
+    return Boolean(
+      this.exports.polylineIntersectsPolygon(polyline.length, polygon.length),
+    );
+  }
+
+  /**
+   * Compute distance from a point to the nearest edge of a polygon.
+   * @returns Distance as ChordAngle (use chordAngleToMeters to convert)
+   */
+  distanceToPolygonEdge(polygonPoints: Point[], point: Point): ChordAngle {
+    if (polygonPoints.length < 3) {
+      throw new Error("Polygon must have at least 3 points");
+    }
+    this.writePolygonToBuffer(polygonPoints);
+    const distance = this.exports.distanceToPolygonEdge(
+      polygonPoints.length,
+      point.latitude,
+      point.longitude,
+    );
+    if (distance < 0) {
+      throw new Error("Failed to compute distance to polygon edge");
+    }
+    return distance;
+  }
+
+  /**
+   * Get covering cells for a polygon (for indexing).
+   * Returns cells at their natural levels - NO ancestor projection.
+   * This prevents hotspots where small geometries pollute coarse-level indexes.
+   */
+  coverPolygonForIndex(points: Point[], maxCells: number = 30): CellID[] {
+    if (points.length < 3) {
+      throw new Error("Polygon must have at least 3 points");
+    }
+    this.writePolygonToBuffer(points);
+    const count = this.exports.coverPolygonForIndex(points.length, maxCells);
+    if (count < 0) {
+      throw new Error("Failed to compute polygon covering");
+    }
+    return this.readCoveringBuffer(count);
+  }
+
+  /**
+   * Get covering cells for a polyline (for indexing).
+   * Returns cells at their natural levels - NO ancestor projection.
+   */
+  coverPolylineForIndex(points: Point[], maxCells: number = 30): CellID[] {
+    if (points.length < 2) {
+      throw new Error("Polyline must have at least 2 points");
+    }
+    this.writePolylineToBuffer(points); // Use polyline buffer, not polygon buffer
+    const count = this.exports.coverPolylineForIndex(points.length, maxCells);
+    if (count < 0) {
+      throw new Error("Failed to compute polyline covering");
+    }
+    return this.readCoveringBuffer(count);
+  }
+
+  /**
+   * Get a point's cell ID at ALL levels from MIN to MAX.
+   * Used for containsPoint queries - query-side ancestor traversal.
+   * Returns 13 cells (levels 4 through 16).
+   */
+  pointCellsAllLevels(point: Point): CellID[] {
+    const count = this.exports.pointCellsAllLevels(
+      point.latitude,
+      point.longitude,
+    );
+    return this.readPointAncestorsBuffer(count);
+  }
+
+  /**
+   * Get all ancestors of a cell from its level up to MIN_CELL_LEVEL.
+   * Used for intersects queries to find larger geometries.
+   */
+  cellAncestors(cellId: CellID): CellID[] {
+    const count = this.exports.cellAncestors(cellId);
+    return this.readCoveringBuffer(count);
+  }
+
+  /**
+   * Read cells from the covering buffer.
+   */
+  private readCoveringBuffer(count: number): CellID[] {
+    const ptr = this.exports.coveringBufferPtr();
+    const wasmMemory = new Uint8Array(this.exports.memory.buffer);
+    const buffer = wasmMemory.slice(ptr, ptr + count * 8);
+    const uint64s = new BigUint64Array(buffer.buffer);
+    return [...uint64s];
+  }
+
+  /**
+   * Read cells from the point ancestors buffer.
+   */
+  private readPointAncestorsBuffer(count: number): CellID[] {
+    const ptr = this.exports.pointAncestorsBufferPtr();
+    const wasmMemory = new Uint8Array(this.exports.memory.buffer);
+    const buffer = wasmMemory.slice(ptr, ptr + count * 8);
     const uint64s = new BigUint64Array(buffer.buffer);
     return [...uint64s];
   }

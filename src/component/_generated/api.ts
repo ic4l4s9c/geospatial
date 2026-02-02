@@ -9,6 +9,8 @@
  */
 
 import type * as document from "../document.js";
+import type * as geometry from "../geometry.js";
+import type * as geometryQuery from "../geometryQuery.js";
 import type * as lib_approximateCounter from "../lib/approximateCounter.js";
 import type * as lib_d64 from "../lib/d64.js";
 import type * as lib_goRuntime from "../lib/goRuntime.js";
@@ -39,6 +41,8 @@ import { anyApi, componentsGeneric } from "convex/server";
 
 const fullApi: ApiFromModules<{
   document: typeof document;
+  geometry: typeof geometry;
+  geometryQuery: typeof geometryQuery;
   "lib/approximateCounter": typeof lib_approximateCounter;
   "lib/d64": typeof lib_d64;
   "lib/goRuntime": typeof lib_goRuntime;

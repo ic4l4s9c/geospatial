@@ -33,8 +33,6 @@ const geospatialQuery = v.object({
   shape: queryShape,
   filtering: v.array(equalityCondition),
   sorting: v.object({
-    // TODO: Support reverse order.
-    // order: v.union(v.literal("asc"), v.literal("desc")),
     interval,
   }),
   maxResults: v.number(),

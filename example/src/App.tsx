@@ -30,9 +30,13 @@ import { useGeoQuery } from "./useGeoQuery.js";
 import { useNearestQuery } from "./useNearestQuery.js";
 import { usePolygonQuery } from "./usePolygonQuery.js";
 import { usePolylineQuery } from "./usePolylineQuery.js";
+import {
+  useGeometriesQuery,
+  useContainsPointQuery,
+} from "./useGeometriesQuery.js";
 import { FunctionReturnType } from "convex/server";
 
-type SearchMode = "viewport" | "nearest" | "polygon" | "polyline";
+type SearchMode = "viewport" | "nearest" | "polygon" | "polyline" | "geometries";
 
 type Rows = FunctionReturnType<typeof api.example.search>["rows"];
 
@@ -57,6 +61,22 @@ function LocationSearch(props: {
   bufferMeters: number;
   maxResults: number;
   showDebugCells: boolean;
+  // Geometry storage mode props
+  geometryQueryPoint: Point | null;
+  setGeometryQueryPoint: (point: Point | null) => void;
+  storedGeometries: Array<{
+    key: string;
+    type: "polygon" | "polyline";
+    coordinates: { exterior: Point[] } | Point[];
+    boundingBox: { south: number; north: number; west: number; east: number };
+    filterKeys?: Record<string, unknown>;
+  }>;
+  containsResults: Array<{
+    key: string;
+    type: "polygon" | "polyline";
+    coordinates: { exterior: Point[] } | Point[];
+    boundingBox: { south: number; north: number; west: number; east: number };
+  }>;
 }) {
   const map = useMap();
   const [bounds, setBounds] = useState(map.getBounds());
@@ -141,6 +161,12 @@ function LocationSearch(props: {
           ...props.polylinePoints,
           { latitude: latLng.lat, longitude: latLng.lng },
         ]);
+      } else if (props.searchMode === "geometries") {
+        const latLng = map.mouseEventToLatLng(e.originalEvent);
+        props.setGeometryQueryPoint({
+          latitude: latLng.lat,
+          longitude: latLng.lng,
+        });
       }
     },
   });
@@ -197,7 +223,7 @@ function LocationSearch(props: {
     96,
   );
 
-  // Select rows based on mode
+  // Select rows based on mode (geometries mode doesn't show point rows)
   const rows =
     props.searchMode === "nearest"
       ? nearestRows
@@ -205,7 +231,9 @@ function LocationSearch(props: {
         ? polygonRows
         : props.searchMode === "polyline"
           ? polylineRows
-          : viewportRows;
+          : props.searchMode === "geometries"
+            ? [] // Geometries mode shows stored polygons, not point results
+            : viewportRows;
 
   const currentLoading =
     props.searchMode === "polygon"
@@ -354,6 +382,48 @@ function LocationSearch(props: {
             }
           />
         ))}
+      {/* Render stored geometries in geometries mode */}
+      {props.searchMode === "geometries" &&
+        props.storedGeometries.map((geom) => {
+          if (geom.type !== "polygon") return null;
+          const coords = (geom.coordinates as { exterior: Point[] }).exterior;
+          const positions: LatLngTuple[] = coords.map((p) => [
+            p.latitude,
+            p.longitude,
+          ]);
+          // Check if this geometry is in the contains results (highlighted)
+          const isHighlighted = props.containsResults.some(
+            (r) => r.key === geom.key
+          );
+          return (
+            <LeafletPolygon
+              key={geom.key}
+              positions={positions}
+              pathOptions={{
+                color: isHighlighted ? "#22c55e" : "#6366f1",
+                fillColor: isHighlighted ? "#22c55e" : "#6366f1",
+                fillOpacity: isHighlighted ? 0.4 : 0.2,
+                weight: isHighlighted ? 3 : 2,
+              }}
+            />
+          );
+        })}
+      {/* Show query point marker in geometries mode */}
+      {props.geometryQueryPoint && props.searchMode === "geometries" && (
+        <Marker
+          position={[
+            props.geometryQueryPoint.latitude,
+            props.geometryQueryPoint.longitude,
+          ]}
+          icon={
+            new Icon({
+              iconUrl: `data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2240%22 fill=%22%23ef4444%22 stroke=%22white%22 stroke-width=%228%22/><circle cx=%2250%22 cy=%2250%22 r=%2215%22 fill=%22white%22/></svg>`,
+              iconSize: [28, 28],
+              iconAnchor: [14, 14],
+            })
+          }
+        />
+      )}
       {stickyRows.current.map((row) => (
         <SearchResult key={row._id} row={row} />
       ))}
@@ -415,6 +485,13 @@ function App() {
   const [bufferMeters, setBufferMeters] = useState(500);
   const [maxResults, setMaxResults] = useState(10);
   const [showDebugCells, setShowDebugCells] = useState(false);
+
+  // Geometries mode state
+  const [geometryQueryPoint, setGeometryQueryPoint] = useState<Point | null>(
+    null
+  );
+  const { geometries, seedStates, deleteGeometry } = useGeometriesQuery();
+  const { results: containsResults } = useContainsPointQuery(geometryQueryPoint);
 
   const commonButtonStyle = {
     backgroundColor: "var(--accent-primary)",
@@ -552,6 +629,28 @@ function App() {
           }}
         >
           Route Search
+        </button>
+        <button
+          onClick={() => {
+            setSearchMode("geometries");
+            setNearestPoint(null);
+            setPolygonPoints([]);
+            setPolylinePoints([]);
+            setGeometryQueryPoint(null);
+          }}
+          style={{
+            ...commonButtonStyle,
+            marginLeft: 0,
+            backgroundColor:
+              searchMode === "geometries"
+                ? "#6366f1"
+                : "var(--bg-secondary)",
+            color:
+              searchMode === "geometries" ? "white" : "var(--text-primary)",
+            border: "1px solid var(--border-color)",
+          }}
+        >
+          Geometries
         </button>
       </div>
 
@@ -760,6 +859,108 @@ function App() {
         </div>
       )}
 
+      {searchMode === "geometries" && (
+        <div
+          style={{
+            marginBottom: "20px",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            gap: "16px",
+            flexWrap: "wrap",
+            position: "relative",
+            zIndex: 1000,
+            padding: "16px",
+            backgroundColor: "var(--bg-secondary)",
+            borderRadius: "8px",
+            boxShadow: "0 1px 4px var(--shadow-color)",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: "8px",
+              width: "100%",
+            }}
+          >
+            <p
+              style={{
+                margin: 0,
+                fontSize: "14px",
+                color: "var(--text-primary)",
+              }}
+            >
+              Click on the map to test which state polygons contain that point
+            </p>
+            <div
+              style={{
+                display: "flex",
+                gap: "12px",
+                alignItems: "center",
+                flexWrap: "wrap",
+                justifyContent: "center",
+              }}
+            >
+              <button
+                onClick={() => seedStates().catch(console.error)}
+                style={{
+                  ...commonButtonStyle,
+                  marginLeft: 0,
+                  backgroundColor: "#6366f1",
+                }}
+              >
+                Seed State Polygons
+              </button>
+              <button
+                onClick={() => setGeometryQueryPoint(null)}
+                style={{
+                  ...commonButtonStyle,
+                  marginLeft: 0,
+                  backgroundColor: "var(--danger-primary)",
+                }}
+              >
+                Clear Query Point
+              </button>
+            </div>
+          </div>
+          {geometries.length > 0 && (
+            <div
+              style={{
+                width: "100%",
+                fontSize: "14px",
+                color: "var(--text-secondary)",
+                textAlign: "center",
+              }}
+            >
+              {geometries.length} stored geometries:{" "}
+              {geometries.map((g) => g.filterKeys?.name || g.key).join(", ")}
+            </div>
+          )}
+          {geometryQueryPoint && (
+            <div
+              style={{
+                fontSize: "14px",
+                backgroundColor: containsResults.length > 0 ? "#dcfce7" : "#fef3c7",
+                padding: "8px 16px",
+                borderRadius: "6px",
+                border: `1px solid ${containsResults.length > 0 ? "#22c55e" : "#f59e0b"}`,
+                color: containsResults.length > 0 ? "#166534" : "#92400e",
+              }}
+            >
+              Point ({geometryQueryPoint.latitude.toFixed(4)},{" "}
+              {geometryQueryPoint.longitude.toFixed(4)}) is in:{" "}
+              {containsResults.length > 0
+                ? containsResults
+                    .map((r) => (r as any).filterKeys?.name || r.key)
+                    .join(", ")
+                : "No polygons"}
+            </div>
+          )}
+        </div>
+      )}
+
       {searchMode === "viewport" && (
         <div
           style={{
@@ -893,6 +1094,10 @@ function App() {
             bufferMeters={bufferMeters}
             maxResults={maxResults}
             showDebugCells={showDebugCells}
+            geometryQueryPoint={geometryQueryPoint}
+            setGeometryQueryPoint={setGeometryQueryPoint}
+            storedGeometries={geometries}
+            containsResults={containsResults}
           />
         </MapContainer>
       </div>
