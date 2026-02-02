@@ -5,6 +5,9 @@ import { polygon, polyline, primitive, rectangle } from "./types.js";
 import type { Point, Polygon, Rectangle, Primitive } from "./types.js";
 import type { Id } from "./_generated/dataModel.js";
 
+/**
+ * List all stored geometries.
+ */
 export const list = query({
   args: {
     limit: v.optional(v.number()),
@@ -98,6 +101,9 @@ function matchesFilterKeys(
   });
 }
 
+/**
+ * Find all polygons that contain a given point.
+ */
 export const containsPoint = query({
   args: {
     point: v.object({
@@ -192,6 +198,9 @@ export const containsPoint = query({
   },
 });
 
+/**
+ * Find all geometries that intersect a given shape.
+ */
 export const intersects = query({
   args: {
     shape: v.union(
@@ -328,6 +337,10 @@ export const intersects = query({
   },
 });
 
+/**
+ * Find geometries within a given distance of a point.
+ * Returns results sorted by distance.
+ */
 export const geometriesNear = query({
   args: {
     point: v.object({

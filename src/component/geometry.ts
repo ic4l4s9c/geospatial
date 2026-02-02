@@ -88,6 +88,9 @@ function computeBoundingBox(points: Point[]): {
   return { south, north, west, east };
 }
 
+/**
+ * Insert a polygon or polyline into the spatial index.
+ */
 export const insert = mutation({
   args: {
     key: v.string(),
@@ -139,6 +142,9 @@ export const insert = mutation({
   },
 });
 
+/**
+ * Remove a geometry from the spatial index.
+ */
 export const remove = mutation({
   args: { key: v.string() },
   returns: v.null(),
@@ -162,6 +168,9 @@ export const remove = mutation({
   },
 });
 
+/**
+ * Update a geometry's coordinates or metadata.
+ */
 export const update = mutation({
   args: {
     key: v.string(),
@@ -225,6 +234,9 @@ export const update = mutation({
   },
 });
 
+/**
+ * Get a geometry by key.
+ */
 export const get = query({
   args: { key: v.string() },
   returns: v.union(
