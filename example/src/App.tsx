@@ -33,6 +33,7 @@ import { usePolylineQuery } from "./usePolylineQuery.js";
 import {
   useGeometriesQuery,
   useContainsPointQuery,
+  usePolygonMeasurements,
 } from "./useGeometriesQuery.js";
 import { FunctionReturnType } from "convex/server";
 
@@ -44,6 +45,27 @@ const manhattan = [40.746, -73.985];
 
 function normalizeLongitude(longitude: number) {
   return ((((longitude + 180) % 360) + 360) % 360) - 180;
+}
+
+function formatArea(squareMeters: number): string {
+  const squareKm = squareMeters / 1_000_000;
+  if (squareKm >= 1000) {
+    return `${squareKm.toLocaleString(undefined, { maximumFractionDigits: 0 })} km²`;
+  }
+  if (squareKm >= 1) {
+    return `${squareKm.toFixed(1)} km²`;
+  }
+  if (squareMeters >= 10_000) {
+    return `${(squareMeters / 10_000).toFixed(1)} hectares`;
+  }
+  return `${squareMeters.toFixed(0)} m²`;
+}
+
+function formatDistance(meters: number): string {
+  if (meters >= 1_000) {
+    return `${(meters / 1_000).toFixed(1)} km`;
+  }
+  return `${meters.toFixed(0)} m`;
 }
 
 function LocationSearch(props: {
@@ -77,6 +99,9 @@ function LocationSearch(props: {
     coordinates: { exterior: Point[] } | Point[];
     boundingBox: { south: number; north: number; west: number; east: number };
   }>;
+  selectedGeometryKey: string | null;
+  setSelectedGeometryKey: (key: string | null) => void;
+  selectedCentroid: Point | null;
 }) {
   const map = useMap();
   const [bounds, setBounds] = useState(map.getBounds());
@@ -395,19 +420,44 @@ function LocationSearch(props: {
           const isHighlighted = props.containsResults.some(
             (r) => r.key === geom.key
           );
+          const isSelected = props.selectedGeometryKey === geom.key;
           return (
             <LeafletPolygon
               key={geom.key}
               positions={positions}
               pathOptions={{
-                color: isHighlighted ? "#22c55e" : "#6366f1",
-                fillColor: isHighlighted ? "#22c55e" : "#6366f1",
-                fillOpacity: isHighlighted ? 0.4 : 0.2,
-                weight: isHighlighted ? 3 : 2,
+                color: isSelected ? "#ec4899" : isHighlighted ? "#22c55e" : "#6366f1",
+                fillColor: isSelected ? "#ec4899" : isHighlighted ? "#22c55e" : "#6366f1",
+                fillOpacity: isSelected ? 0.5 : isHighlighted ? 0.4 : 0.2,
+                weight: isSelected ? 4 : isHighlighted ? 3 : 2,
+              }}
+              eventHandlers={{
+                click: (e) => {
+                  e.originalEvent.stopPropagation();
+                  props.setSelectedGeometryKey(
+                    isSelected ? null : geom.key
+                  );
+                },
               }}
             />
           );
         })}
+      {/* Show centroid marker for selected geometry */}
+      {props.searchMode === "geometries" && props.selectedCentroid && (
+        <Marker
+          position={[
+            props.selectedCentroid.latitude,
+            props.selectedCentroid.longitude,
+          ]}
+          icon={
+            new Icon({
+              iconUrl: `data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2235%22 fill=%22%23ec4899%22 stroke=%22white%22 stroke-width=%226%22/><text x=%2250%22 y=%2258%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2240%22 font-weight=%22bold%22>C</text></svg>`,
+              iconSize: [24, 24],
+              iconAnchor: [12, 12],
+            })
+          }
+        />
+      )}
       {/* Show query point marker in geometries mode */}
       {props.geometryQueryPoint && props.searchMode === "geometries" && (
         <Marker
@@ -490,8 +540,19 @@ function App() {
   const [geometryQueryPoint, setGeometryQueryPoint] = useState<Point | null>(
     null
   );
+  const [selectedGeometryKey, setSelectedGeometryKey] = useState<string | null>(
+    null
+  );
   const { geometries, seedStates, deleteGeometry } = useGeometriesQuery();
   const { results: containsResults } = useContainsPointQuery(geometryQueryPoint);
+
+  // Get selected polygon for measurements
+  const selectedGeometry = geometries.find((g) => g.key === selectedGeometryKey);
+  const selectedPolygon =
+    selectedGeometry?.type === "polygon"
+      ? (selectedGeometry.coordinates as { exterior: Point[] })
+      : null;
+  const { area, perimeter, centroid } = usePolygonMeasurements(selectedPolygon);
 
   const commonButtonStyle = {
     backgroundColor: "var(--accent-primary)",
@@ -958,6 +1019,52 @@ function App() {
                 : "No polygons"}
             </div>
           )}
+          {/* Measurements panel for selected geometry */}
+          {selectedGeometryKey && selectedGeometry && (
+            <div
+              style={{
+                width: "100%",
+                fontSize: "14px",
+                backgroundColor: "#fdf4ff",
+                padding: "12px 16px",
+                borderRadius: "6px",
+                border: "1px solid #ec4899",
+                color: "#831843",
+              }}
+            >
+              <div style={{ fontWeight: "bold", marginBottom: "8px" }}>
+                📐 Measurements: {(selectedGeometry.filterKeys as any)?.name || selectedGeometryKey}
+              </div>
+              {area !== null && perimeter !== null && centroid && (
+                <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
+                  <span>
+                    Area: <strong>{formatArea(area)}</strong>
+                  </span>
+                  <span>
+                    Perimeter: <strong>{formatDistance(perimeter)}</strong>
+                  </span>
+                  <span>
+                    Centroid: <strong>({centroid.latitude.toFixed(4)}, {centroid.longitude.toFixed(4)})</strong>
+                  </span>
+                </div>
+              )}
+              <button
+                onClick={() => setSelectedGeometryKey(null)}
+                style={{
+                  marginTop: "8px",
+                  padding: "4px 12px",
+                  fontSize: "12px",
+                  backgroundColor: "#ec4899",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                }}
+              >
+                Clear Selection
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -1098,6 +1205,9 @@ function App() {
             setGeometryQueryPoint={setGeometryQueryPoint}
             storedGeometries={geometries}
             containsResults={containsResults}
+            selectedGeometryKey={selectedGeometryKey}
+            setSelectedGeometryKey={setSelectedGeometryKey}
+            selectedCentroid={centroid}
           />
         </MapContainer>
       </div>

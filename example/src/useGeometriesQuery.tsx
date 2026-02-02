@@ -1,6 +1,6 @@
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
-import type { Point } from "@convex-dev/geospatial";
+import type { Point, Polygon } from "@convex-dev/geospatial";
 
 /**
  * Hook to interact with stored geometries (polygons/polylines).
@@ -55,5 +55,22 @@ export function useGeometriesNearQuery(
     results: result?.results ?? [],
     truncated: result?.truncated ?? false,
     loading: point !== null && result === undefined,
+  };
+}
+
+/**
+ * Hook to get measurements for a polygon.
+ */
+export function usePolygonMeasurements(polygon: Polygon | null) {
+  const result = useQuery(
+    api.example.measurePolygon,
+    polygon ? { polygon } : "skip"
+  );
+
+  return {
+    area: result?.area ?? null,
+    perimeter: result?.perimeter ?? null,
+    centroid: result?.centroid ?? null,
+    loading: polygon !== null && result === undefined,
   };
 }

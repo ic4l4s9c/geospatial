@@ -161,6 +161,58 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         Name
       >;
     };
+    geometryMeasure: {
+      polygonArea: FunctionReference<
+        "query",
+        "internal",
+        {
+          polygon: {
+            exterior: Array<{ latitude: number; longitude: number }>;
+            holes?: Array<Array<{ latitude: number; longitude: number }>>;
+          };
+        },
+        number,
+        Name
+      >;
+      polygonCentroid: FunctionReference<
+        "query",
+        "internal",
+        {
+          polygon: {
+            exterior: Array<{ latitude: number; longitude: number }>;
+            holes?: Array<Array<{ latitude: number; longitude: number }>>;
+          };
+        },
+        { latitude: number; longitude: number },
+        Name
+      >;
+      polygonPerimeter: FunctionReference<
+        "query",
+        "internal",
+        {
+          polygon: {
+            exterior: Array<{ latitude: number; longitude: number }>;
+            holes?: Array<Array<{ latitude: number; longitude: number }>>;
+          };
+        },
+        number,
+        Name
+      >;
+      polylineCentroid: FunctionReference<
+        "query",
+        "internal",
+        { polyline: Array<{ latitude: number; longitude: number }> },
+        { latitude: number; longitude: number },
+        Name
+      >;
+      polylineLength: FunctionReference<
+        "query",
+        "internal",
+        { polyline: Array<{ latitude: number; longitude: number }> },
+        number,
+        Name
+      >;
+    };
     geometryQuery: {
       containsPoint: FunctionReference<
         "query",

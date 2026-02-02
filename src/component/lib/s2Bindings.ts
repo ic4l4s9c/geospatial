@@ -268,13 +268,6 @@ export class S2Bindings {
     return [...uint64s];
   }
 
-  // ============================================================================
-  // Phase 3: Geometry Storage - New methods for polygon/polyline storage
-  // ============================================================================
-
-  /**
-   * Write polygon coordinates to the second buffer (for two-polygon operations).
-   */
   private writePolygonToBuffer2(points: Point[]): void {
     const ptr = this.exports.polygonBuffer2Ptr();
     const wasmMemory = new Float64Array(this.exports.memory.buffer);
@@ -286,10 +279,6 @@ export class S2Bindings {
     }
   }
 
-  /**
-   * Test if two polygons intersect (share any area).
-   * Uses S2's Polygon.Intersects() which includes bounding box optimization.
-   */
   polygonIntersectsPolygon(polygon1: Point[], polygon2: Point[]): boolean {
     if (polygon1.length < 3 || polygon2.length < 3) {
       return false;
@@ -301,9 +290,6 @@ export class S2Bindings {
     );
   }
 
-  /**
-   * Test if polygon1 fully contains polygon2.
-   */
   polygonContainsPolygon(polygon1: Point[], polygon2: Point[]): boolean {
     if (polygon1.length < 3 || polygon2.length < 3) {
       return false;
@@ -315,25 +301,17 @@ export class S2Bindings {
     );
   }
 
-  /**
-   * Test if a polyline intersects a polygon.
-   * Properly detects edge crossings, not just vertex containment.
-   */
   polylineIntersectsPolygon(polyline: Point[], polygon: Point[]): boolean {
     if (polyline.length < 2 || polygon.length < 3) {
       return false;
     }
-    this.writePolylineToBuffer(polyline); // Polyline in polyline buffer
-    this.writePolygonToBuffer(polygon); // Polygon in polygon buffer
+    this.writePolylineToBuffer(polyline);
+    this.writePolygonToBuffer(polygon);
     return Boolean(
       this.exports.polylineIntersectsPolygon(polyline.length, polygon.length),
     );
   }
 
-  /**
-   * Compute distance from a point to the nearest edge of a polygon.
-   * @returns Distance as ChordAngle (use chordAngleToMeters to convert)
-   */
   distanceToPolygonEdge(polygonPoints: Point[], point: Point): ChordAngle {
     if (polygonPoints.length < 3) {
       throw new Error("Polygon must have at least 3 points");
@@ -350,11 +328,6 @@ export class S2Bindings {
     return distance;
   }
 
-  /**
-   * Get covering cells for a polygon (for indexing).
-   * Returns cells at their natural levels - NO ancestor projection.
-   * This prevents hotspots where small geometries pollute coarse-level indexes.
-   */
   coverPolygonForIndex(points: Point[], maxCells: number = 30): CellID[] {
     if (points.length < 3) {
       throw new Error("Polygon must have at least 3 points");
@@ -367,15 +340,11 @@ export class S2Bindings {
     return this.readCoveringBuffer(count);
   }
 
-  /**
-   * Get covering cells for a polyline (for indexing).
-   * Returns cells at their natural levels - NO ancestor projection.
-   */
   coverPolylineForIndex(points: Point[], maxCells: number = 30): CellID[] {
     if (points.length < 2) {
       throw new Error("Polyline must have at least 2 points");
     }
-    this.writePolylineToBuffer(points); // Use polyline buffer, not polygon buffer
+    this.writePolylineToBuffer(points);
     const count = this.exports.coverPolylineForIndex(points.length, maxCells);
     if (count < 0) {
       throw new Error("Failed to compute polyline covering");
@@ -383,11 +352,6 @@ export class S2Bindings {
     return this.readCoveringBuffer(count);
   }
 
-  /**
-   * Get a point's cell ID at ALL levels from MIN to MAX.
-   * Used for containsPoint queries - query-side ancestor traversal.
-   * Returns 13 cells (levels 4 through 16).
-   */
   pointCellsAllLevels(point: Point): CellID[] {
     const count = this.exports.pointCellsAllLevels(
       point.latitude,
@@ -396,18 +360,11 @@ export class S2Bindings {
     return this.readPointAncestorsBuffer(count);
   }
 
-  /**
-   * Get all ancestors of a cell from its level up to MIN_CELL_LEVEL.
-   * Used for intersects queries to find larger geometries.
-   */
   cellAncestors(cellId: CellID): CellID[] {
     const count = this.exports.cellAncestors(cellId);
     return this.readCoveringBuffer(count);
   }
 
-  /**
-   * Read cells from the covering buffer.
-   */
   private readCoveringBuffer(count: number): CellID[] {
     const ptr = this.exports.coveringBufferPtr();
     const wasmMemory = new Uint8Array(this.exports.memory.buffer);
@@ -416,14 +373,81 @@ export class S2Bindings {
     return [...uint64s];
   }
 
-  /**
-   * Read cells from the point ancestors buffer.
-   */
   private readPointAncestorsBuffer(count: number): CellID[] {
     const ptr = this.exports.pointAncestorsBufferPtr();
     const wasmMemory = new Uint8Array(this.exports.memory.buffer);
     const buffer = wasmMemory.slice(ptr, ptr + count * 8);
     const uint64s = new BigUint64Array(buffer.buffer);
     return [...uint64s];
+  }
+
+  polygonArea(points: Point[]): number {
+    if (points.length < 3) {
+      throw new Error("Polygon must have at least 3 points");
+    }
+    this.writePolygonToBuffer(points);
+    const area = this.exports.polygonArea(points.length);
+    if (area < 0) {
+      throw new Error("Failed to compute polygon area");
+    }
+    return area;
+  }
+
+  polylineLength(points: Point[]): number {
+    if (points.length < 2) {
+      throw new Error("Polyline must have at least 2 points");
+    }
+    this.writePolylineToBuffer(points);
+    const length = this.exports.polylineLength(points.length);
+    if (length < 0) {
+      throw new Error("Failed to compute polyline length");
+    }
+    return length;
+  }
+
+  polygonPerimeter(points: Point[]): number {
+    if (points.length < 3) {
+      throw new Error("Polygon must have at least 3 points");
+    }
+    this.writePolygonToBuffer(points);
+    const perimeter = this.exports.polygonPerimeter(points.length);
+    if (perimeter < 0) {
+      throw new Error("Failed to compute polygon perimeter");
+    }
+    return perimeter;
+  }
+
+  polygonCentroid(points: Point[]): Point {
+    if (points.length < 3) {
+      throw new Error("Polygon must have at least 3 points");
+    }
+    this.writePolygonToBuffer(points);
+    const success = this.exports.polygonCentroid(points.length);
+    if (!success) {
+      throw new Error("Failed to compute polygon centroid");
+    }
+    return this.readCentroidBuffer();
+  }
+
+  polylineCentroid(points: Point[]): Point {
+    if (points.length < 2) {
+      throw new Error("Polyline must have at least 2 points");
+    }
+    this.writePolylineToBuffer(points);
+    const success = this.exports.polylineCentroid(points.length);
+    if (!success) {
+      throw new Error("Failed to compute polyline centroid");
+    }
+    return this.readCentroidBuffer();
+  }
+
+  private readCentroidBuffer(): Point {
+    const ptr = this.exports.centroidBufferPtr();
+    const wasmMemory = new Float64Array(this.exports.memory.buffer);
+    const offset = ptr / 8;
+    return {
+      latitude: wasmMemory[offset],
+      longitude: wasmMemory[offset + 1],
+    };
   }
 }

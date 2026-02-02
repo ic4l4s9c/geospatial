@@ -14,6 +14,10 @@ store and query points on the Earth's surface.
 - Efficiently query for all points within a rectangle or polygon on the sphere.
 - Control the sort order for the results with a custom sorting key.
 - Filter query results with equality and `IN` clauses.
+- Store polygons and polylines as first-class indexed geometries.
+- Query for geometries that contain a point, intersect a shape, or are within a
+  distance.
+- Calculate area, perimeter, length, and centroids of geometries.
 - And since it's built on Convex, everything is automatically consistent,
   reactive, and cached!
 
@@ -342,6 +346,138 @@ range before documents are loaded, so the database does the heavy lifting and
 the query avoids reading unrelated points. Pairing that with a sensible
 `maxDistance` further constrains the search space and can greatly speed up
 searching the index.
+
+## Storing geometries (polygons and polylines)
+
+In addition to indexing points, you can store polygons and polylines as
+first-class indexed geometries. This enables queries like "which delivery zones
+contain this address?" or "which transit routes pass near this location?"
+
+```ts
+// convex/index.ts
+
+const example = mutation({
+  handler: async (ctx) => {
+    // Store a polygon (e.g., a delivery zone)
+    await geospatial.insertPolygon(
+      ctx,
+      "zone-manhattan",
+      {
+        exterior: [
+          { latitude: 40.7, longitude: -74.02 },
+          { latitude: 40.7, longitude: -73.97 },
+          { latitude: 40.82, longitude: -73.97 },
+          { latitude: 40.82, longitude: -74.02 },
+        ],
+      },
+      { type: "delivery-zone", region: "nyc" },
+    );
+
+    // Store a polyline (e.g., a transit route)
+    await geospatial.insertPolyline(
+      ctx,
+      "route-a-train",
+      [
+        { latitude: 40.7128, longitude: -74.006 },
+        { latitude: 40.7589, longitude: -73.9851 },
+        { latitude: 40.8448, longitude: -73.8648 },
+      ],
+      { type: "subway", line: "A" },
+    );
+
+    // Update or remove geometries
+    await geospatial.updateGeometry(ctx, "zone-manhattan", undefined, {
+      type: "delivery-zone",
+      active: true,
+    });
+    await geospatial.removeGeometry(ctx, "route-a-train");
+  },
+});
+```
+
+### Querying geometries
+
+Find all polygons that contain a given point:
+
+```ts
+const example = query({
+  handler: async (ctx) => {
+    const { results } = await geospatial.containsPoint(
+      ctx,
+      { latitude: 40.7580, longitude: -73.9855 }, // Times Square
+      { type: "delivery-zone" }, // Optional filter
+    );
+    return results; // All delivery zones containing this point
+  },
+});
+```
+
+Find geometries that intersect a given shape:
+
+```ts
+const example = query({
+  handler: async (ctx) => {
+    const { results } = await geospatial.intersects(ctx, {
+      type: "rectangle",
+      rectangle: { south: 40.7, north: 40.8, west: -74.0, east: -73.9 },
+    });
+    return results; // All geometries overlapping this rectangle
+  },
+});
+```
+
+Find geometries within a distance of a point:
+
+```ts
+const example = query({
+  handler: async (ctx) => {
+    const { results } = await geospatial.geometriesNear(
+      ctx,
+      { latitude: 40.7580, longitude: -73.9855 },
+      5000, // 5km radius
+    );
+    // Results include distance in meters, sorted by proximity
+    return results;
+  },
+});
+```
+
+## Geometry measurements
+
+Calculate area, perimeter, length, and centroids of geometries:
+
+```ts
+const example = query({
+  handler: async (ctx) => {
+    const polygon = {
+      exterior: [
+        { latitude: 40.7, longitude: -74.0 },
+        { latitude: 40.7, longitude: -73.9 },
+        { latitude: 40.8, longitude: -73.9 },
+        { latitude: 40.8, longitude: -74.0 },
+      ],
+    };
+
+    // Polygon measurements
+    const area = await geospatial.polygonArea(ctx, polygon); // square meters
+    const perimeter = await geospatial.polygonPerimeter(ctx, polygon); // meters
+    const centroid = await geospatial.polygonCentroid(ctx, polygon); // { latitude, longitude }
+
+    // Polyline measurements
+    const route = [
+      { latitude: 40.7128, longitude: -74.006 },
+      { latitude: 40.7589, longitude: -73.9851 },
+    ];
+    const length = await geospatial.polylineLength(ctx, route); // meters
+    const routeCentroid = await geospatial.polylineCentroid(ctx, route);
+
+    return { area, perimeter, centroid, length, routeCentroid };
+  },
+});
+```
+
+All measurements use geodesic calculations on the Earth's surface (WGS84
+ellipsoid approximation), so they're accurate for real-world geographic data.
 
 ## Example
 

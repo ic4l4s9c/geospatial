@@ -229,13 +229,6 @@ export const debugCells = query({
   },
 });
 
-// ============================================================================
-// Geometry Storage API (Phase 3)
-// ============================================================================
-
-/**
- * List all stored geometries.
- */
 export const listGeometries = query({
   args: {},
   handler: async (ctx) => {
@@ -243,9 +236,6 @@ export const listGeometries = query({
   },
 });
 
-/**
- * Find all polygons that contain a given point.
- */
 export const geometryContainsPoint = query({
   args: {
     point,
@@ -255,9 +245,6 @@ export const geometryContainsPoint = query({
   },
 });
 
-/**
- * Find all geometries that intersect a given rectangle.
- */
 export const geometryIntersects = query({
   args: {
     rectangle,
@@ -270,9 +257,6 @@ export const geometryIntersects = query({
   },
 });
 
-/**
- * Find geometries near a point within a given distance.
- */
 export const geometriesNearPoint = query({
   args: {
     point,
@@ -283,14 +267,38 @@ export const geometriesNearPoint = query({
   },
 });
 
-/**
- * Delete a geometry by key.
- */
 export const deleteGeometry = mutation({
   args: {
     key: v.string(),
   },
   handler: async (ctx, args) => {
     await geospatial.removeGeometry(ctx, args.key);
+  },
+});
+
+export const measurePolygon = query({
+  args: {
+    polygon,
+  },
+  handler: async (ctx, args) => {
+    const [area, perimeter, centroid] = await Promise.all([
+      geospatial.polygonArea(ctx, args.polygon),
+      geospatial.polygonPerimeter(ctx, args.polygon),
+      geospatial.polygonCentroid(ctx, args.polygon),
+    ]);
+    return { area, perimeter, centroid };
+  },
+});
+
+export const measurePolyline = query({
+  args: {
+    polyline,
+  },
+  handler: async (ctx, args) => {
+    const [length, centroid] = await Promise.all([
+      geospatial.polylineLength(ctx, args.polyline),
+      geospatial.polylineCentroid(ctx, args.polyline),
+    ]);
+    return { length, centroid };
   },
 });

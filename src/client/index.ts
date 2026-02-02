@@ -13,7 +13,6 @@ export type { Point, Polygon, Polyline, Primitive, GeospatialQuery, Rectangle };
 export { point, polygon, polyline, rectangle };
 export { MIN_CELL_LEVEL, MAX_CELL_LEVEL } from "../component/lib/s2Bindings.js";
 
-// Type definitions for stored geometries (Phase 3)
 export type StoredGeometry = {
   key: string;
   type: "polygon" | "polyline";
@@ -316,10 +315,6 @@ export class GeospatialIndex<
     return resp;
   }
 
-  // ============================================================================
-  // Phase 3: Geometry Storage - Methods for polygon/polyline storage
-  // ============================================================================
-
   /**
    * Insert a polygon into the spatial index.
    *
@@ -526,6 +521,71 @@ export class GeospatialIndex<
     limit?: number,
   ): Promise<StoredGeometry[]> {
     return await ctx.runQuery(this.component.geometryQuery.list, { limit });
+  }
+
+  /**
+   * Calculate the area of a polygon in square meters.
+   *
+   * @param ctx - The Convex query context.
+   * @param polygon - The polygon geometry.
+   * @returns - The area in square meters.
+   */
+  async polygonArea(ctx: QueryCtx, polygon: Polygon): Promise<number> {
+    return await ctx.runQuery(this.component.geometryMeasure.polygonArea, {
+      polygon,
+    });
+  }
+
+  /**
+   * Calculate the length of a polyline in meters.
+   *
+   * @param ctx - The Convex query context.
+   * @param polyline - The polyline as an array of points.
+   * @returns - The length in meters.
+   */
+  async polylineLength(ctx: QueryCtx, polyline: Point[]): Promise<number> {
+    return await ctx.runQuery(this.component.geometryMeasure.polylineLength, {
+      polyline,
+    });
+  }
+
+  /**
+   * Calculate the perimeter of a polygon in meters.
+   *
+   * @param ctx - The Convex query context.
+   * @param polygon - The polygon geometry.
+   * @returns - The perimeter in meters.
+   */
+  async polygonPerimeter(ctx: QueryCtx, polygon: Polygon): Promise<number> {
+    return await ctx.runQuery(this.component.geometryMeasure.polygonPerimeter, {
+      polygon,
+    });
+  }
+
+  /**
+   * Calculate the centroid of a polygon.
+   *
+   * @param ctx - The Convex query context.
+   * @param polygon - The polygon geometry.
+   * @returns - The centroid point.
+   */
+  async polygonCentroid(ctx: QueryCtx, polygon: Polygon): Promise<Point> {
+    return await ctx.runQuery(this.component.geometryMeasure.polygonCentroid, {
+      polygon,
+    });
+  }
+
+  /**
+   * Calculate the centroid of a polyline.
+   *
+   * @param ctx - The Convex query context.
+   * @param polyline - The polyline as an array of points.
+   * @returns - The centroid point.
+   */
+  async polylineCentroid(ctx: QueryCtx, polyline: Point[]): Promise<Point> {
+    return await ctx.runQuery(this.component.geometryMeasure.polylineCentroid, {
+      polyline,
+    });
   }
 }
 

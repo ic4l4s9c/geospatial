@@ -326,19 +326,11 @@ func distanceToPolyline(numPoints int, pLat, pLng float64) float64 {
 	return float64(result[0].Distance())
 }
 
-// ============================================================================
-// Phase 3: Geometry Storage - New bindings for polygon/polyline storage
-// ============================================================================
-
-// Cell level bounds for geometry covering (Standard S2 Inverted Index)
-// Level 4:  ~600km edge, ~300,000 km² area - state/country-sized polygons
-// Level 16: ~150m edge, ~20,000 m² area - neighborhood-level
 const (
 	MIN_CELL_LEVEL = 4
 	MAX_CELL_LEVEL = 16
 )
 
-// Second polygon buffer for two-polygon operations (intersection/containment)
 var polygonBuffer2 [POLYGON_BUFFER_SIZE]float64
 
 //export polygonBuffer2Ptr
@@ -593,6 +585,89 @@ func cellAncestors(cellID uint64) int {
 	}
 
 	return count
+}
+
+var centroidBuffer [2]float64
+
+//export centroidBufferPtr
+func centroidBufferPtr() *[2]float64 {
+	return &centroidBuffer
+}
+
+//export polygonArea
+func polygonArea(numPoints int) float64 {
+	polygon := buildPolygonFromBuffer(numPoints)
+	if polygon == nil {
+		return -1
+	}
+	areaSteradians := polygon.Area()
+	return areaSteradians * EARTH_RADIUS_METERS * EARTH_RADIUS_METERS
+}
+
+//export polylineLength
+func polylineLength(numPoints int) float64 {
+	if numPoints < 2 || numPoints*2 > POLYLINE_BUFFER_SIZE {
+		return -1
+	}
+	polyline := buildPolylineFromBuffer(numPoints)
+	if polyline == nil {
+		return -1
+	}
+	lengthAngle := polyline.Length()
+	return lengthAngle.Radians() * EARTH_RADIUS_METERS
+}
+
+//export polygonPerimeter
+func polygonPerimeter(numPoints int) float64 {
+	polygon := buildPolygonFromBuffer(numPoints)
+	if polygon == nil || polygon.NumLoops() == 0 {
+		return -1
+	}
+	loop := polygon.Loop(0)
+	var perimeter s1.Angle
+	for i := 0; i < loop.NumVertices(); i++ {
+		a := loop.Vertex(i)
+		b := loop.Vertex((i + 1) % loop.NumVertices())
+		perimeter += a.Distance(b)
+	}
+	return perimeter.Radians() * EARTH_RADIUS_METERS
+}
+
+//export polygonCentroid
+func polygonCentroid(numPoints int) bool {
+	polygon := buildPolygonFromBuffer(numPoints)
+	if polygon == nil {
+		return false
+	}
+	centroid := polygon.Centroid()
+	if centroid == (s2.Point{}) {
+		return false
+	}
+	normalized := s2.Point{Vector: centroid.Normalize()}
+	latLng := s2.LatLngFromPoint(normalized)
+	centroidBuffer[0] = latLng.Lat.Degrees()
+	centroidBuffer[1] = latLng.Lng.Degrees()
+	return true
+}
+
+//export polylineCentroid
+func polylineCentroid(numPoints int) bool {
+	if numPoints < 2 || numPoints*2 > POLYLINE_BUFFER_SIZE {
+		return false
+	}
+	polyline := buildPolylineFromBuffer(numPoints)
+	if polyline == nil {
+		return false
+	}
+	centroid := polyline.Centroid()
+	if centroid == (s2.Point{}) {
+		return false
+	}
+	normalized := s2.Point{Vector: centroid.Normalize()}
+	latLng := s2.LatLngFromPoint(normalized)
+	centroidBuffer[0] = latLng.Lat.Degrees()
+	centroidBuffer[1] = latLng.Lng.Degrees()
+	return true
 }
 
 // main is required for the `wasip1` target, even if it isn't used.
