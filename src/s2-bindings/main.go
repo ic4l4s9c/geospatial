@@ -273,6 +273,9 @@ func coverPolylineBuffered(numPoints int, bufferMeters float64, minLevel, maxLev
 	if numPoints*2 > POLYLINE_BUFFER_SIZE {
 		return -1 // Too many points
 	}
+	if bufferMeters < 0 {
+		return -1 // Buffer must be non-negative
+	}
 
 	polyline := buildPolylineFromBuffer(numPoints)
 

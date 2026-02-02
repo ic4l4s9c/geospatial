@@ -233,14 +233,12 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               south: number;
               west: number;
             };
-            coordinates:
-              | {
-                  exterior: Array<{ latitude: number; longitude: number }>;
-                  holes?: Array<Array<{ latitude: number; longitude: number }>>;
-                }
-              | Array<{ latitude: number; longitude: number }>;
+            coordinates: {
+              exterior: Array<{ latitude: number; longitude: number }>;
+              holes?: Array<Array<{ latitude: number; longitude: number }>>;
+            };
             key: string;
-            type: "polygon" | "polyline";
+            type: "polygon";
           }>;
           truncated: boolean;
         },
@@ -303,6 +301,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             | {
                 polygon: {
                   exterior: Array<{ latitude: number; longitude: number }>;
+                  holes?: Array<Array<{ latitude: number; longitude: number }>>;
                 };
                 type: "polygon";
               };

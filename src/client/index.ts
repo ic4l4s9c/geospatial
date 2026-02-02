@@ -21,6 +21,14 @@ export type StoredGeometry = {
   filterKeys?: Record<string, Primitive>;
 };
 
+export type StoredPolygon = {
+  key: string;
+  type: "polygon";
+  coordinates: Polygon;
+  boundingBox: Rectangle;
+  filterKeys?: Record<string, Primitive>;
+};
+
 export type GeometryWithDistance = StoredGeometry & {
   distance: number;
 };
@@ -441,7 +449,7 @@ export class GeospatialIndex<
     point: Point,
     filterKeys?: Record<string, Primitive>,
     limit?: number,
-  ): Promise<{ results: StoredGeometry[]; truncated: boolean }> {
+  ): Promise<{ results: StoredPolygon[]; truncated: boolean }> {
     return await ctx.runQuery(this.component.geometryQuery.containsPoint, {
       point,
       filterKeys,

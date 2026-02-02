@@ -134,6 +134,21 @@ export const execute = query({
       );
       containsPoint = (p) => s2.rectangleContains(shape.rectangle, p);
     } else if (shape.type === "polygon") {
+      // Reject polygons with holes
+      const poly = shape.polygon as typeof shape.polygon & {
+        holes?: unknown;
+        interiors?: unknown;
+        interior?: unknown;
+      };
+      if (
+        (poly.holes && Array.isArray(poly.holes) && poly.holes.length > 0) ||
+        (poly.interiors &&
+          Array.isArray(poly.interiors) &&
+          poly.interiors.length > 0) ||
+        (poly.interior && Array.isArray(poly.interior) && poly.interior.length > 0)
+      ) {
+        throw new Error("Polygon holes are not supported");
+      }
       const exterior = shape.polygon.exterior;
       cellIDs = s2.coverPolygon(
         exterior,
