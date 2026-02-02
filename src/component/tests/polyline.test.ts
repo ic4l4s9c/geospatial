@@ -383,6 +383,9 @@ test("S2Bindings - distanceToPolyline multi-segment", async () => {
 });
 
 describe("property-based polyline tests", () => {
+  // Reuse a single S2Bindings instance for performance
+  const s2Promise = S2Bindings.load();
+
   const arbitraryPolyline = fc
     .tuple(
       fc.float({ min: Math.fround(-45), max: Math.fround(45), noNaN: true }), // center lat
@@ -406,7 +409,7 @@ describe("property-based polyline tests", () => {
   fcTest.prop({ polyline: arbitraryPolyline })(
     "coverPolylineBuffered returns valid cells",
     async ({ polyline }) => {
-      const s2 = await S2Bindings.load();
+      const s2 = await s2Promise;
       const cells = s2.coverPolylineBuffered(polyline.points, 10000, 4, 16, 2, 8, 4);
 
       expect(cells.length).toBeGreaterThan(0);
@@ -423,7 +426,7 @@ describe("property-based polyline tests", () => {
   fcTest.prop({ polyline: arbitraryPolyline })(
     "point on first vertex has zero distance",
     async ({ polyline }) => {
-      const s2 = await S2Bindings.load();
+      const s2 = await s2Promise;
       const firstPoint = polyline.points[0];
       const distance = s2.distanceToPolyline(polyline.points, firstPoint);
       const meters = s2.chordAngleToMeters(distance);

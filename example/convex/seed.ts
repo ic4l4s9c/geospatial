@@ -89,7 +89,7 @@ export const seedStatePolygons = mutation({
         inserted.push(stateData.name);
       } catch (e) {
         // Polygon may already exist
-        console.log(`State ${stateData.name} already exists or failed to insert`);
+        console.warn(`State ${stateData.name} failed to insert:`, e);
       }
     }
 

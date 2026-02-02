@@ -14,7 +14,7 @@ const NYC_SQUARE = {
   ],
 };
 
-// Test polyline: a route through Manhattan (~2km)
+// Test polyline: a route through Manhattan (~8-10km)
 const MANHATTAN_ROUTE = [
   { latitude: 40.71, longitude: -74.01 },
   { latitude: 40.75, longitude: -73.99 },

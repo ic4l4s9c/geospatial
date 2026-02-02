@@ -1,7 +1,7 @@
 import { query } from "./_generated/server.js";
 import { v } from "convex/values";
 import { S2Bindings } from "./lib/s2Bindings.js";
-import { polygon, polyline, primitive } from "./types.js";
+import { polygon, polyline, primitive, rectangle } from "./types.js";
 import type { Point, Polygon, Rectangle, Primitive } from "./types.js";
 import type { Id } from "./_generated/dataModel.js";
 
@@ -195,26 +195,8 @@ export const containsPoint = query({
 export const intersects = query({
   args: {
     shape: v.union(
-      v.object({
-        type: v.literal("rectangle"),
-        rectangle: v.object({
-          south: v.number(),
-          north: v.number(),
-          west: v.number(),
-          east: v.number(),
-        }),
-      }),
-      v.object({
-        type: v.literal("polygon"),
-        polygon: v.object({
-          exterior: v.array(
-            v.object({
-              latitude: v.number(),
-              longitude: v.number(),
-            }),
-          ),
-        }),
-      }),
+      v.object({ type: v.literal("rectangle"), rectangle }),
+      v.object({ type: v.literal("polygon"), polygon }),
     ),
     maxCoveringCells: v.optional(v.number()),
     filterKeys: v.optional(v.record(v.string(), primitive)),

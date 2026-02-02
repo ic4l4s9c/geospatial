@@ -41,6 +41,12 @@ type SearchMode = "viewport" | "nearest" | "polygon" | "polyline" | "geometries"
 
 type Rows = FunctionReturnType<typeof api.example.search>["rows"];
 
+// Expected filterKeys shape for state polygons
+interface StateFilterKeys {
+  name?: string;
+  type?: string;
+}
+
 const manhattan = [40.746, -73.985];
 
 function normalizeLongitude(longitude: number) {
@@ -317,6 +323,7 @@ function LocationSearch(props: {
         (coord) => [coord[1], coord[0]] as LatLngTuple
       );
     } catch {
+      console.warn("Failed to generate polyline buffer polygon");
       return null;
     }
   }, [props.polylinePoints, props.bufferMeters]);
@@ -1011,7 +1018,7 @@ function App() {
               {geometryQueryPoint.longitude.toFixed(4)}) is in:{" "}
               {containsResults.length > 0
                 ? containsResults
-                    .map((r) => (r as any).filterKeys?.name || r.key)
+                    .map((r) => (r.filterKeys as StateFilterKeys | undefined)?.name || r.key)
                     .join(", ")
                 : "No polygons"}
             </div>
@@ -1030,7 +1037,7 @@ function App() {
               }}
             >
               <div style={{ fontWeight: "bold", marginBottom: "8px" }}>
-                📐 Measurements: {(selectedGeometry.filterKeys as any)?.name || selectedGeometryKey}
+                📐 Measurements: {(selectedGeometry.filterKeys as StateFilterKeys | undefined)?.name || selectedGeometryKey}
               </div>
               {area !== null && perimeter !== null && centroid && (
                 <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>

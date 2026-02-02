@@ -522,6 +522,9 @@ test("S2Bindings - concave polygon containment", async () => {
 });
 
 describe("property-based polygon tests", () => {
+  // Reuse a single S2Bindings instance for performance
+  const s2Promise = S2Bindings.load();
+
   // Arbitrary for generating valid polygon vertices (convex, to ensure valid shape)
   const arbitraryConvexPolygon = fc
     .tuple(
@@ -549,7 +552,7 @@ describe("property-based polygon tests", () => {
   fcTest.prop({ polygon: arbitraryConvexPolygon })(
     "center point is always inside convex polygon",
     async ({ polygon }) => {
-      const s2 = await S2Bindings.load();
+      const s2 = await s2Promise;
       const contains = s2.polygonContainsPoint(polygon.vertices, polygon.center);
       expect(contains).toBe(true);
     },
@@ -558,7 +561,7 @@ describe("property-based polygon tests", () => {
   fcTest.prop({ polygon: arbitraryConvexPolygon })(
     "far away point is always outside polygon",
     async ({ polygon }) => {
-      const s2 = await S2Bindings.load();
+      const s2 = await s2Promise;
       // Point very far from center (at least 2x radius away)
       const farPoint = {
         latitude: Math.max(-89, Math.min(89, polygon.center.latitude + polygon.radius * 3)),
@@ -572,7 +575,7 @@ describe("property-based polygon tests", () => {
   fcTest.prop({ polygon: arbitraryConvexPolygon })(
     "coverPolygon returns valid cells",
     async ({ polygon }) => {
-      const s2 = await S2Bindings.load();
+      const s2 = await s2Promise;
       const cells = s2.coverPolygon(polygon.vertices, 4, 16, 2, 8);
 
       expect(cells.length).toBeGreaterThan(0);
