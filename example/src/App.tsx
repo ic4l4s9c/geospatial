@@ -6,7 +6,8 @@ import "leaflet/dist/leaflet.css";
 import {
   MapContainer,
   Marker,
-  Polygon,
+  Polygon as LeafletPolygon,
+  Polyline,
   TileLayer,
   useMap,
   useMapEvents,
@@ -20,12 +21,15 @@ import {
 } from "leaflet";
 import { useMutation, useQuery } from "convex/react";
 import { Doc, Id } from "../convex/_generated/dataModel";
-import type { Point } from "@convex-dev/geospatial";
+import type { Point, Polygon } from "@convex-dev/geospatial";
 import { Select } from "antd";
 import { FOOD_EMOJIS } from "../convex/constants.js";
 import { useGeoQuery } from "./useGeoQuery.js";
 import { useNearestQuery } from "./useNearestQuery.js";
+import { usePolygonQuery } from "./usePolygonQuery.js";
 import { FunctionReturnType } from "convex/server";
+
+type SearchMode = "viewport" | "nearest" | "polygon";
 
 type Rows = FunctionReturnType<typeof api.example.search>["rows"];
 
@@ -40,9 +44,11 @@ function LocationSearch(props: {
   setLoading: (loading: boolean) => void;
   mustFilter: string[];
   shouldFilter: string[];
-  isNearestMode: boolean;
+  searchMode: SearchMode;
   nearestPoint: Point | null;
   setNearestPoint: (point: Point | null) => void;
+  polygonPoints: Point[];
+  setPolygonPoints: (points: Point[]) => void;
   maxResults: number;
   showDebugCells: boolean;
 }) {
@@ -93,7 +99,7 @@ function LocationSearch(props: {
 
   useMapEvents({
     moveend: () => {
-      if (props.isNearestMode) return;
+      if (props.searchMode !== "viewport") return;
       const bounds = map.getBounds();
       const normalizedWest = normalizeLongitude(bounds.getWest());
       const normalizedEast = normalizeLongitude(bounds.getEast());
@@ -104,7 +110,7 @@ function LocationSearch(props: {
       setBounds(normalizedBounds);
     },
     contextmenu: (e) => {
-      if (props.isNearestMode) return;
+      if (props.searchMode !== "viewport") return;
       e.originalEvent.preventDefault();
       const latLng = map.mouseEventToLatLng(e.originalEvent);
       const name = FOOD_EMOJIS[Math.floor(Math.random() * FOOD_EMOJIS.length)];
@@ -114,10 +120,17 @@ function LocationSearch(props: {
       }).catch(console.error);
     },
     click: (e) => {
-      if (!props.isNearestMode) return;
-      const latLng = map.mouseEventToLatLng(e.originalEvent);
-      props.setNearestPoint({ latitude: latLng.lat, longitude: latLng.lng });
-    }
+      if (props.searchMode === "nearest") {
+        const latLng = map.mouseEventToLatLng(e.originalEvent);
+        props.setNearestPoint({ latitude: latLng.lat, longitude: latLng.lng });
+      } else if (props.searchMode === "polygon") {
+        const latLng = map.mouseEventToLatLng(e.originalEvent);
+        props.setPolygonPoints([
+          ...props.polygonPoints,
+          { latitude: latLng.lat, longitude: latLng.lng },
+        ]);
+      }
+    },
   });
 
   const rectangle = useMemo(() => {
@@ -138,13 +151,36 @@ function LocationSearch(props: {
 
   const { rows: nearestRows } = useNearestQuery(
     props.nearestPoint,
-    props.maxResults
+    props.maxResults,
   );
 
-  const rows = props.isNearestMode ? nearestRows : viewportRows;
+  // Build polygon for query (only if we have 3+ points)
+  const polygonForQuery: Polygon | null = useMemo(() => {
+    if (props.polygonPoints.length >= 3) {
+      return { exterior: props.polygonPoints };
+    }
+    return null;
+  }, [props.polygonPoints]);
 
-  if (loading !== props.loading) {
-    props.setLoading(loading);
+  const { rows: polygonRows, loading: polygonLoading } = usePolygonQuery(
+    polygonForQuery,
+    props.mustFilter,
+    props.shouldFilter,
+    96,
+  );
+
+  // Select rows based on mode
+  const rows =
+    props.searchMode === "nearest"
+      ? nearestRows
+      : props.searchMode === "polygon"
+        ? polygonRows
+        : viewportRows;
+
+  const currentLoading =
+    props.searchMode === "polygon" ? polygonLoading : loading;
+  if (currentLoading !== props.loading) {
+    props.setLoading(currentLoading);
   }
 
   const cells = useQuery(api.example.debugCells, {
@@ -158,7 +194,7 @@ function LocationSearch(props: {
   }
 
   const stickyRows = useRef<Rows>([]);
-  if (rows.length > 0 || loading === false) {
+  if (rows.length > 0 || currentLoading === false) {
     stickyRows.current = rows;
   }
 
@@ -170,25 +206,66 @@ function LocationSearch(props: {
     tilingPolygons.push({ polygon: leafletPolygon, cell: token });
   }
 
+  // Build the user-drawn polygon for display
+  const drawnPolygonPositions: LatLngTuple[] = props.polygonPoints.map((p) => [
+    p.latitude,
+    p.longitude,
+  ]);
+
   return (
     <>
-      {!props.isNearestMode && props.showDebugCells && tilingPolygons.map(({ polygon, cell }, i) => (
-        <Polygon
-          key={i}
-          pathOptions={{ color: "blue", lineCap: "round", lineJoin: "bevel" }}
-          positions={polygon}
-          eventHandlers={{
-            click: (e) => {
-              e.originalEvent.preventDefault();
-              console.log(`Clicked on cell ${cell}`, polygon);
-            },
+      {props.searchMode === "viewport" &&
+        props.showDebugCells &&
+        tilingPolygons.map(({ polygon, cell }, i) => (
+          <LeafletPolygon
+            key={i}
+            pathOptions={{ color: "blue", lineCap: "round", lineJoin: "bevel" }}
+            positions={polygon}
+            eventHandlers={{
+              click: (e: L.LeafletMouseEvent) => {
+                e.originalEvent.preventDefault();
+                console.log(`Clicked on cell ${cell}`, polygon);
+              },
+            }}
+          />
+        ))}
+      {/* Show the polygon being drawn */}
+      {props.searchMode === "polygon" && drawnPolygonPositions.length >= 2 && (
+        <Polyline
+          positions={drawnPolygonPositions}
+          pathOptions={{ color: "green", weight: 3 }}
+        />
+      )}
+      {props.searchMode === "polygon" && drawnPolygonPositions.length >= 3 && (
+        <LeafletPolygon
+          positions={drawnPolygonPositions}
+          pathOptions={{
+            color: "green",
+            fillColor: "green",
+            fillOpacity: 0.2,
+            weight: 3,
           }}
         />
-      ))}
+      )}
+      {/* Show vertex markers for the polygon */}
+      {props.searchMode === "polygon" &&
+        props.polygonPoints.map((point, i) => (
+          <Marker
+            key={`polygon-vertex-${i}`}
+            position={[point.latitude, point.longitude]}
+            icon={
+              new Icon({
+                iconUrl: `data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2240%22 fill=%22%2322c55e%22 stroke=%22white%22 stroke-width=%228%22/><text x=%2250%22 y=%2258%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2240%22 font-weight=%22bold%22>${i + 1}</text></svg>`,
+                iconSize: [24, 24],
+                iconAnchor: [12, 12],
+              })
+            }
+          />
+        ))}
       {stickyRows.current.map((row) => (
         <SearchResult key={row._id} row={row} />
       ))}
-      {props.nearestPoint && (
+      {props.nearestPoint && props.searchMode === "nearest" && (
         <Marker
           position={[props.nearestPoint.latitude, props.nearestPoint.longitude]}
           icon={
@@ -224,7 +301,7 @@ function SearchResult(props: {
           iconUrl: `data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2248%22 fill=%22white%22 stroke=%22%234a90e2%22 stroke-width=%222%22 opacity=%220.9%22 /><text y=%22.9em%22 x=%2250%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 font-size=%2270%22>${row.name}</text></svg>`,
           iconSize: [size, size],
           iconAnchor: [size / 2, size / 2],
-          className: 'emoji-marker'
+          className: "emoji-marker",
         })
       }
     />
@@ -239,75 +316,135 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [mustFilter, setMustFilter] = useState<string[]>([]);
   const [shouldFilter, setShouldFilter] = useState<string[]>([]);
-  const [isNearestMode, setIsNearestMode] = useState(false);
+  const [searchMode, setSearchMode] = useState<SearchMode>("viewport");
   const [nearestPoint, setNearestPoint] = useState<Point | null>(null);
+  const [polygonPoints, setPolygonPoints] = useState<Point[]>([]);
   const [maxResults, setMaxResults] = useState(10);
   const [showDebugCells, setShowDebugCells] = useState(false);
 
   const commonButtonStyle = {
-    backgroundColor: 'var(--accent-primary)',
-    color: 'var(--bg-secondary)',
-    border: 'none',
-    padding: '8px 16px',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    fontSize: '14px',
-    transition: 'all 0.2s',
-    marginLeft: '10px',
-    ':hover': {
-      backgroundColor: 'var(--accent-secondary)',
-    }
+    backgroundColor: "var(--accent-primary)",
+    color: "var(--bg-secondary)",
+    border: "none",
+    padding: "8px 16px",
+    borderRadius: "6px",
+    cursor: "pointer",
+    fontSize: "14px",
+    transition: "all 0.2s",
+    marginLeft: "10px",
+    ":hover": {
+      backgroundColor: "var(--accent-secondary)",
+    },
   } as const;
 
   const commonInputStyle = {
-    padding: '8px 12px',
-    borderRadius: '6px',
-    border: '1px solid var(--border-color)',
-    fontSize: '14px',
-    width: '120px',
-    backgroundColor: 'var(--bg-secondary)',
-    color: 'var(--text-primary)',
+    padding: "8px 12px",
+    borderRadius: "6px",
+    border: "1px solid var(--border-color)",
+    fontSize: "14px",
+    width: "120px",
+    backgroundColor: "var(--bg-secondary)",
+    color: "var(--text-primary)",
   } as const;
 
   return (
-    <div style={{ 
-      maxWidth: '1200px', 
-      margin: '0 auto', 
-      padding: '20px',
-      backgroundColor: 'var(--bg-primary)',
-      borderRadius: '12px',
-      boxShadow: '0 2px 8px var(--shadow-color)'
-    }}>
-      <h1 style={{ 
-        fontSize: '2.5em', 
-        marginBottom: '24px',
-        background: 'linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%)',
-        WebkitBackgroundClip: 'text',
-        WebkitTextFillColor: 'transparent',
-        textAlign: 'center'
-      }}>
+    <div
+      style={{
+        maxWidth: "1200px",
+        margin: "0 auto",
+        padding: "20px",
+        backgroundColor: "var(--bg-primary)",
+        borderRadius: "12px",
+        boxShadow: "0 2px 8px var(--shadow-color)",
+        width: "100%",
+      }}
+    >
+      <h1
+        style={{
+          fontSize: "2.5em",
+          marginBottom: "24px",
+          background:
+            "linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%)",
+          WebkitBackgroundClip: "text",
+          WebkitTextFillColor: "transparent",
+          textAlign: "center",
+        }}
+      >
         Convex Geospatial Demo
       </h1>
-      {isNearestMode ? (
-        <>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '16px',
-            marginBottom: '20px',
-          }}>
-            <p style={{ margin: 0, fontSize: '16px', color: 'var(--text-primary)' }}>
-              Left click on the map to set a point and find the nearest emojis!
-            </p>
-            <button 
-              onClick={() => setIsNearestMode(false)}
-              style={commonButtonStyle}
-            >
-              Back to viewport mode
-            </button>
-          </div>
-          <div style={{
+      {/* Mode selector buttons */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          gap: "8px",
+          marginBottom: "20px",
+        }}
+      >
+        <button
+          onClick={() => {
+            setSearchMode("viewport");
+            setPolygonPoints([]);
+          }}
+          style={{
+            ...commonButtonStyle,
+            marginLeft: 0,
+            backgroundColor:
+              searchMode === "viewport"
+                ? "var(--accent-primary)"
+                : "var(--bg-secondary)",
+            color:
+              searchMode === "viewport"
+                ? "var(--bg-secondary)"
+                : "var(--text-primary)",
+            border: "1px solid var(--border-color)",
+          }}
+        >
+          Viewport Search
+        </button>
+        <button
+          onClick={() => {
+            setSearchMode("nearest");
+            setPolygonPoints([]);
+          }}
+          style={{
+            ...commonButtonStyle,
+            marginLeft: 0,
+            backgroundColor:
+              searchMode === "nearest"
+                ? "var(--accent-primary)"
+                : "var(--bg-secondary)",
+            color:
+              searchMode === "nearest"
+                ? "var(--bg-secondary)"
+                : "var(--text-primary)",
+            border: "1px solid var(--border-color)",
+          }}
+        >
+          Nearest Points
+        </button>
+        <button
+          onClick={() => {
+            setSearchMode("polygon");
+            setNearestPoint(null);
+          }}
+          style={{
+            ...commonButtonStyle,
+            marginLeft: 0,
+            backgroundColor:
+              searchMode === "polygon" ? "var(--success-primary)" : "var(--bg-secondary)",
+            color: searchMode === "polygon" ? "white" : "var(--text-primary)",
+            border: "1px solid var(--border-color)",
+          }}
+        >
+          Polygon Search
+        </button>
+      </div>
+
+      {/* Mode-specific controls */}
+      {searchMode === "nearest" && (
+        <div
+          style={{
             marginBottom: "20px",
             display: "flex",
             justifyContent: "center",
@@ -318,131 +455,215 @@ function App() {
             padding: "16px",
             backgroundColor: "var(--bg-secondary)",
             borderRadius: "8px",
-            boxShadow: "0 1px 4px var(--shadow-color)"
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <label style={{ fontSize: '14px', color: 'var(--text-primary)' }}>Max results:</label>
-              <input
-                type="number"
-                value={maxResults}
-                onChange={(e) => setMaxResults(Math.max(1, parseInt(e.target.value) || 1))}
-                style={commonInputStyle}
-              />
-            </div>
-            {nearestPoint && (
-              <div style={{ 
-                fontSize: '14px',
-                backgroundColor: 'var(--accent-light)',
-                padding: '8px 16px',
-                borderRadius: '6px',
-                border: '1px solid var(--accent-border)',
-                color: 'var(--text-primary)'
-              }}>
-                Selected point: ({nearestPoint.latitude.toFixed(4)}, {nearestPoint.longitude.toFixed(4)})
-              </div>
-            )}
+            boxShadow: "0 1px 4px var(--shadow-color)",
+          }}
+        >
+          <p
+            style={{
+              margin: 0,
+              fontSize: "14px",
+              color: "var(--text-primary)",
+            }}
+          >
+            Click on the map to find nearest emojis
+          </p>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <label style={{ fontSize: "14px", color: "var(--text-primary)" }}>
+              Max results:
+            </label>
+            <input
+              type="number"
+              value={maxResults}
+              onChange={(e) =>
+                setMaxResults(Math.max(1, parseInt(e.target.value) || 1))
+              }
+              style={commonInputStyle}
+            />
           </div>
-        </>
-      ) : (
-        <>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '16px',
-            marginBottom: '20px',
-          }}>
-            <p style={{ margin: 0, fontSize: '16px', color: 'var(--text-primary)' }}>
-              Right click on the map to put down a random emoji!
-            </p>
-            <button 
-              onClick={() => setIsNearestMode(true)}
-              style={commonButtonStyle}
+          {nearestPoint && (
+            <div
+              style={{
+                fontSize: "14px",
+                backgroundColor: "var(--accent-light)",
+                padding: "8px 16px",
+                borderRadius: "6px",
+                border: "1px solid var(--accent-border)",
+                color: "var(--text-primary)",
+              }}
             >
-              Switch to nearest points mode
+              Selected: ({nearestPoint.latitude.toFixed(4)},{" "}
+              {nearestPoint.longitude.toFixed(4)})
+            </div>
+          )}
+        </div>
+      )}
+
+      {searchMode === "polygon" && (
+        <div
+          style={{
+            marginBottom: "20px",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            gap: "16px",
+            position: "relative",
+            zIndex: 1000,
+            padding: "16px",
+            backgroundColor: "var(--bg-secondary)",
+            borderRadius: "8px",
+            boxShadow: "0 1px 4px var(--shadow-color)",
+            border: "2px solid var(--success-primary)",
+          }}
+        >
+          <p
+            style={{
+              margin: 0,
+              fontSize: "14px",
+              color: "var(--text-primary)",
+            }}
+          >
+            Click on the map to draw polygon vertices ({polygonPoints.length}{" "}
+            points)
+          </p>
+          {polygonPoints.length >= 3 && (
+            <div
+              style={{
+                fontSize: "14px",
+                backgroundColor: "var(--success-light)",
+                padding: "8px 16px",
+                borderRadius: "6px",
+                border: "1px solid var(--success-primary)",
+                color: "var(--success-text)",
+              }}
+            >
+              Searching inside polygon...
+            </div>
+          )}
+          <button
+            onClick={() => setPolygonPoints([])}
+            style={{
+              ...commonButtonStyle,
+              backgroundColor: "var(--danger-primary)",
+              marginLeft: 0,
+            }}
+          >
+            ✕ Clear Polygon
+          </button>
+          {polygonPoints.length > 0 && (
+            <button
+              onClick={() => setPolygonPoints(polygonPoints.slice(0, -1))}
+              style={{
+                ...commonButtonStyle,
+                backgroundColor: "var(--warning-primary)",
+                marginLeft: 0,
+              }}
+            >
+              ↩ Undo Point
             </button>
+          )}
+        </div>
+      )}
+
+      {searchMode === "viewport" && (
+        <div
+          style={{
+            marginBottom: "20px",
+            padding: "20px",
+            backgroundColor: "var(--bg-secondary)",
+            borderRadius: "8px",
+            boxShadow: "0 1px 4px var(--shadow-color)",
+            position: "relative",
+            zIndex: 1000,
+          }}
+        >
+          <p
+            style={{
+              margin: "0 0 16px 0",
+              fontSize: "14px",
+              color: "var(--text-primary)",
+              textAlign: "center",
+            }}
+          >
+            Right click on the map to add emojis. Pan/zoom to search within
+            viewport.
+          </p>
+          <div style={{ marginBottom: "16px" }}>
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "8px",
+                fontSize: "14px",
+                cursor: "pointer",
+                color: "var(--text-primary)",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={showDebugCells}
+                onChange={(e) => setShowDebugCells(e.target.checked)}
+                style={{ cursor: "pointer" }}
+              />
+              Show S2 index cells
+            </label>
           </div>
           <div
             style={{
-              marginBottom: "20px",
-              padding: "20px",
-              backgroundColor: "var(--bg-secondary)",
-              borderRadius: "8px",
-              boxShadow: "0 1px 4px var(--shadow-color)",
-              position: "relative",
-              zIndex: 1000,
+              display: "flex",
+              gap: "16px",
+              flexWrap: "wrap",
             }}
           >
-            <div style={{ marginBottom: "16px" }}>
-              <label style={{ 
-                display: "flex", 
-                alignItems: "center", 
-                justifyContent: "center", 
-                gap: "8px",
-                fontSize: '14px',
-                cursor: 'pointer',
-                color: 'var(--text-primary)'
-              }}>
-                <input
-                  type="checkbox"
-                  checked={showDebugCells}
-                  onChange={(e) => setShowDebugCells(e.target.checked)}
-                  style={{ cursor: 'pointer' }}
-                />
-                Show S2 index cells
-              </label>
-            </div>
-            <div style={{ 
-              display: 'flex', 
-              gap: '16px',
-              flexWrap: 'wrap'
-            }}>
-              <Select
-                allowClear
-                placeholder="Pick an emoji to require"
-                defaultValue={undefined}
-                options={emojiFilterItems}
-                style={{ 
-                  width: "calc(50% - 8px)",
-                  fontSize: '14px'
-                }}
-                onChange={(v: string) => setMustFilter(v ? [v] : [])}
-              />
-              <Select
-                mode="multiple"
-                allowClear
-                placeholder="Pick some emoji to allow"
-                defaultValue={[]}
-                options={emojiFilterItems}
-                style={{ 
-                  width: "calc(50% - 8px)",
-                  fontSize: '14px'
-                }}
-                onChange={setShouldFilter}
-              />
-            </div>
-            {loading && (
-              <div style={{ 
-                position: "absolute", 
-                right: "16px", 
-                top: "16px",
-                backgroundColor: 'var(--bg-primary)',
-                padding: '4px 12px',
-                borderRadius: '16px',
-                fontSize: '14px',
-                color: 'var(--text-secondary)'
-              }}>
-                Loading...
-              </div>
-            )}
+            <Select
+              allowClear
+              placeholder="Pick an emoji to require"
+              defaultValue={undefined}
+              options={emojiFilterItems}
+              style={{
+                width: "calc(50% - 8px)",
+                fontSize: "14px",
+              }}
+              onChange={(v: string) => setMustFilter(v ? [v] : [])}
+            />
+            <Select
+              mode="multiple"
+              allowClear
+              placeholder="Pick some emoji to allow"
+              defaultValue={[]}
+              options={emojiFilterItems}
+              style={{
+                width: "calc(50% - 8px)",
+                fontSize: "14px",
+              }}
+              onChange={setShouldFilter}
+            />
           </div>
-        </>
+          {loading && (
+            <div
+              style={{
+                position: "absolute",
+                right: "16px",
+                top: "16px",
+                backgroundColor: "var(--bg-primary)",
+                padding: "4px 12px",
+                borderRadius: "16px",
+                fontSize: "14px",
+                color: "var(--text-secondary)",
+              }}
+            >
+              Loading...
+            </div>
+          )}
+        </div>
       )}
-      <div style={{ 
-        borderRadius: '12px', 
-        overflow: 'hidden',
-        boxShadow: '0 4px 12px var(--shadow-color-strong)'
-      }}>
+      <div
+        style={{
+          borderRadius: "12px",
+          overflow: "hidden",
+          boxShadow: "0 4px 12px var(--shadow-color-strong)",
+        }}
+      >
         <MapContainer
           center={manhattan as LatLngExpression}
           id="mapId"
@@ -466,9 +687,11 @@ function App() {
             setLoading={setLoading}
             mustFilter={mustFilter}
             shouldFilter={shouldFilter}
-            isNearestMode={isNearestMode}
+            searchMode={searchMode}
             nearestPoint={nearestPoint}
             setNearestPoint={setNearestPoint}
+            polygonPoints={polygonPoints}
+            setPolygonPoints={setPolygonPoints}
             maxResults={maxResults}
             showDebugCells={showDebugCells}
           />

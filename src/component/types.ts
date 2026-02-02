@@ -29,5 +29,12 @@ export const rectangle = v.object({
 });
 export type Rectangle = Infer<typeof rectangle>;
 
+// Polygon defined by exterior ring (and optional holes for future support)
+export const polygon = v.object({
+  exterior: v.array(point),
+  holes: v.optional(v.array(v.array(point))),
+});
+export type Polygon = Infer<typeof polygon>;
+
 export type Meters = number;
 export type ChordAngle = number;

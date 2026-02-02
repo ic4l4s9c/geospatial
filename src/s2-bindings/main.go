@@ -82,6 +82,68 @@ func rectangleContains(latDeg1 float64, lngDeg1 float64, latDeg2 float64, lngDeg
 	return rect.ContainsPoint(s2.PointFromLatLng(point))
 }
 
+// Polygon support: buffer holds interleaved lat/lng pairs (max 1000 vertices)
+const POLYGON_BUFFER_SIZE int = 2000
+
+var polygonBuffer [POLYGON_BUFFER_SIZE]float64
+
+//export polygonBufferPtr
+func polygonBufferPtr() *[POLYGON_BUFFER_SIZE]float64 {
+	return &polygonBuffer
+}
+
+// buildPolygonFromBuffer creates a normalized polygon from the buffer.
+// numPoints is the number of vertices (buffer contains numPoints*2 floats).
+func buildPolygonFromBuffer(numPoints int) *s2.Polygon {
+	points := make([]s2.Point, numPoints)
+	for i := 0; i < numPoints; i++ {
+		lat := polygonBuffer[i*2]
+		lng := polygonBuffer[i*2+1]
+		points[i] = s2.PointFromLatLng(s2.LatLngFromDegrees(lat, lng))
+	}
+	loop := s2.LoopFromPoints(points)
+	loop.Normalize() // Ensure CCW orientation (interior on left side of edges)
+	return s2.PolygonFromLoops([]*s2.Loop{loop})
+}
+
+//export coverPolygon
+func coverPolygon(numPoints int, minLevel int, maxLevel int, levelMod int, maxCells int) int {
+	if numPoints < 3 {
+		return -1 // Need at least 3 points for a polygon
+	}
+	if numPoints*2 > POLYGON_BUFFER_SIZE {
+		return -1 // Too many points
+	}
+
+	polygon := buildPolygonFromBuffer(numPoints)
+	rc := s2.RegionCoverer{
+		MinLevel: minLevel,
+		MaxLevel: maxLevel,
+		MaxCells: maxCells,
+		LevelMod: levelMod,
+	}
+	covering := rc.Covering(polygon)
+
+	if len(covering) > COVER_RECTANGLE_BUFFER_SIZE {
+		return -1
+	}
+	for i, cellID := range covering {
+		coverRectangleBuffer[i] = uint64(cellID)
+	}
+	return len(covering)
+}
+
+//export polygonContainsPoint
+func polygonContainsPoint(numPoints int, pLat float64, pLng float64) bool {
+	if numPoints < 3 || numPoints*2 > POLYGON_BUFFER_SIZE {
+		return false
+	}
+
+	polygon := buildPolygonFromBuffer(numPoints)
+	testPoint := s2.PointFromLatLng(s2.LatLngFromDegrees(pLat, pLng))
+	return polygon.ContainsPoint(testPoint)
+}
+
 //export cellVertexLatDegrees
 func cellVertexLatDegrees(cellID uint64, k int) float64 {
 	cell := s2.CellFromCellID((s2.CellID(cellID)))

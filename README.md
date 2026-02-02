@@ -11,7 +11,7 @@ store and query points on the Earth's surface.
 
 - Insert points into the geospatial key value store along with their geographic
   coordinates.
-- Efficiently query for all points within a given rectangle on the sphere.
+- Efficiently query for all points within a rectangle or polygon on the sphere.
 - Control the sort order for the results with a custom sorting key.
 - Filter query results with equality and `IN` clauses.
 - And since it's built on Convex, everything is automatically consistent,
@@ -142,6 +142,32 @@ New integrations should prefer `nearest`.
 
 This query will find all points that lie within the query rectangle, sort them
 in ascending `sortKey` order, and return at most 16 results.
+
+You can also query within arbitrary polygon shapes:
+
+```ts
+// convex/index.ts
+
+const example = query({
+  handler: async (ctx) => {
+    const polygon = {
+      exterior: [
+        { latitude: 40.7831, longitude: -73.9712 },
+        { latitude: 40.7931, longitude: -73.9612 },
+        { latitude: 40.7731, longitude: -73.9512 },
+      ],
+    };
+    const result = await geospatial.query(ctx, {
+      shape: { type: "polygon", polygon },
+      limit: 16,
+    });
+    return result;
+  },
+});
+```
+
+Polygons are defined by an `exterior` ring of points. The winding order doesn't
+matter—the library will automatically normalize it.
 
 You can optionally add filter conditions to queries.
 

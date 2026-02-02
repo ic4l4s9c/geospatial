@@ -123,12 +123,25 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               occur: "should" | "must";
             }>;
             maxResults: number;
-            rectangle: {
-              east: number;
-              north: number;
-              south: number;
-              west: number;
-            };
+            shape:
+              | {
+                  rectangle: {
+                    east: number;
+                    north: number;
+                    south: number;
+                    west: number;
+                  };
+                  type: "rectangle";
+                }
+              | {
+                  polygon: {
+                    exterior: Array<{ latitude: number; longitude: number }>;
+                    holes?: Array<
+                      Array<{ latitude: number; longitude: number }>
+                    >;
+                  };
+                  type: "polygon";
+                };
             sorting: {
               interval: { endExclusive?: number; startInclusive?: number };
             };

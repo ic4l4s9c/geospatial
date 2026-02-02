@@ -1,5 +1,5 @@
 import { v, type Infer } from "convex/values";
-import { type Point, point, primitive, rectangle } from "./types.js";
+import { type Point, point, polygon, primitive, rectangle } from "./types.js";
 import { query } from "./_generated/server.js";
 import type { PointSet, Stats } from "./streams/zigzag.js";
 import { Intersection } from "./streams/intersection.js";
@@ -23,8 +23,13 @@ const equalityCondition = v.object({
   filterValue: primitive,
 });
 
+const queryShape = v.union(
+  v.object({ type: v.literal("rectangle"), rectangle }),
+  v.object({ type: v.literal("polygon"), polygon }),
+);
+
 const geospatialQuery = v.object({
-  rectangle,
+  shape: queryShape,
   filtering: v.array(equalityCondition),
   sorting: v.object({
     // TODO: Support reverse order.
@@ -114,16 +119,34 @@ export const execute = query({
         return { results: [] } as ExecuteResult;
       }
     }
-    const { rectangle } = args.query;
-    const cells = s2
-      .coverRectangle(
-        rectangle,
+    const { shape } = args.query;
+
+    // Get covering cells and containment function based on shape type
+    let cellIDs: bigint[];
+    let containsPoint: (p: Point) => boolean;
+
+    if (shape.type === "rectangle") {
+      cellIDs = s2.coverRectangle(
+        shape.rectangle,
         args.minLevel,
         args.maxLevel,
         args.levelMod,
         args.maxCells,
-      )
-      .map((cellID) => s2.cellIDToken(cellID));
+      );
+      containsPoint = (p) => s2.rectangleContains(shape.rectangle, p);
+    } else {
+      // shape.type === "polygon"
+      cellIDs = s2.coverPolygon(
+        shape.polygon.exterior,
+        args.minLevel,
+        args.maxLevel,
+        args.levelMod,
+        args.maxCells,
+      );
+      containsPoint = (p) => s2.polygonContainsPoint(shape.polygon.exterior, p);
+    }
+
+    const cells = cellIDs.map((cellID) => s2.cellIDToken(cellID));
     logger.debug("S2 cells", args, cells);
 
     const stats: Stats = {
@@ -223,7 +246,7 @@ export const execute = query({
             throw new Error("Internal error: document not found");
           }
 
-          const contains = s2.rectangleContains(rectangle, doc.coordinates);
+          const contains = containsPoint(doc.coordinates);
           if (!contains) {
             stats.rowsPostFiltered++;
             continue;

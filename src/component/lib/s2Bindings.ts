@@ -93,6 +93,58 @@ export class S2Bindings {
     );
   }
 
+  private writePolygonToBuffer(points: Point[]): void {
+    const ptr = this.exports.polygonBufferPtr();
+    const wasmMemory = new Float64Array(this.exports.memory.buffer);
+    for (let i = 0; i < points.length; i++) {
+      wasmMemory[ptr / 8 + i * 2] = points[i].latitude;
+      wasmMemory[ptr / 8 + i * 2 + 1] = points[i].longitude;
+    }
+  }
+
+  coverPolygon(
+    points: Point[],
+    minLevel: number,
+    maxLevel: number,
+    levelMod: number,
+    maxCells: number,
+  ): CellID[] {
+    if (points.length < 3) {
+      throw new Error("Polygon must have at least 3 points");
+    }
+    this.writePolygonToBuffer(points);
+    const len = this.exports.coverPolygon(
+      points.length,
+      minLevel,
+      maxLevel,
+      levelMod,
+      maxCells,
+    );
+    if (len < 0) {
+      throw new Error("Failed to coverPolygon");
+    }
+    const ptr = this.exports.coverRectangleBufferPtr();
+    const wasmMemory = new Uint8Array(this.exports.memory.buffer);
+    const buffer = wasmMemory.slice(ptr + 0, ptr + len * 8);
+    const uint64s = new BigUint64Array(buffer.buffer);
+    return [...uint64s];
+  }
+
+  polygonContainsPoint(polygonPoints: Point[], point: Point): boolean {
+    if (polygonPoints.length < 3) {
+      return false;
+    }
+    this.writePolygonToBuffer(polygonPoints);
+    // WASM returns 0 or 1, convert to boolean
+    return Boolean(
+      this.exports.polygonContainsPoint(
+        polygonPoints.length,
+        point.latitude,
+        point.longitude,
+      ),
+    );
+  }
+
   cellVertexes(cellID: CellID): Point[] {
     const result = [];
     for (let k = 0; k < 4; k++) {

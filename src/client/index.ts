@@ -3,14 +3,14 @@ import type {
   FunctionReturnType,
   OptionalRestArgs,
 } from "convex/server";
-import type { Point, Primitive, Rectangle } from "../component/types.js";
-import { point, rectangle } from "../component/types.js";
+import type { Point, Polygon, Primitive, Rectangle } from "../component/types.js";
+import { point, polygon, rectangle } from "../component/types.js";
 import type { LogLevel } from "../component/lib/logging.js";
 import { FilterBuilderImpl, type GeospatialQuery } from "./query.js";
 import type { ComponentApi } from "../component/_generated/component.js";
 
-export type { Point, Primitive, GeospatialQuery, Rectangle };
-export { point, rectangle };
+export type { Point, Polygon, Primitive, GeospatialQuery, Rectangle };
+export { point, polygon, rectangle };
 
 declare global {
   const Convex: Record<string, unknown>;
@@ -201,7 +201,7 @@ export class GeospatialIndex<
     }
     const resp = await ctx.runQuery(this.component.query.execute, {
       query: {
-        rectangle: query.shape.rectangle,
+        shape: query.shape,
         filtering: filterBuilder.filterConditions,
         sorting: { interval: filterBuilder.interval ?? {} },
         maxResults: query.limit ?? 64,
