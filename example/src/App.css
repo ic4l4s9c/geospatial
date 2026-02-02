@@ -277,6 +277,11 @@ button:hover {
   box-shadow: 0 2px 4px var(--shadow-color);
 }
 
+/* Common button hover style */
+.common-button:hover {
+  background-color: var(--accent-secondary) !important;
+}
+
 button:active {
   transform: translateY(0);
 }

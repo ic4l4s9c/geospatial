@@ -125,6 +125,9 @@ export const searchPolygon = query({
     nextCursor: v.optional(v.string()),
   }),
   async handler(ctx, args) {
+    if (!args.polygon.exterior || args.polygon.exterior.length < 3) {
+      throw new Error("Polygon must have at least 3 exterior points");
+    }
     const { results, nextCursor } = await geospatial.query(
       ctx,
       {
@@ -182,6 +185,12 @@ export const searchPolyline = query({
     nextCursor: v.optional(v.string()),
   }),
   async handler(ctx, args) {
+    if (args.polyline.length < 2) {
+      throw new Error("Polyline must have at least 2 points");
+    }
+    if (!Number.isFinite(args.bufferMeters) || args.bufferMeters < 0) {
+      throw new Error("bufferMeters must be a finite non-negative number");
+    }
     const { results, nextCursor } = await geospatial.query(
       ctx,
       {

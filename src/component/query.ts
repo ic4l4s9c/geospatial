@@ -147,6 +147,15 @@ export const execute = query({
       // shape.type === "polyline"
       const polylinePoints = shape.polyline;
       const bufferMeters = shape.bufferMeters;
+
+      // Validate polyline inputs
+      if (polylinePoints.length < 2) {
+        throw new Error("Polyline must have at least 2 points");
+      }
+      if (bufferMeters < 0) {
+        throw new Error("bufferMeters must be non-negative");
+      }
+
       const maxLevelDiff = 4; // Internal default - controls accuracy vs cell count
       cellIDs = s2.coverPolylineBuffered(
         polylinePoints,

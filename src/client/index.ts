@@ -25,7 +25,8 @@ export type GeometryWithDistance = StoredGeometry & {
   distance: number;
 };
 
-// Query shape types (no holes in v1)
+// Query shape types for intersects queries (no holes in v1)
+// Note: Polyline queries are supported via the main `query` method, not `intersects`
 export type QueryShape =
   | { type: "rectangle"; rectangle: Rectangle }
   | { type: "polygon"; polygon: Polygon };

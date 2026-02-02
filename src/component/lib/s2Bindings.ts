@@ -99,11 +99,22 @@ export class S2Bindings {
   }
 
   private writePolygonToBuffer(points: Point[]): void {
+    const maxPoints = 1000; // POLYGON_BUFFER_SIZE / 2
+    if (points.length > maxPoints) {
+      throw new Error(
+        `Polygon has too many points (${points.length}), maximum is ${maxPoints}`,
+      );
+    }
     const ptr = this.exports.polygonBufferPtr();
     const wasmMemory = new Float64Array(this.exports.memory.buffer);
+    const offset = ptr / 8;
+    const requiredLength = offset + points.length * 2;
+    if (requiredLength > wasmMemory.length) {
+      throw new Error("Polygon buffer overflow: WASM memory too small");
+    }
     for (let i = 0; i < points.length; i++) {
-      wasmMemory[ptr / 8 + i * 2] = points[i].latitude;
-      wasmMemory[ptr / 8 + i * 2 + 1] = points[i].longitude;
+      wasmMemory[offset + i * 2] = points[i].latitude;
+      wasmMemory[offset + i * 2 + 1] = points[i].longitude;
     }
   }
 
@@ -151,11 +162,22 @@ export class S2Bindings {
   }
 
   private writePolylineToBuffer(points: Point[]): void {
+    const maxPoints = 1000; // POLYLINE_BUFFER_SIZE / 2
+    if (points.length > maxPoints) {
+      throw new Error(
+        `Polyline has too many points (${points.length}), maximum is ${maxPoints}`,
+      );
+    }
     const ptr = this.exports.polylineBufferPtr();
     const wasmMemory = new Float64Array(this.exports.memory.buffer);
+    const offset = ptr / 8;
+    const requiredLength = offset + points.length * 2;
+    if (requiredLength > wasmMemory.length) {
+      throw new Error("Polyline buffer overflow: WASM memory too small");
+    }
     for (let i = 0; i < points.length; i++) {
-      wasmMemory[ptr / 8 + i * 2] = points[i].latitude;
-      wasmMemory[ptr / 8 + i * 2 + 1] = points[i].longitude;
+      wasmMemory[offset + i * 2] = points[i].latitude;
+      wasmMemory[offset + i * 2 + 1] = points[i].longitude;
     }
   }
 
@@ -170,6 +192,9 @@ export class S2Bindings {
   ): CellID[] {
     if (points.length < 2) {
       throw new Error("Polyline must have at least 2 points");
+    }
+    if (bufferMeters < 0) {
+      throw new Error("bufferMeters must be non-negative");
     }
     this.writePolylineToBuffer(points);
     const len = this.exports.coverPolylineBuffered(

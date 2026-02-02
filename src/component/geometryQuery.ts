@@ -111,8 +111,8 @@ export const containsPoint = query({
     results: v.array(
       v.object({
         key: v.string(),
-        type: v.union(v.literal("polygon"), v.literal("polyline")),
-        coordinates: v.union(polygon, polyline),
+        type: v.literal("polygon"),
+        coordinates: polygon,
         boundingBox: v.object({
           south: v.number(),
           north: v.number(),
@@ -156,8 +156,8 @@ export const containsPoint = query({
 
     const results: Array<{
       key: string;
-      type: "polygon" | "polyline";
-      coordinates: Polygon | Point[];
+      type: "polygon";
+      coordinates: Polygon;
       boundingBox: Rectangle;
     }> = [];
 
@@ -177,12 +177,12 @@ export const containsPoint = query({
       };
       if (!boundingBoxContainsPoint(bbox, queryPoint)) continue;
 
-      const polygon = geometry.coordinates as Polygon;
-      if (s2.polygonContainsPoint(polygon.exterior, queryPoint)) {
+      const poly = geometry.coordinates as Polygon;
+      if (s2.polygonContainsPoint(poly.exterior, queryPoint)) {
         results.push({
           key: geometry.key,
-          type: geometry.type,
-          coordinates: geometry.coordinates,
+          type: "polygon",
+          coordinates: poly,
           boundingBox: bbox,
         });
       }
@@ -376,6 +376,11 @@ export const geometriesNear = query({
   handler: async (ctx, args) => {
     const s2 = await S2Bindings.load();
     const { point: queryPoint, maxDistance, filterKeys, limit = 100 } = args;
+
+    if (maxDistance < 0) {
+      throw new Error("maxDistance must be non-negative");
+    }
+
     let truncated = false;
 
     const latDelta = maxDistance / METERS_PER_DEGREE_LAT;

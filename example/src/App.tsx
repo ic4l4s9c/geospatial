@@ -564,9 +564,6 @@ function App() {
     fontSize: "14px",
     transition: "all 0.2s",
     marginLeft: "10px",
-    ":hover": {
-      backgroundColor: "var(--accent-secondary)",
-    },
   } as const;
 
   const commonInputStyle = {

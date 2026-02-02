@@ -353,27 +353,17 @@ describe("Geometry Storage", () => {
       expect(result.results[0].distance).toBe(0);
     });
 
-    test("sorts results by distance", async () => {
+    test("finds multiple overlapping polygons containing point", async () => {
       const t = convexTest(schema, modules);
 
-      // Insert Manhattan polygon - we know this works from other tests
+      // Insert Manhattan polygon
       await t.mutation(api.geometry.insert, {
         key: "manhattan",
         type: "polygon",
         coordinates: MANHATTAN_POLYGON,
       });
 
-      // First verify Manhattan can be found alone
-      const queryPoint = POINT_INSIDE; // { latitude: 40.758, longitude: -73.985 }
-      const result1 = await t.query(api.geometryQuery.geometriesNear, {
-        point: queryPoint,
-        maxDistance: 5000,
-      });
-      expect(result1.results.length).toBe(1);
-      expect(result1.results[0].key).toBe("manhattan");
-      expect(result1.results[0].distance).toBe(0);
-
-      // Now insert a second polygon (overlapping to ensure it's found)
+      // Insert a larger polygon that also contains the query point
       await t.mutation(api.geometry.insert, {
         key: "nyc",
         type: "polygon",
@@ -387,16 +377,20 @@ describe("Geometry Storage", () => {
         },
       });
 
-      // Query again - should find both (point is inside both)
-      const result2 = await t.query(api.geometryQuery.geometriesNear, {
+      // Query for geometries near the point - both polygons contain it
+      const queryPoint = POINT_INSIDE; // { latitude: 40.758, longitude: -73.985 }
+      const result = await t.query(api.geometryQuery.geometriesNear, {
         point: queryPoint,
         maxDistance: 5000,
       });
 
       // Both polygons contain the point, so both have distance=0
-      expect(result2.results.length).toBe(2);
-      const keys = result2.results.map((r) => r.key).sort();
+      expect(result.results.length).toBe(2);
+      const keys = result.results.map((r) => r.key).sort();
       expect(keys).toEqual(["manhattan", "nyc"]);
+      // Both should have distance=0 since point is inside both
+      expect(result.results[0].distance).toBe(0);
+      expect(result.results[1].distance).toBe(0);
     });
 
     test("finds polylines within distance", async () => {

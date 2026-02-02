@@ -94,7 +94,11 @@ func polygonBufferPtr() *[POLYGON_BUFFER_SIZE]float64 {
 
 // buildPolygonFromBuffer creates a normalized polygon from the buffer.
 // numPoints is the number of vertices (buffer contains numPoints*2 floats).
+// Returns nil if numPoints is invalid (< 3 or would exceed buffer size).
 func buildPolygonFromBuffer(numPoints int) *s2.Polygon {
+	if numPoints < 3 || numPoints*2 > POLYGON_BUFFER_SIZE {
+		return nil
+	}
 	points := make([]s2.Point, numPoints)
 	for i := 0; i < numPoints; i++ {
 		lat := polygonBuffer[i*2]
@@ -108,14 +112,11 @@ func buildPolygonFromBuffer(numPoints int) *s2.Polygon {
 
 //export coverPolygon
 func coverPolygon(numPoints int, minLevel int, maxLevel int, levelMod int, maxCells int) int {
-	if numPoints < 3 {
-		return -1 // Need at least 3 points for a polygon
-	}
-	if numPoints*2 > POLYGON_BUFFER_SIZE {
-		return -1 // Too many points
+	polygon := buildPolygonFromBuffer(numPoints)
+	if polygon == nil {
+		return -1 // Invalid polygon (too few points or buffer overflow)
 	}
 
-	polygon := buildPolygonFromBuffer(numPoints)
 	rc := s2.RegionCoverer{
 		MinLevel: minLevel,
 		MaxLevel: maxLevel,
@@ -135,11 +136,11 @@ func coverPolygon(numPoints int, minLevel int, maxLevel int, levelMod int, maxCe
 
 //export polygonContainsPoint
 func polygonContainsPoint(numPoints int, pLat float64, pLng float64) bool {
-	if numPoints < 3 || numPoints*2 > POLYGON_BUFFER_SIZE {
+	polygon := buildPolygonFromBuffer(numPoints)
+	if polygon == nil {
 		return false
 	}
 
-	polygon := buildPolygonFromBuffer(numPoints)
 	testPoint := s2.PointFromLatLng(s2.LatLngFromDegrees(pLat, pLng))
 	return polygon.ContainsPoint(testPoint)
 }

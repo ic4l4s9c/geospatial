@@ -12,12 +12,28 @@ function validateCoordinates(
   coordinates: unknown,
 ): Point[] {
   if (type === "polygon") {
-    const poly = coordinates as Polygon;
+    const poly = coordinates as Polygon & {
+      holes?: unknown;
+      interiors?: unknown;
+      interior?: unknown;
+    };
     if (!poly?.exterior || !Array.isArray(poly.exterior)) {
       throw new Error("Invalid polygon: missing 'exterior' array");
     }
     if (poly.exterior.length < 3) {
       throw new Error("Polygon must have at least 3 exterior points");
+    }
+    // Reject polygons with holes until holes are supported
+    if (
+      (poly.holes && Array.isArray(poly.holes) && poly.holes.length > 0) ||
+      (poly.interiors &&
+        Array.isArray(poly.interiors) &&
+        poly.interiors.length > 0) ||
+      (poly.interior &&
+        Array.isArray(poly.interior) &&
+        poly.interior.length > 0)
+    ) {
+      throw new Error("Polygon holes are not supported");
     }
     return poly.exterior;
   } else {

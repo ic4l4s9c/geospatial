@@ -476,8 +476,11 @@ const example = query({
 });
 ```
 
-All measurements use geodesic calculations on the Earth's surface (WGS84
-ellipsoid approximation), so they're accurate for real-world geographic data.
+All measurements use spherical great-circle calculations on the Earth's surface
+(approximating Earth as a sphere for performance and robustness). For most
+applications, this provides sufficient accuracy. If you need exact WGS84
+ellipsoidal geodesics, consider using a dedicated geodesy library like
+[GeographicLib](https://geographiclib.sourceforge.io/).
 
 ## Example
 
