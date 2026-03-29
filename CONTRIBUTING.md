@@ -3,18 +3,17 @@
 ## Running locally
 
 ```sh
-npm i
-npm run dev
+bun i
+bun run dev
 ```
 
 ## Testing
 
 ```sh
-npm run clean
-npm run build
-npm run typecheck
-npm run lint
-npm run test
+bun run build
+bun run typecheck
+bun run lint
+bun run test
 ```
 
 ## Deploying
@@ -22,19 +21,17 @@ npm run test
 ### Building a one-off package
 
 ```sh
-npm run clean
-npm ci
-npm pack
+bun run build
 ```
 
 ### Deploying a new version
 
 ```sh
-npm run release
+bun run release
 ```
 
 or for alpha release:
 
 ```sh
-npm run alpha
+bun run alpha
 ```

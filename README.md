@@ -41,7 +41,7 @@ Run `npm create convex` or follow any of the
 First, add `@convex-dev/geospatial` to your Convex project:
 
 ```bash
-npm install @convex-dev/geospatial
+bun install @convex-dev/geospatial
 ```
 
 Then, install the component into your Convex project within the
@@ -492,10 +492,10 @@ See [`example/`](./example/) for a full example with a
 Install dependencies and fire up the example app to get started.
 
 ```bash
-npm install
+bun install
 cd example
-npm install
-npm run dev
+bun install
+bun run dev
 ```
 
 The component definition is in `src/` and reflects what users of the component
