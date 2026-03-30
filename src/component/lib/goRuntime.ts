@@ -129,6 +129,19 @@ export class Go {
 
     this.importObject = {
       wasi_snapshot_preview1: {
+        clock_time_get: (_id: any, _precision: any, time_ptr: any) => {
+          const now = BigInt(Date.now() * 1e6);
+          mem().setBigUint64(time_ptr, now, true);
+          return 0;
+        },
+        args_sizes_get: (argc_ptr: any, argv_buf_size_ptr: any) => {
+          mem().setUint32(argc_ptr, 0, true);
+          mem().setUint32(argv_buf_size_ptr, 0, true);
+          return 0;
+        },
+        args_get: () => {
+          return 0;
+        },
         // https://github.com/WebAssembly/WASI/blob/main/phases/snapshot/docs.md#fd_write
         fd_write: function (
           fd: any,
