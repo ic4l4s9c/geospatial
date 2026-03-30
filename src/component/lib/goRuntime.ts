@@ -8,6 +8,7 @@ const encoder = new TextEncoder();
 const decoder = new TextDecoder("utf-8");
 const reinterpretBuf = new DataView(new ArrayBuffer(8));
 let logLine: any[] = [];
+const wasmExit = {}; // thrown to exit via proc_exit (not an error)
 
 export class Go {
   importObject: any;
@@ -17,6 +18,7 @@ export class Go {
   _ids: any;
   _idPool: any;
   exited: any;
+  exitCode: any;
   _resolveExitPromise: any;
   _resolveCallbackPromise: any;
   _pendingEvent: any;
@@ -167,8 +169,10 @@ export class Go {
         fd_fdstat_get: () => 0, // dummy
         fd_seek: () => 0, // dummy
         proc_exit: (code: any) => {
-          // Can't exit in a browser.
-          throw "trying to exit with code " + code;
+          this.exited = true;
+          this.exitCode = code;
+          this._resolveExitPromise();
+          throw wasmExit;
         },
         random_get: (bufPtr: any, bufLen: any) => {
           crypto.getRandomValues(loadSlice(bufPtr, bufLen));
@@ -429,31 +433,41 @@ export class Go {
     this._ids = new Map(); // mapping from JS values to reference ids
     this._idPool = []; // unused ids that have been garbage collected
     this.exited = false; // whether the Go program has exited
+    this.exitCode = 0;
 
-    // while (true) {
-    //     const callbackPromise = new Promise((resolve) => {
-    //         this._resolveCallbackPromise = () => {
-    //             if (this.exited) {
-    //                 throw new Error("bad callback: Go program has already exited");
-    //             }
-    //             setTimeout(resolve, 0); // make sure it is asynchronous
-    //         };
-    //     });
-    //     console.log(this._inst)
-    //     this._inst.exports._start();
-    //     if (this.exited) {
-    //         break;
-    //     }
-    //     await callbackPromise;
-    // }
-    this._inst.exports._start();
+    if (this._inst.exports._start) {
+      const exitPromise = new Promise((resolve, _reject) => {
+        this._resolveExitPromise = resolve;
+      });
+
+      // Run program, but catch the wasmExit exception that's thrown
+      // to return back here.
+      try {
+        this._inst.exports._start();
+      } catch (e) {
+        if (e !== wasmExit) {
+          throw e;
+        }
+      }
+
+      await exitPromise;
+      return this.exitCode;
+    } else {
+      this._inst.exports._initialize();
+    }
   }
 
   _resume() {
     if (this.exited) {
       throw new Error("Go program has already exited");
     }
-    this._inst.exports.resume();
+    try {
+      this._inst.exports.resume();
+    } catch (e) {
+      if (e !== wasmExit) {
+        throw e;
+      }
+    }
     if (this.exited) {
       this._resolveExitPromise();
     }
