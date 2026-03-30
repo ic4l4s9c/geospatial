@@ -213,10 +213,24 @@ export class Go {
           return Date.now();
         },
 
-        // func sleepTicks(timeout float64)
+        // func sleepTicks(timeout int64)
         "runtime.sleepTicks": (timeout: any) => {
           // Do not sleep, only reactivate scheduler after the given timeout.
-          setTimeout(this._inst.exports.go_scheduler, timeout);
+          setTimeout(
+            () => {
+              if (this.exited) {
+                return;
+              }
+              try {
+                this._inst.exports.go_scheduler();
+              } catch (e) {
+                if (e !== wasmExit) {
+                  throw e;
+                }
+              }
+            },
+            Number(timeout) / 1e6,
+          );
         },
 
         // func finalizeRef(v ref)
