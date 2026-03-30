@@ -176,9 +176,9 @@ export class Go {
         },
       },
       gojs: {
-        // func ticks() float64
+        // func ticks() int64
         "runtime.ticks": () => {
-          return Date.now();
+          return BigInt(Date.now() * 1e6);
         },
 
         // func sleepTicks(timeout float64)
