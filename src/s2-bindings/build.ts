@@ -2,11 +2,12 @@ import { $ } from "bun";
 import { join } from "path";
 import { mkdtemp, readFile, writeFile, rm } from "fs/promises";
 import { tmpdir } from "os";
+import miseConfig from "./mise.toml";
 
 const DEBUG = false;
 
 const tempdir = await mkdtemp(join(tmpdir(), "build-"));
-const TINYGO_VERSION = "0.34.0";
+const TINYGO_VERSION: string = miseConfig.tools.tinygo;
 
 try {
   await $`go mod tidy`;
