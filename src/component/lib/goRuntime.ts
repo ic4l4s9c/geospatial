@@ -127,6 +127,30 @@ export class Go {
 
     this.importObject = {
       wasi_snapshot_preview1: {
+        clock_time_get: (_id: any, _precision: any, time_ptr: any) => {
+          const now = BigInt(Date.now()) * 1000000n;
+          mem().setBigUint64(time_ptr, now, true);
+          return 0;
+        },
+        args_sizes_get: (argc_ptr: any, argv_buf_size_ptr: any) => {
+          mem().setUint32(argc_ptr, 0, true);
+          mem().setUint32(argv_buf_size_ptr, 0, true);
+          return 0;
+        },
+        args_get: () => {
+          return 0;
+        },
+        environ_sizes_get: (
+          environ_count_ptr: any,
+          environ_buf_size_ptr: any,
+        ) => {
+          mem().setUint32(environ_count_ptr, 0, true);
+          mem().setUint32(environ_buf_size_ptr, 0, true);
+          return 0;
+        },
+        environ_get: () => {
+          return 0;
+        },
         // https://github.com/WebAssembly/WASI/blob/main/phases/snapshot/docs.md#fd_write
         fd_write: function (
           fd: any,
@@ -163,9 +187,13 @@ export class Go {
           mem().setUint32(nwritten_ptr, nwritten, true);
           return 0;
         },
-        fd_close: () => 0, // dummy
-        fd_fdstat_get: () => 0, // dummy
-        fd_seek: () => 0, // dummy
+        fd_read: () => 0,
+        fd_close: () => 0,
+        fd_fdstat_get: () => 0,
+        fd_seek: () => 0,
+        fd_prestat_get: () => 8, // EBADF
+        fd_prestat_dir_name: () => 28, // EINVAL
+        path_open: () => 28, // EINVAL
         proc_exit: (code: any) => {
           this.exited = true;
           if (code !== 0) {
