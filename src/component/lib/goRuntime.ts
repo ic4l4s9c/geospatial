@@ -188,10 +188,21 @@ export class Go {
         },
 
         // func finalizeRef(v ref)
-        "syscall/js.finalizeRef": (_v_ref: any) => {
-          // Note: TinyGo does not support finalizers so this should never be
-          // called.
-          console.error("syscall/js.finalizeRef not implemented");
+        "syscall/js.finalizeRef": (v_ref: any) => {
+          // Note: TinyGo does not support finalizers so this is only called
+          // for one specific case, by js.go:jsString. and can/might leak memory.
+          const id = v_ref & 0xffffffffn;
+          if (this._goRefCounts?.[id as any] !== undefined) {
+            this._goRefCounts[id as any]--;
+            if (this._goRefCounts[id as any] === 0) {
+              const v = this._values[id as any];
+              this._values[id as any] = null;
+              this._ids.delete(v);
+              this._idPool.push(id);
+            }
+          } else {
+            console.error("syscall/js.finalizeRef: unknown id", id);
+          }
         },
 
         // func stringVal(value string) ref
