@@ -47,6 +47,7 @@ interface GeospatialFilterBuilder<Doc extends GeospatialDocument> {
   /**
    * Require that a match's sort key be greater than or equal to the provided value.
    *
+   * @param field Must be `"sortKey"`.
    * @param value The inclusive lower bound on the sort key.
    */
   gte(field: "sortKey", value: number): GeospatialFilterBuilder<Doc>;
@@ -54,6 +55,7 @@ interface GeospatialFilterBuilder<Doc extends GeospatialDocument> {
   /**
    * Require that a match's sort key be less than the provided value.
    *
+   * @param field Must be `"sortKey"`.
    * @param value The exclusive upper bound on the sort key.
    */
   lt(field: "sortKey", value: number): GeospatialFilterBuilder<Doc>;
@@ -75,6 +77,7 @@ interface GeospatialFilterBuilderAfterIn<Doc extends GeospatialDocument> {
   /**
    * Require that a match's sort key be greater than or equal to the provided value.
    *
+   * @param field Must be `"sortKey"`.
    * @param value The inclusive lower bound on the sort key.
    */
   gte(field: "sortKey", value: number): GeospatialFilterBuilderAfterIn<Doc>;
@@ -82,6 +85,7 @@ interface GeospatialFilterBuilderAfterIn<Doc extends GeospatialDocument> {
   /**
    * Require that a match's sort key be less than the provided value.
    *
+   * @param field Must be `"sortKey"`.
    * @param value The exclusive upper bound on the sort key.
    */
   lt(field: "sortKey", value: number): GeospatialFilterBuilderAfterIn<Doc>;
