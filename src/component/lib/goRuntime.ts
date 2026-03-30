@@ -167,8 +167,10 @@ export class Go {
         fd_fdstat_get: () => 0, // dummy
         fd_seek: () => 0, // dummy
         proc_exit: (code: any) => {
-          // Can't exit in a browser.
-          throw "trying to exit with code " + code;
+          this.exited = true;
+          if (code !== 0) {
+            throw new Error(`WASM exited with code ${code}`);
+          }
         },
         random_get: (bufPtr: any, bufLen: any) => {
           crypto.getRandomValues(loadSlice(bufPtr, bufLen));
