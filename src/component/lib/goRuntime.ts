@@ -239,6 +239,7 @@ export class Go {
 
         // func stringVal(value string) ref
         "syscall/js.stringVal": (value_ptr: any, value_len: any) => {
+          value_ptr >>>= 0;
           const s = loadString(value_ptr, value_len);
           return boxValue(s);
         },
