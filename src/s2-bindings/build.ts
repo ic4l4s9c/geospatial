@@ -6,7 +6,7 @@ import { tmpdir } from "os";
 const DEBUG = false;
 
 const tempdir = await mkdtemp(join(tmpdir(), "build-"));
-const TINYGO_VERSION = "0.33.0";
+const TINYGO_VERSION = "0.34.0";
 
 try {
   await $`go mod tidy`;
