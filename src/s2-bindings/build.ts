@@ -1,7 +1,7 @@
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { $ } from "bun";
-import { join } from "path";
-import { mkdtemp, readFile, writeFile, rm } from "fs/promises";
-import { tmpdir } from "os";
 import miseConfig from "./mise.toml";
 
 const DEBUG = false;
