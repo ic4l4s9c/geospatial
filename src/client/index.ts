@@ -110,8 +110,12 @@ export interface GeospatialIndexOptions {
 }
 
 export class GeospatialIndex<
-  Key extends string = string,
-  Filters extends GeospatialFilters = GeospatialFilters,
+  PointKey extends string = string,
+  PointFilters extends GeospatialFilters = GeospatialFilters,
+  PolygonKey extends string = string,
+  PolygonFilters extends GeospatialFilters = GeospatialFilters,
+  PolylineKey extends string = string,
+  PolylineFilters extends GeospatialFilters = GeospatialFilters,
 > {
   logLevel: LogLevel;
 
@@ -159,9 +163,9 @@ export class GeospatialIndex<
    */
   async insert(
     ctx: MutationCtx,
-    key: Key,
+    key: PointKey,
     coordinates: Point,
-    filterKeys: Filters,
+    filterKeys: PointFilters,
     sortKey?: number,
   ) {
     await ctx.runMutation(this.component.document.insert, {
@@ -187,10 +191,10 @@ export class GeospatialIndex<
    */
   async get(
     ctx: QueryCtx,
-    key: Key,
-  ): Promise<GeospatialDocument<Key, Filters> | null> {
+    key: PointKey,
+  ): Promise<GeospatialDocument<PointKey, PointFilters> | null> {
     const result = await ctx.runQuery(this.component.document.get, { key });
-    return result as GeospatialDocument<Key, Filters> | null;
+    return result as GeospatialDocument<PointKey, PointFilters> | null;
   }
 
   /**
@@ -200,7 +204,7 @@ export class GeospatialIndex<
    * @param key - The unique string key to remove from the index.
    * @returns - `true` if the key was found and removed, `false` otherwise.
    */
-  async remove(ctx: MutationCtx, key: Key): Promise<boolean> {
+  async remove(ctx: MutationCtx, key: PointKey): Promise<boolean> {
     return await ctx.runMutation(this.component.document.remove, {
       key,
       minLevel: this.minLevel,
@@ -220,11 +224,11 @@ export class GeospatialIndex<
    */
   async query(
     ctx: QueryCtx,
-    query: GeospatialQuery<GeospatialDocument<Key, Filters>>,
+    query: GeospatialQuery<GeospatialDocument<PointKey, PointFilters>>,
     cursor: string | undefined = undefined,
   ) {
     const filterBuilder = new FilterBuilderImpl<
-      GeospatialDocument<Key, Filters>
+      GeospatialDocument<PointKey, PointFilters>
     >();
     if (query.filter) {
       query.filter(filterBuilder);
@@ -244,7 +248,7 @@ export class GeospatialIndex<
       logLevel: this.logLevel,
     });
     return resp as {
-      results: { key: Key; coordinates: Point }[];
+      results: { key: PointKey; coordinates: Point }[];
       nextCursor?: string;
     };
   }
@@ -263,10 +267,10 @@ export class GeospatialIndex<
       limit,
       maxDistance,
       filter,
-    }: NearestQueryOptions<GeospatialDocument<Key, Filters>>,
+    }: NearestQueryOptions<GeospatialDocument<PointKey, PointFilters>>,
   ) {
     const filterBuilder = new FilterBuilderImpl<
-      GeospatialDocument<Key, Filters>
+      GeospatialDocument<PointKey, PointFilters>
     >();
     if (filter) {
       filter(filterBuilder);
@@ -283,7 +287,7 @@ export class GeospatialIndex<
       filtering: filterBuilder.filterConditions,
       sorting: { interval: filterBuilder.interval ?? {} },
     });
-    return resp as { key: Key; coordinates: Point; distance: number }[];
+    return resp as { key: PointKey; coordinates: Point; distance: number }[];
   }
 
   /**
