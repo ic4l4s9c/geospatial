@@ -3,9 +3,15 @@ import type {
   FunctionReturnType,
   OptionalRestArgs,
 } from "convex/server";
-import type { Point, Polygon, Polyline, Primitive, Rectangle } from "../component/types.js";
+import type {
+  Point,
+  Polygon,
+  Polyline,
+  Primitive,
+  Rectangle,
+} from "../component/types.js";
 import { point, polygon, polyline, rectangle } from "../component/types.js";
-import type { LogLevel } from "../component/lib/logging.js";
+import { LOG_LEVELS, type LogLevel } from "../component/lib/logging.js";
 import { FilterBuilderImpl, type GeospatialQuery } from "./query.js";
 import type { ComponentApi } from "../component/_generated/component.js";
 
@@ -127,16 +133,13 @@ export class GeospatialIndex<
   ) {
     let DEFAULT_LOG_LEVEL: LogLevel = "INFO";
     if (process.env.GEOSPATIAL_LOG_LEVEL) {
-      if (
-        !["DEBUG", "INFO", "WARN", "ERROR"].includes(
-          process.env.GEOSPATIAL_LOG_LEVEL,
-        )
-      ) {
+      if (LOG_LEVELS.includes(process.env.GEOSPATIAL_LOG_LEVEL)) {
+        DEFAULT_LOG_LEVEL = process.env.GEOSPATIAL_LOG_LEVEL as LogLevel;
+      } else {
         console.warn(
-          `Invalid log level (${process.env.GEOSPATIAL_LOG_LEVEL}), defaulting to "INFO"`,
+          `Invalid log level (${process.env.GEOSPATIAL_LOG_LEVEL}), defaulting to "${DEFAULT_LOG_LEVEL}"`,
         );
       }
-      DEFAULT_LOG_LEVEL = process.env.GEOSPATIAL_LOG_LEVEL as LogLevel;
     }
     this.logLevel = options?.logLevel ?? DEFAULT_LOG_LEVEL;
     this.minLevel = options?.minLevel ?? DEFAULT_MIN_LEVEL;
@@ -418,7 +421,10 @@ export class GeospatialIndex<
    * @param key - The unique string key to retrieve.
    * @returns - The stored geometry or null if not found.
    */
-  async getGeometry(ctx: QueryCtx, key: string): Promise<StoredGeometry | null> {
+  async getGeometry(
+    ctx: QueryCtx,
+    key: string,
+  ): Promise<StoredGeometry | null> {
     const result = await ctx.runQuery(this.component.geometry.get, { key });
     if (!result) return null;
     return {
