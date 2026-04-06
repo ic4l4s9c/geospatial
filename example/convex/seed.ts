@@ -80,7 +80,7 @@ export const seedStatePolygons = mutation({
 
     for (const [stateKey, stateData] of Object.entries(US_STATE_POLYGONS)) {
       try {
-        await geospatial.insertPolygon(
+        await geospatial.polygons.insert(
           ctx,
           `state:${stateKey}`,
           { exterior: stateData.exterior },

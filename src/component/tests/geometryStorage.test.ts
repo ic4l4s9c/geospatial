@@ -139,7 +139,7 @@ describe("Geometry Storage", () => {
         coordinates: MANHATTAN_POLYGON,
       });
 
-      const result = await t.query(api.geometryQuery.containsPoint, {
+      const result = await t.query(api.polygon.query.containsPoint, {
         point: POINT_INSIDE,
       });
 
@@ -157,7 +157,7 @@ describe("Geometry Storage", () => {
         coordinates: MANHATTAN_POLYGON,
       });
 
-      const result = await t.query(api.geometryQuery.containsPoint, {
+      const result = await t.query(api.polygon.query.containsPoint, {
         point: POINT_OUTSIDE,
       });
 
@@ -175,14 +175,14 @@ describe("Geometry Storage", () => {
       });
 
       // Should find with matching filter
-      const results1 = await t.query(api.geometryQuery.containsPoint, {
+      const results1 = await t.query(api.polygon.query.containsPoint, {
         point: POINT_INSIDE,
         filterKeys: { borough: "manhattan" },
       });
       expect(results1.results.length).toBe(1);
 
       // Should not find with non-matching filter
-      const results2 = await t.query(api.geometryQuery.containsPoint, {
+      const results2 = await t.query(api.polygon.query.containsPoint, {
         point: POINT_INSIDE,
         filterKeys: { borough: "brooklyn" },
       });
@@ -219,7 +219,7 @@ describe("Geometry Storage", () => {
         },
       });
 
-      const result = await t.query(api.geometryQuery.containsPoint, {
+      const result = await t.query(api.polygon.query.containsPoint, {
         point: { latitude: 40.8, longitude: -74.0 },
       });
 
@@ -240,7 +240,7 @@ describe("Geometry Storage", () => {
       });
 
       // Rectangle that overlaps Manhattan
-      const result = await t.query(api.geometryQuery.intersects, {
+      const result = await t.query(api.geometry.query.intersects, {
         shape: {
           type: "rectangle",
           rectangle: {
@@ -266,7 +266,7 @@ describe("Geometry Storage", () => {
       });
 
       // Rectangle in New Jersey (doesn't intersect Manhattan)
-      const result = await t.query(api.geometryQuery.intersects, {
+      const result = await t.query(api.geometry.query.intersects, {
         shape: {
           type: "rectangle",
           rectangle: {
@@ -292,7 +292,7 @@ describe("Geometry Storage", () => {
       });
 
       // Query with a polygon that the route passes through
-      const result = await t.query(api.geometryQuery.intersects, {
+      const result = await t.query(api.geometry.query.intersects, {
         shape: {
           type: "polygon",
           polygon: {
@@ -324,7 +324,7 @@ describe("Geometry Storage", () => {
       // Point clearly outside Manhattan (in New Jersey, west of the Hudson)
       const nearPoint = { latitude: 40.75, longitude: -74.05 };
 
-      const result = await t.query(api.geometryQuery.geometriesNear, {
+      const result = await t.query(api.geometry.query.geometriesNear, {
         point: nearPoint,
         maxDistance: 5000, // 5km
       });
@@ -344,7 +344,7 @@ describe("Geometry Storage", () => {
         coordinates: MANHATTAN_POLYGON,
       });
 
-      const result = await t.query(api.geometryQuery.geometriesNear, {
+      const result = await t.query(api.geometry.query.geometriesNear, {
         point: POINT_INSIDE,
         maxDistance: 1000,
       });
@@ -379,7 +379,7 @@ describe("Geometry Storage", () => {
 
       // Query for geometries near the point - both polygons contain it
       const queryPoint = POINT_INSIDE; // { latitude: 40.758, longitude: -73.985 }
-      const result = await t.query(api.geometryQuery.geometriesNear, {
+      const result = await t.query(api.geometry.query.geometriesNear, {
         point: queryPoint,
         maxDistance: 5000,
       });
@@ -402,7 +402,7 @@ describe("Geometry Storage", () => {
         coordinates: MANHATTAN_ROUTE,
       });
 
-      const result = await t.query(api.geometryQuery.geometriesNear, {
+      const result = await t.query(api.geometry.query.geometriesNear, {
         point: { latitude: 40.75, longitude: -73.99 },
         maxDistance: 1000,
       });
@@ -456,10 +456,10 @@ describe("Geometry Storage", () => {
       const texasPoint = { latitude: 31.0, longitude: -100.0 };
       const buildingPoint = { latitude: 40.7585, longitude: -73.985 };
 
-      const texasContains = await t.query(api.geometryQuery.containsPoint, {
+      const texasContains = await t.query(api.polygon.query.containsPoint, {
         point: texasPoint,
       });
-      const buildingContains = await t.query(api.geometryQuery.containsPoint, {
+      const buildingContains = await t.query(api.polygon.query.containsPoint, {
         point: buildingPoint,
       });
 

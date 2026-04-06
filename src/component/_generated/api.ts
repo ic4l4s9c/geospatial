@@ -10,10 +10,10 @@
 
 import type * as document from "../document.js";
 import type * as geometry from "../geometry.js";
-import type * as geometryMeasure from "../geometryMeasure.js";
-import type * as geometryQuery from "../geometryQuery.js";
+import type * as geometry_query from "../geometry/query.js";
 import type * as lib_approximateCounter from "../lib/approximateCounter.js";
 import type * as lib_d64 from "../lib/d64.js";
+import type * as lib_geometryQuery from "../lib/geometryQuery.js";
 import type * as lib_goRuntime from "../lib/goRuntime.js";
 import type * as lib_interval from "../lib/interval.js";
 import type * as lib_logging from "../lib/logging.js";
@@ -23,6 +23,10 @@ import type * as lib_s2Bindings from "../lib/s2Bindings.js";
 import type * as lib_s2wasm from "../lib/s2wasm.js";
 import type * as lib_tupleKey from "../lib/tupleKey.js";
 import type * as lib_xxhash from "../lib/xxhash.js";
+import type * as polygon_measure from "../polygon/measure.js";
+import type * as polygon_query from "../polygon/query.js";
+import type * as polyline_measure from "../polyline/measure.js";
+import type * as polyline_query from "../polyline/query.js";
 import type * as query from "../query.js";
 import type * as streams_cellRange from "../streams/cellRange.js";
 import type * as streams_constants from "../streams/constants.js";
@@ -43,10 +47,10 @@ import { anyApi, componentsGeneric } from "convex/server";
 const fullApi: ApiFromModules<{
   document: typeof document;
   geometry: typeof geometry;
-  geometryMeasure: typeof geometryMeasure;
-  geometryQuery: typeof geometryQuery;
+  "geometry/query": typeof geometry_query;
   "lib/approximateCounter": typeof lib_approximateCounter;
   "lib/d64": typeof lib_d64;
+  "lib/geometryQuery": typeof lib_geometryQuery;
   "lib/goRuntime": typeof lib_goRuntime;
   "lib/interval": typeof lib_interval;
   "lib/logging": typeof lib_logging;
@@ -56,6 +60,10 @@ const fullApi: ApiFromModules<{
   "lib/s2wasm": typeof lib_s2wasm;
   "lib/tupleKey": typeof lib_tupleKey;
   "lib/xxhash": typeof lib_xxhash;
+  "polygon/measure": typeof polygon_measure;
+  "polygon/query": typeof polygon_query;
+  "polyline/measure": typeof polyline_measure;
+  "polyline/query": typeof polyline_query;
   query: typeof query;
   "streams/cellRange": typeof streams_cellRange;
   "streams/constants": typeof streams_constants;

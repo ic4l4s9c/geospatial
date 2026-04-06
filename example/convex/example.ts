@@ -1,4 +1,10 @@
-import { GeospatialIndex, point, polygon, polyline, rectangle } from "@convex-dev/geospatial";
+import {
+  GeospatialIndex,
+  point,
+  polygon,
+  polyline,
+  rectangle,
+} from "@convex-dev/geospatial";
 import { Id } from "./_generated/dataModel";
 import { components } from "./_generated/api";
 import { mutation, query } from "./_generated/server";
@@ -241,7 +247,11 @@ export const debugCells = query({
 export const listGeometries = query({
   args: {},
   handler: async (ctx) => {
-    return await geospatial.listGeometries(ctx);
+    const [polygons, polylines] = await Promise.all([
+      geospatial.polygons.list(ctx),
+      geospatial.polylines.list(ctx),
+    ]);
+    return [...polygons, ...polylines];
   },
 });
 
@@ -250,7 +260,7 @@ export const geometryContainsPoint = query({
     point,
   },
   handler: async (ctx, args) => {
-    return await geospatial.containsPoint(ctx, args.point);
+    return await geospatial.polygons.containsPoint(ctx, args.point);
   },
 });
 
@@ -259,7 +269,7 @@ export const geometryIntersects = query({
     rectangle,
   },
   handler: async (ctx, args) => {
-    return await geospatial.intersects(ctx, {
+    return await geospatial.polygons.intersects(ctx, {
       type: "rectangle",
       rectangle: args.rectangle,
     });
@@ -272,7 +282,7 @@ export const geometriesNearPoint = query({
     maxDistance: v.number(),
   },
   handler: async (ctx, args) => {
-    return await geospatial.geometriesNear(ctx, args.point, args.maxDistance);
+    return await geospatial.polygons.near(ctx, args.point, args.maxDistance);
   },
 });
 
@@ -281,7 +291,7 @@ export const deleteGeometry = mutation({
     key: v.string(),
   },
   handler: async (ctx, args) => {
-    await geospatial.removeGeometry(ctx, args.key);
+    await geospatial.polygons.remove(ctx, args.key);
   },
 });
 
@@ -291,9 +301,9 @@ export const measurePolygon = query({
   },
   handler: async (ctx, args) => {
     const [area, perimeter, centroid] = await Promise.all([
-      geospatial.polygonArea(ctx, args.polygon),
-      geospatial.polygonPerimeter(ctx, args.polygon),
-      geospatial.polygonCentroid(ctx, args.polygon),
+      geospatial.polygons.area(ctx, args.polygon),
+      geospatial.polygons.perimeter(ctx, args.polygon),
+      geospatial.polygons.centroid(ctx, args.polygon),
     ]);
     return { area, perimeter, centroid };
   },
@@ -305,8 +315,8 @@ export const measurePolyline = query({
   },
   handler: async (ctx, args) => {
     const [length, centroid] = await Promise.all([
-      geospatial.polylineLength(ctx, args.polyline),
-      geospatial.polylineCentroid(ctx, args.polyline),
+      geospatial.polylines.length(ctx, args.polyline),
+      geospatial.polylines.centroid(ctx, args.polyline),
     ]);
     return { length, centroid };
   },

@@ -35,9 +35,10 @@ export default defineSchema({
     west: v.number(),
     east: v.number(),
     sortKey: v.number(),
-    filterKeys: v.optional(v.record(v.string(), primitive)),
+    filterKeys: v.optional(v.record(v.string(), v.union(primitive, v.array(primitive)))),
   })
     .index("byKey", ["key"])
+    .index("byType", ["type"])
     .index("bySortKey", ["sortKey"]),
 
   geometryCells: defineTable({

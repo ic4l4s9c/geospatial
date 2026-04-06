@@ -17,10 +17,6 @@ export const point = v.object({
 });
 export type Point = Infer<typeof point>;
 
-export function pointToArray(p: Point): [number, number] {
-  return [p.latitude, p.longitude];
-}
-
 export const rectangle = v.object({
   west: longitude,
   east: longitude,

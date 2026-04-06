@@ -19,28 +19,7 @@ export type { Point, Polygon, Polyline, Primitive, GeospatialQuery, Rectangle };
 export { point, polygon, polyline, rectangle };
 export { MIN_CELL_LEVEL, MAX_CELL_LEVEL } from "../component/lib/s2Bindings.js";
 
-export type StoredGeometry = {
-  key: string;
-  type: "polygon" | "polyline";
-  coordinates: Polygon | Point[];
-  boundingBox: Rectangle;
-  filterKeys?: Record<string, Primitive>;
-};
-
-export type StoredPolygon = {
-  key: string;
-  type: "polygon";
-  coordinates: Polygon;
-  boundingBox: Rectangle;
-  filterKeys?: Record<string, Primitive>;
-};
-
-export type GeometryWithDistance = StoredGeometry & {
-  distance: number;
-};
-
-// Query shape types for intersects queries (no holes in v1)
-// Note: Polyline queries are supported via the main `query` method, not `intersects`
+// Query shape types for geometry intersection queries (no holes in v1).
 export type QueryShape =
   | { type: "rectangle"; rectangle: Rectangle }
   | { type: "polygon"; polygon: Polygon };
@@ -70,6 +49,30 @@ export type GeospatialDocument<
   sortKey: number;
 };
 
+export type GeospatialGeometry<
+  Type extends "polygon" | "polyline" = "polygon" | "polyline",
+  Key extends string = string,
+  Filters extends GeospatialFilters = GeospatialFilters,
+> = {
+  key: Key;
+  type: Type;
+  coordinates: Type extends "polygon"
+    ? Polygon
+    : Type extends "polyline"
+      ? Polyline
+      : Polygon | Polyline;
+  boundingBox: Rectangle;
+  filterKeys?: Filters;
+};
+
+export type GeometryWithDistance<
+  Type extends "polygon" | "polyline" = "polygon" | "polyline",
+  Key extends string = string,
+  Filters extends GeospatialFilters = GeospatialFilters,
+> = GeospatialGeometry<Type, Key, Filters> & {
+  distance: number;
+};
+
 export type NearestQueryOptions<
   Doc extends GeospatialDocument = GeospatialDocument,
 > = {
@@ -90,23 +93,23 @@ export interface GeospatialIndexOptions {
   /**
    * The minimum S2 cell level to use when querying. Defaults to 4.
    */
-  minLevel?: number;
+  readonly minLevel?: number;
   /**
    * The maximum S2 cell level to use when querying. Defaults to 16.
    */
-  maxLevel?: number;
+  readonly maxLevel?: number;
   /**
    * The distance between levels when indexing, implying a branching factor of `4^levelMod`. Defaults to 2.
    */
-  levelMod?: number;
+  readonly levelMod?: number;
   /**
    * The maximum number of cells to use when querying. Defaults to 8.
    */
-  maxCells?: number;
+  readonly maxCells?: number;
   /**
    * The log level to use when logging. Defaults to the `GEOSPATIAL_LOG_LEVEL` environment variable, or "INFO" if not set.
    */
-  logLevel?: LogLevel;
+  readonly logLevel?: LogLevel;
 }
 
 /**
@@ -120,11 +123,11 @@ export interface PointsNamespace<
   /**
    * Insert a new key-coordinate pair into the index.
    *
-   * @param ctx - The Convex mutation context.
-   * @param key - The unique string key to associate with the coordinate.
-   * @param coordinates - The geographic coordinate `{ latitude, longitude }` to associate with the key.
-   * @param filterKeys - The filter keys to associate with the key.
-   * @param sortKey - The sort key to associate with the key, defaults to a randomly generated number.
+   * @param ctx         - The Convex mutation context.
+   * @param key         - The unique string key to associate with the coordinate.
+   * @param coordinates - The geographic coordinate `{ latitude, longitude }`.
+   * @param filterKeys  - The filter keys to associate with the key.
+   * @param sortKey     - Sort key for ordering results, defaults to a random number.
    */
   insert(
     ctx: MutationCtx,
@@ -135,11 +138,11 @@ export interface PointsNamespace<
   ): Promise<void>;
 
   /**
-   * Retrieve the coordinate associated with a specific key.
+   * Retrieve the document associated with a specific key.
    *
    * @param ctx - The Convex query context.
-   * @param key - The unique string key to retrieve the coordinate for.
-   * @returns - The geographic coordinate `{ latitude, longitude }` associated with the key, or `null` if the key is not found.
+   * @param key - The unique string key to look up.
+   * @returns The document, or `null` if the key is not found.
    */
   get(
     ctx: QueryCtx,
@@ -150,18 +153,18 @@ export interface PointsNamespace<
    * Remove a key-coordinate pair from the index.
    *
    * @param ctx - The Convex mutation context.
-   * @param key - The unique string key to remove from the index.
-   * @returns - `true` if the key was found and removed, `false` otherwise.
+   * @param key - The unique string key to remove.
+   * @returns `true` if the key was found and removed, `false` otherwise.
    */
   remove(ctx: MutationCtx, key: PointKey): Promise<boolean>;
 
   /**
    * Query for keys within a given shape.
    *
-   * @param ctx - The Convex query context.
-   * @param query - The query to execute.
-   * @param cursor - The continuation cursor to use for paginating through results.
-   * @returns - An array of objects with the key-coordinate pairs and optionally a continuation cursor.
+   * @param ctx    - The Convex query context.
+   * @param query  - The query to execute.
+   * @param cursor - Continuation cursor for paginating through results.
+   * @returns Matching key-coordinate pairs and an optional continuation cursor.
    */
   query(
     ctx: QueryCtx,
@@ -173,16 +176,357 @@ export interface PointsNamespace<
   }>;
 
   /**
-   * Query for the nearest points to a given point.
+   * Find the nearest points to a given location.
    *
-   * @param ctx - The Convex query context.
-   * @param options - The nearest query parameters.
-   * @returns - An array of objects with the key-coordinate pairs and their distance from the query point in meters.
+   * @param ctx     - The Convex query context.
+   * @param options - Query parameters including point, limit, and optional maxDistance.
+   * @returns Key-coordinate pairs with their distance from the query point in meters.
    */
   nearest(
     ctx: QueryCtx,
     options: NearestQueryOptions<GeospatialDocument<PointKey, PointFilters>>,
   ): Promise<{ key: PointKey; coordinates: Point; distance: number }[]>;
+}
+
+/**
+ * Namespace for polygon-based geospatial operations.
+ * Access via `geospatial.polygons`.
+ */
+export interface PolygonsNamespace<
+  PolygonKey extends string,
+  PolygonFilters extends GeospatialFilters,
+> {
+  /**
+   * Insert a polygon into the spatial index.
+   *
+   * @note Polygon holes are not supported in v1. Use multiple non-overlapping
+   *       polygons as a workaround.
+   *
+   * @param ctx        - The Convex mutation context.
+   * @param key        - The unique string key to associate with the polygon.
+   * @param polygon    - The polygon geometry with exterior ring.
+   * @param filterKeys - Optional filter keys for querying.
+   * @param sortKey    - Optional sort key for ordering results.
+   */
+  insert(
+    ctx: MutationCtx,
+    key: PolygonKey,
+    polygon: Polygon,
+    filterKeys?: PolygonFilters,
+    sortKey?: number,
+  ): Promise<void>;
+
+  /**
+   * Remove a polygon from the spatial index.
+   *
+   * @param ctx - The Convex mutation context.
+   * @param key - The unique string key of the polygon to remove.
+   */
+  remove(ctx: MutationCtx, key: PolygonKey): Promise<void>;
+
+  /**
+   * Update a polygon's coordinates or metadata.
+   *
+   * @param ctx         - The Convex mutation context.
+   * @param key         - The unique string key of the polygon to update.
+   * @param coordinates - New coordinates, triggers re-indexing when provided.
+   * @param filterKeys  - New filter keys.
+   * @param sortKey     - New sort key.
+   */
+  update(
+    ctx: MutationCtx,
+    key: PolygonKey,
+    coordinates?: Polygon,
+    filterKeys?: PolygonFilters,
+    sortKey?: number,
+  ): Promise<void>;
+
+  /**
+   * Get a polygon by key.
+   *
+   * @param ctx - The Convex query context.
+   * @param key - The unique string key to retrieve.
+   * @returns The stored polygon or `null` if not found.
+   */
+  get(
+    ctx: QueryCtx,
+    key: PolygonKey,
+  ): Promise<GeospatialGeometry<"polygon", PolygonKey, PolygonFilters> | null>;
+
+  /**
+   * Find all polygons that contain a given point.
+   *
+   * @param ctx        - The Convex query context.
+   * @param point      - The geographic point to check.
+   * @param filterKeys - Optional filter keys to match.
+   * @param limit      - Maximum number of results, default 100.
+   * @returns Results array and a `truncated` flag that is true when the
+   *          internal candidate set hit its limit and further matches may exist.
+   *
+   * @example
+   * const { results, truncated } = await geo.polygons.containsPoint(ctx, {
+   *   latitude: 40.7128, longitude: -74.0060
+   * }, { type: "delivery-zone" });
+   */
+  containsPoint(
+    ctx: QueryCtx,
+    point: Point,
+    filterKeys?: PolygonFilters,
+    limit?: number,
+  ): Promise<{
+    results: GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>[];
+    truncated: boolean;
+  }>;
+
+  /**
+   * Find all polygons that intersect a given shape.
+   *
+   * @param ctx        - The Convex query context.
+   * @param shape      - The query shape (rectangle or polygon, no holes).
+   * @param filterKeys - Optional filter keys to match.
+   * @param limit      - Maximum number of results, default 100.
+   * @returns Results array and a `truncated` flag that is true when the
+   *          internal candidate set hit its limit and further matches may exist.
+   *
+   * @example
+   * const { results, truncated } = await geo.polygons.intersects(ctx, {
+   *   type: "rectangle",
+   *   rectangle: { south: 40, north: 41, west: -75, east: -74 }
+   * });
+   */
+  intersects(
+    ctx: QueryCtx,
+    shape: QueryShape,
+    filterKeys?: PolygonFilters,
+    limit?: number,
+  ): Promise<{
+    results: GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>[];
+    truncated: boolean;
+  }>;
+
+  /**
+   * Find polygons within a given distance of a point, sorted by distance ascending.
+   *
+   * @note Near poles (|latitude| > 85°), precision may be degraded due to
+   *       longitude compression. Use smaller `maxDistance` values in these areas.
+   *
+   * @param ctx         - The Convex query context.
+   * @param point       - The geographic point to search around.
+   * @param maxDistance - Maximum distance in meters, must be non-negative.
+   * @param filterKeys  - Optional filter keys to match.
+   * @param limit       - Maximum number of results, default 100.
+   * @returns Results sorted by distance ascending and a `truncated` flag that
+   *          is true when the internal candidate set hit its limit and further
+   *          matches may exist.
+   *
+   * @example
+   * const { results, truncated } = await geo.polygons.near(ctx, {
+   *   latitude: 40.7128, longitude: -74.0060
+   * }, 5000);
+   */
+  near(
+    ctx: QueryCtx,
+    point: Point,
+    maxDistance: number,
+    filterKeys?: PolygonFilters,
+    limit?: number,
+  ): Promise<{
+    results: GeometryWithDistance<"polygon", PolygonKey, PolygonFilters>[];
+    truncated: boolean;
+  }>;
+
+  /**
+   * List stored polygons.
+   *
+   * @param ctx   - The Convex query context.
+   * @param limit - Maximum number of results, default 100.
+   * @returns Array of stored polygons.
+   */
+  list(
+    ctx: QueryCtx,
+    limit?: number,
+  ): Promise<GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>[]>;
+
+  /**
+   * Calculate the area of a polygon in square meters.
+   *
+   * @param ctx     - The Convex query context.
+   * @param polygon - The polygon geometry.
+   * @returns The area in square meters.
+   */
+  area(ctx: QueryCtx, polygon: Polygon): Promise<number>;
+
+  /**
+   * Calculate the perimeter of a polygon in meters.
+   *
+   * @param ctx     - The Convex query context.
+   * @param polygon - The polygon geometry.
+   * @returns The perimeter in meters.
+   */
+  perimeter(ctx: QueryCtx, polygon: Polygon): Promise<number>;
+
+  /**
+   * Calculate the centroid of a polygon.
+   *
+   * @param ctx     - The Convex query context.
+   * @param polygon - The polygon geometry.
+   * @returns The centroid point.
+   */
+  centroid(ctx: QueryCtx, polygon: Polygon): Promise<Point>;
+}
+
+/**
+ * Namespace for polyline-based geospatial operations.
+ * Access via `geospatial.polylines`.
+ */
+export interface PolylinesNamespace<
+  PolylineKey extends string,
+  PolylineFilters extends GeospatialFilters,
+> {
+  /**
+   * Insert a polyline into the spatial index.
+   *
+   * @param ctx        - The Convex mutation context.
+   * @param key        - The unique string key to associate with the polyline.
+   * @param polyline   - The polyline as an ordered array of points.
+   * @param filterKeys - Optional filter keys for querying.
+   * @param sortKey    - Optional sort key for ordering results.
+   */
+  insert(
+    ctx: MutationCtx,
+    key: PolylineKey,
+    polyline: Polyline,
+    filterKeys?: PolylineFilters,
+    sortKey?: number,
+  ): Promise<void>;
+
+  /**
+   * Remove a polyline from the spatial index.
+   *
+   * @param ctx - The Convex mutation context.
+   * @param key - The unique string key of the polyline to remove.
+   */
+  remove(ctx: MutationCtx, key: PolylineKey): Promise<void>;
+
+  /**
+   * Update a polyline's coordinates or metadata.
+   *
+   * @param ctx         - The Convex mutation context.
+   * @param key         - The unique string key of the polyline to update.
+   * @param coordinates - New coordinates, triggers re-indexing when provided.
+   * @param filterKeys  - New filter keys.
+   * @param sortKey     - New sort key.
+   */
+  update(
+    ctx: MutationCtx,
+    key: PolylineKey,
+    coordinates?: Polyline,
+    filterKeys?: PolylineFilters,
+    sortKey?: number,
+  ): Promise<void>;
+
+  /**
+   * Get a polyline by key.
+   *
+   * @param ctx - The Convex query context.
+   * @param key - The unique string key to retrieve.
+   * @returns The stored polyline or `null` if not found.
+   */
+  get(
+    ctx: QueryCtx,
+    key: PolylineKey,
+  ): Promise<GeospatialGeometry<
+    "polyline",
+    PolylineKey,
+    PolylineFilters
+  > | null>;
+
+  /**
+   * Find all polylines that intersect a given shape.
+   *
+   * @param ctx        - The Convex query context.
+   * @param shape      - The query shape (rectangle or polygon, no holes).
+   * @param filterKeys - Optional filter keys to match.
+   * @param limit      - Maximum number of results, default 100.
+   * @returns Results array and a `truncated` flag that is true when the
+   *          internal candidate set hit its limit and further matches may exist.
+   *
+   * @example
+   * const { results, truncated } = await geo.polylines.intersects(ctx, {
+   *   type: "rectangle",
+   *   rectangle: { south: 40, north: 41, west: -75, east: -74 }
+   * });
+   */
+  intersects(
+    ctx: QueryCtx,
+    shape: QueryShape,
+    filterKeys?: PolylineFilters,
+    limit?: number,
+  ): Promise<{
+    results: GeospatialGeometry<"polyline", PolylineKey, PolylineFilters>[];
+    truncated: boolean;
+  }>;
+
+  /**
+   * Find polylines within a given distance of a point, sorted by distance ascending.
+   *
+   * @note Near poles (|latitude| > 85°), precision may be degraded due to
+   *       longitude compression. Use smaller `maxDistance` values in these areas.
+   *
+   * @param ctx         - The Convex query context.
+   * @param point       - The geographic point to search around.
+   * @param maxDistance - Maximum distance in meters, must be non-negative.
+   * @param filterKeys  - Optional filter keys to match.
+   * @param limit       - Maximum number of results, default 100.
+   * @returns Results sorted by distance ascending and a `truncated` flag that
+   *          is true when the internal candidate set hit its limit and further
+   *          matches may exist.
+   *
+   * @example
+   * const { results, truncated } = await geo.polylines.near(ctx, {
+   *   latitude: 40.7128, longitude: -74.0060
+   * }, 5000);
+   */
+  near(
+    ctx: QueryCtx,
+    point: Point,
+    maxDistance: number,
+    filterKeys?: PolylineFilters,
+    limit?: number,
+  ): Promise<{
+    results: GeometryWithDistance<"polyline", PolylineKey, PolylineFilters>[];
+    truncated: boolean;
+  }>;
+
+  /**
+   * List stored polylines.
+   *
+   * @param ctx   - The Convex query context.
+   * @param limit - Maximum number of results, default 100.
+   * @returns Array of stored polylines.
+   */
+  list(
+    ctx: QueryCtx,
+    limit?: number,
+  ): Promise<GeospatialGeometry<"polyline", PolylineKey, PolylineFilters>[]>;
+
+  /**
+   * Calculate the length of a polyline in meters.
+   *
+   * @param ctx      - The Convex query context.
+   * @param polyline - The polyline as an ordered array of points.
+   * @returns The length in meters.
+   */
+  length(ctx: QueryCtx, polyline: Polyline): Promise<number>;
+
+  /**
+   * Calculate the centroid of a polyline.
+   *
+   * @param ctx      - The Convex query context.
+   * @param polyline - The polyline as an ordered array of points.
+   * @returns The centroid point.
+   */
+  centroid(ctx: QueryCtx, polyline: Polyline): Promise<Point>;
 }
 
 export class GeospatialIndex<
@@ -193,16 +537,16 @@ export class GeospatialIndex<
   PolylineKey extends string = string,
   PolylineFilters extends GeospatialFilters = GeospatialFilters,
 > {
-  logLevel: LogLevel;
+  readonly logLevel: LogLevel;
 
-  minLevel: number;
-  maxLevel: number;
-  levelMod: number;
-  maxCells: number;
+  readonly minLevel: number;
+  readonly maxLevel: number;
+  readonly levelMod: number;
+  readonly maxCells: number;
 
   /**
    * Namespace for point-based geospatial operations such as `insert`, `get`,
-   * `remove`, `query`, `nearest`, and `queryNearest`.
+   * `remove`, `query`, and `nearest`.
    *
    * @example
    * await geospatial.points.insert(ctx, id, point, { name });
@@ -210,11 +554,31 @@ export class GeospatialIndex<
   readonly points: PointsNamespace<PointKey, PointFilters>;
 
   /**
-   * Create a new geospatial index, powered by S2 and Convex. This index maps unique string keys to geographic coordinates
-   * on the Earth's surface, with the ability to efficiently query for all keys within a given geographic area.
+   * Namespace for polygon-based geospatial operations such as `insert`, `get`,
+   * `remove`, `update`, `containsPoint`, `intersects`, `near`, `list`,
+   * `area`, `perimeter`, and `centroid`.
+   *
+   * @example
+   * await geospatial.polygons.insert(ctx, id, polygon, { name });
+   */
+  readonly polygons: PolygonsNamespace<PolygonKey, PolygonFilters>;
+
+  /**
+   * Namespace for polyline-based geospatial operations such as `insert`, `get`,
+   * `remove`, `update`, `intersects`, `near`, `list`, `length`, and `centroid`.
+   *
+   * @example
+   * await geospatial.polylines.insert(ctx, id, polyline, { name });
+   */
+  readonly polylines: PolylinesNamespace<PolylineKey, PolylineFilters>;
+
+  /**
+   * Create a new geospatial index, powered by S2 and Convex, for working with
+   * points, polygons, and polylines on the Earth's surface, with the ability
+   * to efficiently query for all keys within a given geographic area.
    *
    * @param component - The registered geospatial index from `components`.
-   * @param options - The options to configure the index.
+   * @param options   - Options to configure the index.
    */
   constructor(
     private component: ComponentApi,
@@ -236,17 +600,43 @@ export class GeospatialIndex<
     this.levelMod = options?.levelMod ?? DEFAULT_LEVEL_MOD;
     this.maxCells = options?.maxCells ?? DEFAULT_MAX_CELLS;
 
-    // Bind `this` so the namespace methods have access to the instance
+    // Bind `this` so the namespace methods have access to the instance.
     this.points = {
-      insert: this.#insert.bind(this),
-      get: this.#get.bind(this),
-      remove: this.#remove.bind(this),
-      query: this.#query.bind(this),
-      nearest: this.#nearest.bind(this),
+      insert: this.#insertPoint.bind(this),
+      get: this.#getPoint.bind(this),
+      remove: this.#removePoint.bind(this),
+      query: this.#queryPoints.bind(this),
+      nearest: this.#nearestPoints.bind(this),
+    };
+
+    this.polygons = {
+      insert: this.#insertPolygon.bind(this),
+      remove: this.#removeGeometry.bind(this),
+      update: this.#updatePolygon.bind(this),
+      get: this.#getPolygon.bind(this),
+      containsPoint: this.#containsPoint.bind(this),
+      intersects: this.#polygonIntersects.bind(this),
+      near: this.#nearPolygons.bind(this),
+      list: this.#listPolygons.bind(this),
+      area: this.#polygonArea.bind(this),
+      perimeter: this.#polygonPerimeter.bind(this),
+      centroid: this.#polygonCentroid.bind(this),
+    };
+
+    this.polylines = {
+      insert: this.#insertPolyline.bind(this),
+      remove: this.#removeGeometry.bind(this),
+      update: this.#updatePolyline.bind(this),
+      get: this.#getPolyline.bind(this),
+      intersects: this.#polylineIntersects.bind(this),
+      near: this.#nearPolylines.bind(this),
+      list: this.#listPolylines.bind(this),
+      length: this.#polylineLength.bind(this),
+      centroid: this.#polylineCentroid.bind(this),
     };
   }
 
-  async #insert(
+  async #insertPoint(
     ctx: MutationCtx,
     key: PointKey,
     coordinates: Point,
@@ -267,15 +657,22 @@ export class GeospatialIndex<
     });
   }
 
-  async #get(
+  async #getPoint(
     ctx: QueryCtx,
     key: PointKey,
   ): Promise<GeospatialDocument<PointKey, PointFilters> | null> {
     const result = await ctx.runQuery(this.component.document.get, { key });
-    return result as GeospatialDocument<PointKey, PointFilters> | null;
+    if (!result) {
+      return null;
+    }
+    return result as NarrowGeospatialDocument<
+      typeof result,
+      PointKey,
+      PointFilters
+    >;
   }
 
-  async #remove(ctx: MutationCtx, key: PointKey): Promise<boolean> {
+  async #removePoint(ctx: MutationCtx, key: PointKey): Promise<boolean> {
     return await ctx.runMutation(this.component.document.remove, {
       key,
       minLevel: this.minLevel,
@@ -285,7 +682,7 @@ export class GeospatialIndex<
     });
   }
 
-  async #query(
+  async #queryPoints(
     ctx: QueryCtx,
     query: GeospatialQuery<GeospatialDocument<PointKey, PointFilters>>,
     cursor: string | undefined = undefined,
@@ -299,7 +696,7 @@ export class GeospatialIndex<
     if (query.filter) {
       query.filter(filterBuilder);
     }
-    const resp = await ctx.runQuery(this.component.query.execute, {
+    const result = await ctx.runQuery(this.component.query.execute, {
       query: {
         shape: query.shape,
         filtering: filterBuilder.filterConditions,
@@ -313,13 +710,16 @@ export class GeospatialIndex<
       maxCells: this.maxCells,
       logLevel: this.logLevel,
     });
-    return resp as {
-      results: { key: PointKey; coordinates: Point }[];
+    return result as {
+      results: NarrowGeospatialDocument<
+        (typeof result.results)[number],
+        PointKey
+      >[];
       nextCursor?: string;
     };
   }
 
-  async #nearest(
+  async #nearestPoints(
     ctx: QueryCtx,
     {
       point,
@@ -335,7 +735,7 @@ export class GeospatialIndex<
       filter(filterBuilder);
     }
 
-    const resp = await ctx.runQuery(this.component.query.nearestPoints, {
+    const result = await ctx.runQuery(this.component.query.nearestPoints, {
       point,
       maxDistance,
       maxResults: limit,
@@ -346,154 +746,18 @@ export class GeospatialIndex<
       filtering: filterBuilder.filterConditions,
       sorting: { interval: filterBuilder.interval ?? {} },
     });
-    return resp as { key: PointKey; coordinates: Point; distance: number }[];
+
+    return result as NarrowGeospatialDocument<
+      (typeof result)[number],
+      PointKey
+    >[];
   }
 
-  /**
-   * Insert a new key-coordinate pair into the index.
-   *
-   * @deprecated Use `points.insert(ctx, key, coordinates, filterKeys, sortKey)` instead.
-   *
-   * @param ctx - The Convex mutation context.
-   * @param key - The unique string key to associate with the coordinate.
-   * @param coordinates - The geographic coordinate `{ latitude, longitude }` to associate with the key.
-   * @param filterKeys - The filter keys to associate with the key.
-   * @param sortKey - The sort key to associate with the key, defaults to a randomly generated number.
-   */
-  async insert(
+  async #insertPolygon(
     ctx: MutationCtx,
-    key: PointKey,
-    coordinates: Point,
-    filterKeys: PointFilters,
-    sortKey?: number,
-  ): Promise<void> {
-    return this.#insert(ctx, key, coordinates, filterKeys, sortKey);
-  }
-
-  /**
-   * Retrieve the coordinate associated with a specific key.
-   *
-   * @deprecated Use `points.get(ctx, key)` instead.
-   *
-   * @param ctx - The Convex query context.
-   * @param key - The unique string key to retrieve the coordinate for.
-   * @returns - The geographic coordinate `{ latitude, longitude }` associated with the key, or `null` if the key is not found.
-   */
-  async get(
-    ctx: QueryCtx,
-    key: PointKey,
-  ): Promise<GeospatialDocument<PointKey, PointFilters> | null> {
-    return this.#get(ctx, key);
-  }
-
-  /**
-   * Remove a key-coordinate pair from the index.
-   *
-   * @deprecated Use `points.remove(ctx, key)` instead.
-   *
-   * @param ctx - The Convex mutation context.
-   * @param key - The unique string key to remove from the index.
-   * @returns - `true` if the key was found and removed, `false` otherwise.
-   */
-  async remove(ctx: MutationCtx, key: PointKey): Promise<boolean> {
-    return this.#remove(ctx, key);
-  }
-
-  /**
-   * Query for keys within a given shape.
-   *
-   * @deprecated Use `points.query(ctx, query, cursor)` instead.
-   *
-   * @param ctx - The Convex query context.
-   * @param query - The query to execute.
-   * @param cursor - The continuation cursor to use for paginating through results.
-   * @returns - An array of objects with the key-coordinate pairs and optionally a continuation cursor.
-   */
-  async query(
-    ctx: QueryCtx,
-    query: GeospatialQuery<GeospatialDocument<PointKey, PointFilters>>,
-    cursor: string | undefined = undefined,
-  ): Promise<{
-    results: { key: PointKey; coordinates: Point }[];
-    nextCursor?: string;
-  }> {
-    return this.#query(ctx, query, cursor);
-  }
-
-  /**
-   * Query for the nearest points to a given point.
-   *
-   * @deprecated Use `points.nearest(ctx, { point, limit, maxDistance, filter })` instead.
-   *
-   * @param ctx - The Convex query context.
-   * @param options - The nearest query parameters.
-   * @returns - An array of objects with the key-coordinate pairs and their distance from the query point in meters.
-   */
-  async nearest(
-    ctx: QueryCtx,
-    options: NearestQueryOptions<GeospatialDocument<PointKey, PointFilters>>,
-  ): Promise<{ key: PointKey; coordinates: Point; distance: number }[]> {
-    return this.#nearest(ctx, options);
-  }
-
-  /**
-   * Query for the nearest points to a given point.
-   *
-   * @deprecated Use `nearest(ctx, { point, limit, maxDistance, filter })` instead.
-   */
-  async queryNearest(
-    ctx: QueryCtx,
-    point: Point,
-    maxResults: number,
-    maxDistance?: number,
-  ): Promise<{ key: PointKey; coordinates: Point; distance: number }[]> {
-    return this.#nearest(ctx, {
-      point,
-      limit: maxResults,
-      maxDistance,
-    });
-  }
-
-  /**
-   * Debug the S2 cells that would be queried for a given rectangle.
-   *
-   * @param ctx - The Convex query context.
-   * @param rectangle - The geographic area to query.
-   * @param maxResolution - The maximum resolution to use when querying.
-   * @returns - An array of S2 cell identifiers and their vertices.
-   */
-  async debugCells(
-    ctx: QueryCtx,
-    rectangle: Rectangle,
-    maxResolution?: number,
-  ): Promise<{ token: string; vertices: Point[] }[]> {
-    const resp = await ctx.runQuery(this.component.query.debugCells, {
-      rectangle,
-      minLevel: this.minLevel,
-      maxLevel: maxResolution ?? this.maxLevel,
-      levelMod: this.levelMod,
-      maxCells: this.maxCells,
-    });
-    return resp;
-  }
-
-  /**
-   * Insert a polygon into the spatial index.
-   *
-   * @note Polygon holes are not supported in v1. Use multiple non-overlapping
-   *       polygons as a workaround.
-   *
-   * @param ctx - The Convex mutation context.
-   * @param key - The unique string key to associate with the polygon.
-   * @param polygon - The polygon geometry with exterior ring.
-   * @param filterKeys - Optional filter keys for querying.
-   * @param sortKey - Optional sort key for ordering results.
-   */
-  async insertPolygon(
-    ctx: MutationCtx,
-    key: string,
+    key: PolygonKey,
     polygon: Polygon,
-    filterKeys?: Record<string, Primitive>,
+    filterKeys?: PolygonFilters,
     sortKey?: number,
   ): Promise<void> {
     await ctx.runMutation(this.component.geometry.insert, {
@@ -505,20 +769,11 @@ export class GeospatialIndex<
     });
   }
 
-  /**
-   * Insert a polyline into the spatial index.
-   *
-   * @param ctx - The Convex mutation context.
-   * @param key - The unique string key to associate with the polyline.
-   * @param polyline - The polyline as an array of points.
-   * @param filterKeys - Optional filter keys for querying.
-   * @param sortKey - Optional sort key for ordering results.
-   */
-  async insertPolyline(
+  async #insertPolyline(
     ctx: MutationCtx,
-    key: string,
-    polyline: Point[],
-    filterKeys?: Record<string, Primitive>,
+    key: PolylineKey,
+    polyline: Polyline,
+    filterKeys?: PolylineFilters,
     sortKey?: number,
   ): Promise<void> {
     await ctx.runMutation(this.component.geometry.insert, {
@@ -530,30 +785,15 @@ export class GeospatialIndex<
     });
   }
 
-  /**
-   * Remove a geometry from the spatial index.
-   *
-   * @param ctx - The Convex mutation context.
-   * @param key - The unique string key of the geometry to remove.
-   */
-  async removeGeometry(ctx: MutationCtx, key: string): Promise<void> {
+  async #removeGeometry(ctx: MutationCtx, key: string): Promise<void> {
     await ctx.runMutation(this.component.geometry.remove, { key });
   }
 
-  /**
-   * Update a geometry's coordinates or metadata.
-   *
-   * @param ctx - The Convex mutation context.
-   * @param key - The unique string key of the geometry to update.
-   * @param coordinates - New coordinates (triggers re-indexing).
-   * @param filterKeys - New filter keys.
-   * @param sortKey - New sort key.
-   */
-  async updateGeometry(
+  async #updatePolygon(
     ctx: MutationCtx,
-    key: string,
-    coordinates?: Polygon | Point[],
-    filterKeys?: Record<string, Primitive>,
+    key: PolygonKey,
+    coordinates?: Polygon,
+    filterKeys?: PolygonFilters,
     sortKey?: number,
   ): Promise<void> {
     await ctx.runMutation(this.component.geometry.update, {
@@ -564,192 +804,355 @@ export class GeospatialIndex<
     });
   }
 
-  /**
-   * Get a geometry by key.
-   *
-   * @param ctx - The Convex query context.
-   * @param key - The unique string key to retrieve.
-   * @returns - The stored geometry or null if not found.
-   */
-  async getGeometry(
-    ctx: QueryCtx,
-    key: string,
-  ): Promise<StoredGeometry | null> {
-    const result = await ctx.runQuery(this.component.geometry.get, { key });
-    if (!result) return null;
-    return {
-      key: result.key,
-      type: result.type,
-      coordinates: result.coordinates,
-      boundingBox: result.boundingBox,
-      filterKeys: result.filterKeys,
-    };
-  }
-
-  /**
-   * Find all polygons that contain a given point.
-   *
-   * @param ctx - The Convex query context.
-   * @param point - The geographic point to check.
-   * @param filterKeys - Optional filter keys to match.
-   * @param limit - Maximum number of results (default 100).
-   * @returns - Object with results array and truncated flag.
-   *
-   * @example
-   * const zones = await geo.containsPoint(ctx, {
-   *   latitude: 40.7128, longitude: -74.0060
-   * }, { type: "delivery-zone" });
-   */
-  async containsPoint(
-    ctx: QueryCtx,
-    point: Point,
-    filterKeys?: Record<string, Primitive>,
-    limit?: number,
-  ): Promise<{ results: StoredPolygon[]; truncated: boolean }> {
-    return await ctx.runQuery(this.component.geometryQuery.containsPoint, {
-      point,
+  async #updatePolyline(
+    ctx: MutationCtx,
+    key: PolylineKey,
+    coordinates?: Polyline,
+    filterKeys?: PolylineFilters,
+    sortKey?: number,
+  ): Promise<void> {
+    await ctx.runMutation(this.component.geometry.update, {
+      key,
+      coordinates,
       filterKeys,
-      limit,
+      sortKey,
     });
   }
 
-  /**
-   * Find all geometries that intersect a given shape.
-   *
-   * @param ctx - The Convex query context.
-   * @param shape - The query shape (rectangle or polygon).
-   * @param filterKeys - Optional filter keys to match.
-   * @param limit - Maximum number of results (default 100).
-   * @returns - Array of intersecting geometries.
-   *
-   * @example
-   * const overlapping = await geo.intersects(ctx, {
-   *   type: "rectangle",
-   *   rectangle: { south: 40, north: 41, west: -75, east: -74 }
-   * });
-   */
-  async intersects(
+  async #getPolygon(
+    ctx: QueryCtx,
+    key: PolygonKey,
+  ): Promise<GeospatialGeometry<"polygon", PolygonKey, PolygonFilters> | null> {
+    const result = await ctx.runQuery(this.component.geometry.get, { key });
+    if (!result) {
+      return null;
+    }
+    return result as NarrowGeospatialGeometry<
+      typeof result,
+      "polygon",
+      PolygonKey,
+      PolygonFilters
+    >;
+  }
+
+  async #getPolyline(
+    ctx: QueryCtx,
+    key: PolylineKey,
+  ): Promise<GeospatialGeometry<
+    "polyline",
+    PolylineKey,
+    PolylineFilters
+  > | null> {
+    const result = await ctx.runQuery(this.component.geometry.get, { key });
+    if (!result) {
+      return null;
+    }
+    return result as NarrowGeospatialGeometry<
+      typeof result,
+      "polyline",
+      PolylineKey,
+      PolylineFilters
+    >;
+  }
+
+  async #containsPoint(
+    ctx: QueryCtx,
+    point: Point,
+    filterKeys?: PolygonFilters,
+    limit?: number,
+  ): Promise<{ results: GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>[]; truncated: boolean }> {
+    const result = await ctx.runQuery(
+      this.component.polygon.query.containsPoint,
+      {
+        point,
+        filterKeys,
+        limit,
+      },
+    );
+    return result as NarrowGeospatialGeometryResult<
+      typeof result,
+      "polygon",
+      PolygonKey,
+      PolygonFilters
+    >;
+  }
+
+  async #polygonIntersects(
     ctx: QueryCtx,
     shape: QueryShape,
-    filterKeys?: Record<string, Primitive>,
+    filterKeys?: PolygonFilters,
     limit?: number,
-  ): Promise<{ results: StoredGeometry[]; truncated: boolean }> {
-    return await ctx.runQuery(this.component.geometryQuery.intersects, {
+  ): Promise<{ results: GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>[]; truncated: boolean }> {
+    const result = await ctx.runQuery(this.component.polygon.query.intersects, {
       shape,
       filterKeys,
       limit,
     });
+    return result as NarrowGeospatialGeometryResult<
+      typeof result,
+      "polygon",
+      PolygonKey,
+      PolygonFilters
+    >;
   }
 
-  /**
-   * Find geometries within a given distance of a point.
-   *
-   * @note Near poles (|latitude| > 85°), precision may be degraded due to
-   *       longitude compression. Use smaller maxDistance values in these areas.
-   *
-   * @param ctx - The Convex query context.
-   * @param point - The geographic point to search around.
-   * @param maxDistance - Maximum distance in meters.
-   * @param filterKeys - Optional filter keys to match.
-   * @param limit - Maximum number of results (default 100).
-   * @returns - Array of geometries with distance, sorted by distance.
-   *
-   * @example
-   * const nearby = await geo.geometriesNear(ctx, {
-   *   latitude: 40.7128, longitude: -74.0060
-   * }, 5000); // 5km radius
-   */
-  async geometriesNear(
+  async #polylineIntersects(
+    ctx: QueryCtx,
+    shape: QueryShape,
+    filterKeys?: PolylineFilters,
+    limit?: number,
+  ): Promise<{
+    results: GeospatialGeometry<"polyline", PolylineKey, PolylineFilters>[];
+    truncated: boolean;
+  }> {
+    const result = await ctx.runQuery(
+      this.component.polyline.query.intersects,
+      {
+        shape,
+        filterKeys,
+        limit,
+      },
+    );
+    return result as NarrowGeospatialGeometryResult<
+      typeof result,
+      "polyline",
+      PolylineKey,
+      PolylineFilters
+    >;
+  }
+
+  async #nearPolygons(
     ctx: QueryCtx,
     point: Point,
     maxDistance: number,
-    filterKeys?: Record<string, Primitive>,
+    filterKeys?: PolygonFilters,
     limit?: number,
-  ): Promise<{ results: GeometryWithDistance[]; truncated: boolean }> {
-    return await ctx.runQuery(this.component.geometryQuery.geometriesNear, {
+  ): Promise<{
+    results: GeometryWithDistance<"polygon", PolygonKey, PolygonFilters>[];
+    truncated: boolean;
+  }> {
+    const result = await ctx.runQuery(this.component.polygon.query.near, {
       point,
       maxDistance,
       filterKeys,
       limit,
     });
+    return result as NarrowGeospatialGeometryResult<
+      typeof result,
+      "polygon",
+      PolygonKey,
+      PolygonFilters
+    >;
   }
 
-  /**
-   * List all stored geometries.
-   *
-   * @param ctx - The Convex query context.
-   * @param limit - Maximum number of results (default 100).
-   * @returns - Array of stored geometries.
-   */
-  async listGeometries(
+  async #nearPolylines(
+    ctx: QueryCtx,
+    point: Point,
+    maxDistance: number,
+    filterKeys?: PolylineFilters,
+    limit?: number,
+  ): Promise<{
+    results: GeometryWithDistance<"polyline", PolylineKey, PolylineFilters>[];
+    truncated: boolean;
+  }> {
+    const result = await ctx.runQuery(this.component.polyline.query.near, {
+      point,
+      maxDistance,
+      filterKeys,
+      limit,
+    });
+    return result as NarrowGeospatialGeometryResult<
+      typeof result,
+      "polyline",
+      PolylineKey,
+      PolylineFilters
+    >;
+  }
+
+  async #listPolygons(
     ctx: QueryCtx,
     limit?: number,
-  ): Promise<StoredGeometry[]> {
-    return await ctx.runQuery(this.component.geometryQuery.list, { limit });
+  ): Promise<GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>[]> {
+    const result = await ctx.runQuery(this.component.polygon.query.list, {
+      limit,
+    });
+    return result as NarrowGeospatialGeometryList<
+      typeof result,
+      "polygon",
+      PolygonKey,
+      PolygonFilters
+    >;
   }
 
-  /**
-   * Calculate the area of a polygon in square meters.
-   *
-   * @param ctx - The Convex query context.
-   * @param polygon - The polygon geometry.
-   * @returns - The area in square meters.
-   */
-  async polygonArea(ctx: QueryCtx, polygon: Polygon): Promise<number> {
-    return await ctx.runQuery(this.component.geometryMeasure.polygonArea, {
+  async #listPolylines(
+    ctx: QueryCtx,
+    limit?: number,
+  ): Promise<GeospatialGeometry<"polyline", PolylineKey, PolylineFilters>[]> {
+    const result = await ctx.runQuery(this.component.polyline.query.list, {
+      limit,
+    });
+    return result as NarrowGeospatialGeometryList<
+      typeof result,
+      "polyline",
+      PolylineKey,
+      PolylineFilters
+    >;
+  }
+
+  async #polygonArea(ctx: QueryCtx, polygon: Polygon): Promise<number> {
+    return await ctx.runQuery(this.component.polygon.measure.area, {
       polygon,
     });
   }
 
-  /**
-   * Calculate the length of a polyline in meters.
-   *
-   * @param ctx - The Convex query context.
-   * @param polyline - The polyline as an array of points.
-   * @returns - The length in meters.
-   */
-  async polylineLength(ctx: QueryCtx, polyline: Point[]): Promise<number> {
-    return await ctx.runQuery(this.component.geometryMeasure.polylineLength, {
+  async #polylineLength(ctx: QueryCtx, polyline: Polyline): Promise<number> {
+    return await ctx.runQuery(this.component.polyline.measure.length, {
+      polyline,
+    });
+  }
+
+  async #polygonPerimeter(ctx: QueryCtx, polygon: Polygon): Promise<number> {
+    return await ctx.runQuery(this.component.polygon.measure.perimeter, {
+      polygon,
+    });
+  }
+
+  async #polygonCentroid(ctx: QueryCtx, polygon: Polygon): Promise<Point> {
+    return await ctx.runQuery(this.component.polygon.measure.centroid, {
+      polygon,
+    });
+  }
+
+  async #polylineCentroid(ctx: QueryCtx, polyline: Polyline): Promise<Point> {
+    return await ctx.runQuery(this.component.polyline.measure.centroid, {
       polyline,
     });
   }
 
   /**
-   * Calculate the perimeter of a polygon in meters.
+   * Insert a new key-coordinate pair into the index.
+   *
+   * @deprecated Use `points.insert(ctx, key, coordinates, filterKeys, sortKey)` instead.
+   *
+   * @param ctx         - The Convex mutation context.
+   * @param key         - The unique string key to associate with the coordinate.
+   * @param coordinates - The geographic coordinate `{ latitude, longitude }`.
+   * @param filterKeys  - The filter keys to associate with the key.
+   * @param sortKey     - Sort key for ordering results, defaults to a random number.
+   */
+  async insert(
+    ctx: MutationCtx,
+    key: PointKey,
+    coordinates: Point,
+    filterKeys: PointFilters,
+    sortKey?: number,
+  ): Promise<void> {
+    return this.#insertPoint(ctx, key, coordinates, filterKeys, sortKey);
+  }
+
+  /**
+   * Retrieve the document associated with a specific key.
+   *
+   * @deprecated Use `points.get(ctx, key)` instead.
    *
    * @param ctx - The Convex query context.
-   * @param polygon - The polygon geometry.
-   * @returns - The perimeter in meters.
+   * @param key - The unique string key to look up.
+   * @returns The document, or `null` if the key is not found.
    */
-  async polygonPerimeter(ctx: QueryCtx, polygon: Polygon): Promise<number> {
-    return await ctx.runQuery(this.component.geometryMeasure.polygonPerimeter, {
-      polygon,
+  async get(
+    ctx: QueryCtx,
+    key: PointKey,
+  ): Promise<GeospatialDocument<PointKey, PointFilters> | null> {
+    return this.#getPoint(ctx, key);
+  }
+
+  /**
+   * Remove a key-coordinate pair from the index.
+   *
+   * @deprecated Use `points.remove(ctx, key)` instead.
+   *
+   * @param ctx - The Convex mutation context.
+   * @param key - The unique string key to remove.
+   * @returns `true` if the key was found and removed, `false` otherwise.
+   */
+  async remove(ctx: MutationCtx, key: PointKey): Promise<boolean> {
+    return this.#removePoint(ctx, key);
+  }
+
+  /**
+   * Query for keys within a given shape.
+   *
+   * @deprecated Use `points.query(ctx, query, cursor)` instead.
+   *
+   * @param ctx    - The Convex query context.
+   * @param query  - The query to execute.
+   * @param cursor - Continuation cursor for paginating through results.
+   * @returns Matching key-coordinate pairs and an optional continuation cursor.
+   */
+  async query(
+    ctx: QueryCtx,
+    query: GeospatialQuery<GeospatialDocument<PointKey, PointFilters>>,
+    cursor: string | undefined = undefined,
+  ): Promise<{
+    results: { key: PointKey; coordinates: Point }[];
+    nextCursor?: string;
+  }> {
+    return this.#queryPoints(ctx, query, cursor);
+  }
+
+  /**
+   * Find the nearest points to a given location.
+   *
+   * @deprecated Use `points.nearest(ctx, { point, limit, maxDistance, filter })` instead.
+   *
+   * @param ctx     - The Convex query context.
+   * @param options - Query parameters including point, limit, and optional maxDistance.
+   * @returns Key-coordinate pairs with their distance from the query point in meters.
+   */
+  async nearest(
+    ctx: QueryCtx,
+    options: NearestQueryOptions<GeospatialDocument<PointKey, PointFilters>>,
+  ): Promise<{ key: PointKey; coordinates: Point; distance: number }[]> {
+    return this.#nearestPoints(ctx, options);
+  }
+
+  /**
+   * Find the nearest points to a given location.
+   *
+   * @deprecated Use `points.nearest(ctx, { point, limit, maxDistance, filter })` instead.
+   */
+  async queryNearest(
+    ctx: QueryCtx,
+    point: Point,
+    maxResults: number,
+    maxDistance?: number,
+  ): Promise<{ key: PointKey; coordinates: Point; distance: number }[]> {
+    return this.#nearestPoints(ctx, {
+      point,
+      limit: maxResults,
+      maxDistance,
     });
   }
 
   /**
-   * Calculate the centroid of a polygon.
+   * Debug the S2 cells that would be queried for a given rectangle.
    *
-   * @param ctx - The Convex query context.
-   * @param polygon - The polygon geometry.
-   * @returns - The centroid point.
+   * @param ctx           - The Convex query context.
+   * @param rectangle     - The geographic area to query.
+   * @param maxResolution - The maximum cell level to use when querying.
+   * @returns S2 cell tokens and their corner vertices.
    */
-  async polygonCentroid(ctx: QueryCtx, polygon: Polygon): Promise<Point> {
-    return await ctx.runQuery(this.component.geometryMeasure.polygonCentroid, {
-      polygon,
-    });
-  }
-
-  /**
-   * Calculate the centroid of a polyline.
-   *
-   * @param ctx - The Convex query context.
-   * @param polyline - The polyline as an array of points.
-   * @returns - The centroid point.
-   */
-  async polylineCentroid(ctx: QueryCtx, polyline: Point[]): Promise<Point> {
-    return await ctx.runQuery(this.component.geometryMeasure.polylineCentroid, {
-      polyline,
+  async debugCells(
+    ctx: QueryCtx,
+    rectangle: Rectangle,
+    maxResolution?: number,
+  ): Promise<{ token: string; vertices: Point[] }[]> {
+    return await ctx.runQuery(this.component.query.debugCells, {
+      rectangle,
+      minLevel: this.minLevel,
+      maxLevel: maxResolution ?? this.maxLevel,
+      levelMod: this.levelMod,
+      maxCells: this.maxCells,
     });
   }
 }
@@ -784,3 +1187,57 @@ export type FilterObject<Doc extends GeospatialDocument> = {
 }[keyof Doc["filterKeys"] & string];
 
 type ExtractArray<T> = T extends (infer U)[] ? U : T;
+
+type NarrowGeospatialDocument<
+  T extends { key: string; filterKeys?: Record<string, unknown> },
+  Key extends string,
+  Filters extends GeospatialFilters = GeospatialFilters,
+> = Omit<T, "key" | "filterKeys"> & { key: Key; filterKeys: Filters };
+
+type NarrowGeospatialGeometry<
+  T extends {
+    key: string;
+    type: "polygon" | "polyline";
+    filterKeys?: Record<string, unknown>;
+  },
+  Type extends "polygon" | "polyline",
+  Key extends string,
+  Filters extends GeospatialFilters = GeospatialFilters,
+> = Omit<T, "key" | "type" | "filterKeys" | "coordinates"> & {
+  key: Key;
+  type: Type;
+  coordinates: Type extends "polygon"
+    ? Polygon
+    : Type extends "polyline"
+      ? Polyline
+      : never;
+  filterKeys?: Filters;
+};
+
+type NarrowGeospatialGeometryResult<
+  T extends {
+    results: readonly {
+      key: string;
+      type: "polygon" | "polyline";
+      filterKeys?: Record<string, unknown>;
+    }[];
+    truncated: boolean;
+  },
+  Type extends "polygon" | "polyline",
+  Key extends string,
+  Filters extends GeospatialFilters = GeospatialFilters,
+> = {
+  results: NarrowGeospatialGeometry<T["results"][number], Type, Key, Filters>[];
+  truncated: boolean;
+};
+
+type NarrowGeospatialGeometryList<
+  T extends readonly {
+    key: string;
+    type: "polygon" | "polyline";
+    filterKeys?: Record<string, unknown>;
+  }[],
+  Type extends "polygon" | "polyline",
+  Key extends string,
+  Filters extends GeospatialFilters = GeospatialFilters,
+> = NarrowGeospatialGeometry<T[number], Type, Key, Filters>[];

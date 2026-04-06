@@ -35,7 +35,7 @@ describe("Geometry Measurements", () => {
     test("calculates area of small polygon", async () => {
       const t = convexTest(schema, modules);
 
-      const area = await t.query(api.geometryMeasure.polygonArea, {
+      const area = await t.query(api.polygon.measure.area, {
         polygon: NYC_SQUARE,
       });
 
@@ -48,7 +48,7 @@ describe("Geometry Measurements", () => {
     test("calculates area of large polygon", async () => {
       const t = convexTest(schema, modules);
 
-      const area = await t.query(api.geometryMeasure.polygonArea, {
+      const area = await t.query(api.polygon.measure.area, {
         polygon: TEXAS_POLYGON,
       });
 
@@ -62,7 +62,7 @@ describe("Geometry Measurements", () => {
     test("calculates length of polyline", async () => {
       const t = convexTest(schema, modules);
 
-      const length = await t.query(api.geometryMeasure.polylineLength, {
+      const length = await t.query(api.polyline.measure.length, {
         polyline: MANHATTAN_ROUTE,
       });
 
@@ -74,7 +74,7 @@ describe("Geometry Measurements", () => {
     test("calculates length of short segment", async () => {
       const t = convexTest(schema, modules);
 
-      const length = await t.query(api.geometryMeasure.polylineLength, {
+      const length = await t.query(api.polyline.measure.length, {
         polyline: [
           { latitude: 0, longitude: 0 },
           { latitude: 0, longitude: 1 },
@@ -91,7 +91,7 @@ describe("Geometry Measurements", () => {
     test("calculates perimeter of polygon", async () => {
       const t = convexTest(schema, modules);
 
-      const perimeter = await t.query(api.geometryMeasure.polygonPerimeter, {
+      const perimeter = await t.query(api.polygon.measure.perimeter, {
         polygon: NYC_SQUARE,
       });
 
@@ -105,7 +105,7 @@ describe("Geometry Measurements", () => {
     test("calculates centroid of symmetric polygon", async () => {
       const t = convexTest(schema, modules);
 
-      const centroid = await t.query(api.geometryMeasure.polygonCentroid, {
+      const centroid = await t.query(api.polygon.measure.centroid, {
         polygon: NYC_SQUARE,
       });
 
@@ -117,7 +117,7 @@ describe("Geometry Measurements", () => {
     test("calculates centroid of triangle", async () => {
       const t = convexTest(schema, modules);
 
-      const centroid = await t.query(api.geometryMeasure.polygonCentroid, {
+      const centroid = await t.query(api.polygon.measure.centroid, {
         polygon: {
           exterior: [
             { latitude: 0, longitude: 0 },
@@ -137,7 +137,7 @@ describe("Geometry Measurements", () => {
     test("calculates centroid of polyline", async () => {
       const t = convexTest(schema, modules);
 
-      const centroid = await t.query(api.geometryMeasure.polylineCentroid, {
+      const centroid = await t.query(api.polyline.measure.centroid, {
         polyline: MANHATTAN_ROUTE,
       });
 
@@ -151,7 +151,7 @@ describe("Geometry Measurements", () => {
     test("calculates centroid of straight line", async () => {
       const t = convexTest(schema, modules);
 
-      const centroid = await t.query(api.geometryMeasure.polylineCentroid, {
+      const centroid = await t.query(api.polyline.measure.centroid, {
         polyline: [
           { latitude: 0, longitude: 0 },
           { latitude: 0, longitude: 10 },
