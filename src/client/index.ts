@@ -109,6 +109,82 @@ export interface GeospatialIndexOptions {
   logLevel?: LogLevel;
 }
 
+/**
+ * Namespace for point-based geospatial operations.
+ * Access via `geospatial.points`.
+ */
+export interface PointsNamespace<
+  PointKey extends string,
+  PointFilters extends GeospatialFilters,
+> {
+  /**
+   * Insert a new key-coordinate pair into the index.
+   *
+   * @param ctx - The Convex mutation context.
+   * @param key - The unique string key to associate with the coordinate.
+   * @param coordinates - The geographic coordinate `{ latitude, longitude }` to associate with the key.
+   * @param filterKeys - The filter keys to associate with the key.
+   * @param sortKey - The sort key to associate with the key, defaults to a randomly generated number.
+   */
+  insert(
+    ctx: MutationCtx,
+    key: PointKey,
+    coordinates: Point,
+    filterKeys: PointFilters,
+    sortKey?: number,
+  ): Promise<void>;
+
+  /**
+   * Retrieve the coordinate associated with a specific key.
+   *
+   * @param ctx - The Convex query context.
+   * @param key - The unique string key to retrieve the coordinate for.
+   * @returns - The geographic coordinate `{ latitude, longitude }` associated with the key, or `null` if the key is not found.
+   */
+  get(
+    ctx: QueryCtx,
+    key: PointKey,
+  ): Promise<GeospatialDocument<PointKey, PointFilters> | null>;
+
+  /**
+   * Remove a key-coordinate pair from the index.
+   *
+   * @param ctx - The Convex mutation context.
+   * @param key - The unique string key to remove from the index.
+   * @returns - `true` if the key was found and removed, `false` otherwise.
+   */
+  remove(ctx: MutationCtx, key: PointKey): Promise<boolean>;
+
+  /**
+   * Query for keys within a given shape.
+   *
+   * @param ctx - The Convex query context.
+   * @param query - The query to execute.
+   * @param cursor - The continuation cursor to use for paginating through results.
+   * @returns - An array of objects with the key-coordinate pairs and optionally a continuation cursor.
+   */
+  query(
+    ctx: QueryCtx,
+    query: GeospatialQuery<GeospatialDocument<PointKey, PointFilters>>,
+    cursor?: string,
+  ): Promise<{
+    results: { key: PointKey; coordinates: Point }[];
+    nextCursor?: string;
+  }>;
+
+  /**
+   * Query for the nearest points to a given point.
+   *
+   * @param ctx - The Convex query context.
+   * @param options - The nearest query parameters.
+   * @returns - An array of objects with the key-coordinate pairs and their distance from the query point in meters.
+   */
+  nearest(
+    ctx: QueryCtx,
+    options: NearestQueryOptions<GeospatialDocument<PointKey, PointFilters>>,
+  ): Promise<{ key: PointKey; coordinates: Point; distance: number }[]>;
+}
+
 export class GeospatialIndex<
   PointKey extends string = string,
   PointFilters extends GeospatialFilters = GeospatialFilters,
@@ -123,6 +199,15 @@ export class GeospatialIndex<
   maxLevel: number;
   levelMod: number;
   maxCells: number;
+
+  /**
+   * Namespace for point-based geospatial operations such as `insert`, `get`,
+   * `remove`, `query`, `nearest`, and `queryNearest`.
+   *
+   * @example
+   * await geospatial.points.insert(ctx, id, point, { name });
+   */
+  readonly points: PointsNamespace<PointKey, PointFilters>;
 
   /**
    * Create a new geospatial index, powered by S2 and Convex. This index maps unique string keys to geographic coordinates
@@ -150,24 +235,24 @@ export class GeospatialIndex<
     this.maxLevel = options?.maxLevel ?? DEFAULT_MAX_LEVEL;
     this.levelMod = options?.levelMod ?? DEFAULT_LEVEL_MOD;
     this.maxCells = options?.maxCells ?? DEFAULT_MAX_CELLS;
+
+    // Bind `this` so the namespace methods have access to the instance
+    this.points = {
+      insert: this.#insert.bind(this),
+      get: this.#get.bind(this),
+      remove: this.#remove.bind(this),
+      query: this.#query.bind(this),
+      nearest: this.#nearest.bind(this),
+    };
   }
 
-  /**
-   * Insert a new key-coordinate pair into the index.
-   *
-   * @param ctx - The Convex mutation context.
-   * @param key - The unique string key to associate with the coordinate.
-   * @param coordinates - The geographic coordinate `{ latitude, longitude }` to associate with the key.
-   * @param filterKeys - The filter keys to associate with the key.
-   * @param sortKey - The sort key to associate with the key, defaults to a randomly generated number.
-   */
-  async insert(
+  async #insert(
     ctx: MutationCtx,
     key: PointKey,
     coordinates: Point,
     filterKeys: PointFilters,
     sortKey?: number,
-  ) {
+  ): Promise<void> {
     await ctx.runMutation(this.component.document.insert, {
       document: {
         key,
@@ -182,14 +267,7 @@ export class GeospatialIndex<
     });
   }
 
-  /**
-   * Retrieve the coordinate associated with a specific key.
-   *
-   * @param ctx - The Convex query context.
-   * @param key - The unique string key to retrieve the coordinate for.
-   * @returns - The geographic coordinate `{ latitude, longitude }` associated with the key, or `null` if the key is not found.
-   */
-  async get(
+  async #get(
     ctx: QueryCtx,
     key: PointKey,
   ): Promise<GeospatialDocument<PointKey, PointFilters> | null> {
@@ -197,14 +275,7 @@ export class GeospatialIndex<
     return result as GeospatialDocument<PointKey, PointFilters> | null;
   }
 
-  /**
-   * Remove a key-coordinate pair from the index.
-   *
-   * @param ctx - The Convex mutation context.
-   * @param key - The unique string key to remove from the index.
-   * @returns - `true` if the key was found and removed, `false` otherwise.
-   */
-  async remove(ctx: MutationCtx, key: PointKey): Promise<boolean> {
+  async #remove(ctx: MutationCtx, key: PointKey): Promise<boolean> {
     return await ctx.runMutation(this.component.document.remove, {
       key,
       minLevel: this.minLevel,
@@ -214,19 +285,14 @@ export class GeospatialIndex<
     });
   }
 
-  /**
-   * Query for keys within a given shape.
-   *
-   * @param ctx - The Convex query context.
-   * @param query - The query to execute.
-   * @param cursor - The continuation cursor to use for paginating through results.
-   * @returns - An array of objects with the key-coordinate pairs and optionally a continuation cursor.
-   */
-  async query(
+  async #query(
     ctx: QueryCtx,
     query: GeospatialQuery<GeospatialDocument<PointKey, PointFilters>>,
     cursor: string | undefined = undefined,
-  ) {
+  ): Promise<{
+    results: { key: PointKey; coordinates: Point }[];
+    nextCursor?: string;
+  }> {
     const filterBuilder = new FilterBuilderImpl<
       GeospatialDocument<PointKey, PointFilters>
     >();
@@ -253,14 +319,7 @@ export class GeospatialIndex<
     };
   }
 
-  /**
-   * Query for the nearest points to a given point.
-   *
-   * @param ctx - The Convex query context.
-   * @param options - The nearest query parameters.
-   * @returns - An array of objects with the key-coordinate pairs and their distance from the query point in meters.
-   */
-  async nearest(
+  async #nearest(
     ctx: QueryCtx,
     {
       point,
@@ -268,7 +327,7 @@ export class GeospatialIndex<
       maxDistance,
       filter,
     }: NearestQueryOptions<GeospatialDocument<PointKey, PointFilters>>,
-  ) {
+  ): Promise<{ key: PointKey; coordinates: Point; distance: number }[]> {
     const filterBuilder = new FilterBuilderImpl<
       GeospatialDocument<PointKey, PointFilters>
     >();
@@ -291,6 +350,93 @@ export class GeospatialIndex<
   }
 
   /**
+   * Insert a new key-coordinate pair into the index.
+   *
+   * @deprecated Use `points.insert(ctx, key, coordinates, filterKeys, sortKey)` instead.
+   *
+   * @param ctx - The Convex mutation context.
+   * @param key - The unique string key to associate with the coordinate.
+   * @param coordinates - The geographic coordinate `{ latitude, longitude }` to associate with the key.
+   * @param filterKeys - The filter keys to associate with the key.
+   * @param sortKey - The sort key to associate with the key, defaults to a randomly generated number.
+   */
+  async insert(
+    ctx: MutationCtx,
+    key: PointKey,
+    coordinates: Point,
+    filterKeys: PointFilters,
+    sortKey?: number,
+  ): Promise<void> {
+    return this.#insert(ctx, key, coordinates, filterKeys, sortKey);
+  }
+
+  /**
+   * Retrieve the coordinate associated with a specific key.
+   *
+   * @deprecated Use `points.get(ctx, key)` instead.
+   *
+   * @param ctx - The Convex query context.
+   * @param key - The unique string key to retrieve the coordinate for.
+   * @returns - The geographic coordinate `{ latitude, longitude }` associated with the key, or `null` if the key is not found.
+   */
+  async get(
+    ctx: QueryCtx,
+    key: PointKey,
+  ): Promise<GeospatialDocument<PointKey, PointFilters> | null> {
+    return this.#get(ctx, key);
+  }
+
+  /**
+   * Remove a key-coordinate pair from the index.
+   *
+   * @deprecated Use `points.remove(ctx, key)` instead.
+   *
+   * @param ctx - The Convex mutation context.
+   * @param key - The unique string key to remove from the index.
+   * @returns - `true` if the key was found and removed, `false` otherwise.
+   */
+  async remove(ctx: MutationCtx, key: PointKey): Promise<boolean> {
+    return this.#remove(ctx, key);
+  }
+
+  /**
+   * Query for keys within a given shape.
+   *
+   * @deprecated Use `points.query(ctx, query, cursor)` instead.
+   *
+   * @param ctx - The Convex query context.
+   * @param query - The query to execute.
+   * @param cursor - The continuation cursor to use for paginating through results.
+   * @returns - An array of objects with the key-coordinate pairs and optionally a continuation cursor.
+   */
+  async query(
+    ctx: QueryCtx,
+    query: GeospatialQuery<GeospatialDocument<PointKey, PointFilters>>,
+    cursor: string | undefined = undefined,
+  ): Promise<{
+    results: { key: PointKey; coordinates: Point }[];
+    nextCursor?: string;
+  }> {
+    return this.#query(ctx, query, cursor);
+  }
+
+  /**
+   * Query for the nearest points to a given point.
+   *
+   * @deprecated Use `points.nearest(ctx, { point, limit, maxDistance, filter })` instead.
+   *
+   * @param ctx - The Convex query context.
+   * @param options - The nearest query parameters.
+   * @returns - An array of objects with the key-coordinate pairs and their distance from the query point in meters.
+   */
+  async nearest(
+    ctx: QueryCtx,
+    options: NearestQueryOptions<GeospatialDocument<PointKey, PointFilters>>,
+  ): Promise<{ key: PointKey; coordinates: Point; distance: number }[]> {
+    return this.#nearest(ctx, options);
+  }
+
+  /**
    * Query for the nearest points to a given point.
    *
    * @deprecated Use `nearest(ctx, { point, limit, maxDistance, filter })` instead.
@@ -300,8 +446,8 @@ export class GeospatialIndex<
     point: Point,
     maxResults: number,
     maxDistance?: number,
-  ) {
-    return this.nearest(ctx, {
+  ): Promise<{ key: PointKey; coordinates: Point; distance: number }[]> {
+    return this.#nearest(ctx, {
       point,
       limit: maxResults,
       maxDistance,
