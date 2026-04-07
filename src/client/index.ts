@@ -112,10 +112,6 @@ export interface GeospatialIndexCore extends Required<GeospatialIndexOptions> {
   readonly component: ComponentApi;
 }
 
-/**
- * Namespace for point-based geospatial operations.
- * Access via `geospatial.points`.
- */
 export class PointsNamespace<
   PointKey extends string,
   PointFilters extends GeospatialFilters,
@@ -266,10 +262,6 @@ export class PointsNamespace<
   }
 }
 
-/**
- * Namespace for polygon-based geospatial operations.
- * Access via `geospatial.polygons`.
- */
 export class PolygonsNamespace<
   PolygonKey extends string,
   PolygonFilters extends GeospatialFilters,
@@ -540,10 +532,6 @@ export class PolygonsNamespace<
   }
 }
 
-/**
- * Class for polyline-based geospatial operations.
- * Access via `geospatial.polylines`.
- */
 export class PolylinesNamespace<
   PolylineKey extends string,
   PolylineFilters extends GeospatialFilters,
@@ -779,30 +767,17 @@ export class GeospatialIndex<
   readonly maxCells: number;
 
   /**
-   * Namespace for point-based geospatial operations such as `insert`, `get`,
-   * `remove`, `query`, and `nearest`.
-   *
-   * @example
-   * await geospatial.points.insert(ctx, id, point, { name });
+   * Point-based geospatial operations.
    */
   readonly points: PointsNamespace<PointKey, PointFilters>;
 
   /**
-   * Namespace for polygon-based geospatial operations such as `insert`, `get`,
-   * `remove`, `update`, `containsPoint`, `intersects`, `near`, `list`,
-   * `area`, `perimeter`, and `centroid`.
-   *
-   * @example
-   * await geospatial.polygons.insert(ctx, id, polygon, { name });
+   * Polygon-based geospatial operations.
    */
   readonly polygons: PolygonsNamespace<PolygonKey, PolygonFilters>;
 
   /**
-   * Namespace for polyline-based geospatial operations such as `insert`, `get`,
-   * `remove`, `update`, `intersects`, `near`, `list`, `length`, and `centroid`.
-   *
-   * @example
-   * await geospatial.polylines.insert(ctx, id, polyline, { name });
+   * Polyline-based geospatial operations.
    */
   readonly polylines: PolylinesNamespace<PolylineKey, PolylineFilters>;
 
