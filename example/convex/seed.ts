@@ -114,7 +114,7 @@ export const addBatch = internalMutation({
         Math.random() * (longitudeRange[1] - longitudeRange[0]) +
         longitudeRange[0];
       const point = { latitude, longitude };
-      await geospatial.insert(ctx, id, point, { name });
+      await geospatial.points.insert(ctx, id, point, { name });
     }
   },
 });

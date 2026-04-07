@@ -78,13 +78,6 @@ export type NearestQueryOptions<
   filter?: NonNullable<GeospatialQuery<Doc>["filter"]>;
 };
 
-/**
- * @deprecated Use `NearestQueryOptions` with `nearest` instead.
- */
-export type QueryNearestOptions<
-  Doc extends GeospatialDocument = GeospatialDocument,
-> = Pick<NearestQueryOptions<Doc>, "maxDistance" | "filter">;
-
 export interface GeospatialIndexOptions {
   /**
    * The minimum S2 cell level to use when querying. Defaults to 4.
@@ -825,111 +818,6 @@ export class GeospatialIndex<
     this.points = new PointsNamespace<PointKey, PointFilters>(core);
     this.polygons = new PolygonsNamespace<PolygonKey, PolygonFilters>(core);
     this.polylines = new PolylinesNamespace<PolylineKey, PolylineFilters>(core);
-  }
-
-  /**
-   * Insert a new key-coordinate pair into the index.
-   *
-   * @deprecated Use `points.insert(ctx, key, coordinates, filterKeys, sortKey)` instead.
-   *
-   * @param ctx         - The Convex mutation context.
-   * @param key         - The unique string key to associate with the coordinate.
-   * @param coordinates - The geographic coordinate `{ latitude, longitude }`.
-   * @param filterKeys  - The filter keys to associate with the key.
-   * @param sortKey     - Sort key for ordering results, defaults to a random number.
-   */
-  async insert(
-    ctx: MutationCtx,
-    key: PointKey,
-    coordinates: Point,
-    filterKeys: PointFilters,
-    sortKey?: number,
-  ): Promise<void> {
-    return this.points.insert(ctx, key, coordinates, filterKeys, sortKey);
-  }
-
-  /**
-   * Retrieve the document associated with a specific key.
-   *
-   * @deprecated Use `points.get(ctx, key)` instead.
-   *
-   * @param ctx - The Convex query context.
-   * @param key - The unique string key to look up.
-   * @returns The document, or `null` if the key is not found.
-   */
-  async get(
-    ctx: QueryCtx,
-    key: PointKey,
-  ): Promise<GeospatialDocument<PointKey, PointFilters> | null> {
-    return this.points.get(ctx, key);
-  }
-
-  /**
-   * Remove a key-coordinate pair from the index.
-   *
-   * @deprecated Use `points.remove(ctx, key)` instead.
-   *
-   * @param ctx - The Convex mutation context.
-   * @param key - The unique string key to remove.
-   * @returns `true` if the key was found and removed, `false` otherwise.
-   */
-  async remove(ctx: MutationCtx, key: PointKey): Promise<boolean> {
-    return this.points.remove(ctx, key);
-  }
-
-  /**
-   * Query for keys within a given shape.
-   *
-   * @deprecated Use `points.query(ctx, query, cursor)` instead.
-   *
-   * @param ctx    - The Convex query context.
-   * @param query  - The query to execute.
-   * @param cursor - Continuation cursor for paginating through results.
-   * @returns Matching key-coordinate pairs and an optional continuation cursor.
-   */
-  async query(
-    ctx: QueryCtx,
-    query: GeospatialQuery<GeospatialDocument<PointKey, PointFilters>>,
-    cursor: string | undefined = undefined,
-  ): Promise<{
-    results: { key: PointKey; coordinates: Point }[];
-    nextCursor?: string;
-  }> {
-    return this.points.query(ctx, query, cursor);
-  }
-
-  /**
-   * Find the nearest points to a given location.
-   *
-   * @deprecated Use `points.nearest(ctx, { point, limit, maxDistance, filter })` instead.
-   *
-   * @param ctx     - The Convex query context.
-   * @param options - Query parameters including point, limit, and optional maxDistance.
-   * @returns Key-coordinate pairs with their distance from the query point in meters.
-   */
-  async nearest(
-    ctx: QueryCtx,
-    options: NearestQueryOptions<GeospatialDocument<PointKey, PointFilters>>,
-  ): Promise<{ key: PointKey; coordinates: Point; distance: number }[]> {
-    return this.points.nearest(ctx, options);
-  }
-
-  /**
-   * Find the nearest points to a given location.
-   *
-   * @deprecated Use `points.nearest(ctx, { point, limit, maxDistance, filter })` instead.
-   */
-  async queryNearest(
-    ctx: QueryCtx,
-    point: Point,
-    maxResults: number,
-    maxDistance?: number,
-  ): Promise<{ key: PointKey; coordinates: Point; distance: number }[]> {
-    return this.points.nearest(ctx, {
-      point,
-      limit: maxResults,
-      maxDistance,
-    });
   }
 
   /**

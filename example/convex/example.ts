@@ -21,7 +21,7 @@ export const addPoint = mutation({
     const id = await ctx.db.insert("locations", {
       name,
     });
-    await geospatial.insert(ctx, id, point, { name });
+    await geospatial.points.insert(ctx, id, point, { name });
   },
 });
 
@@ -32,7 +32,7 @@ export const nearestPoints = query({
     maxDistance: v.optional(v.number()),
   },
   handler: async (ctx, { point, maxRows, maxDistance }) => {
-    const results = await geospatial.nearest(ctx, {
+    const results = await geospatial.points.nearest(ctx, {
       point,
       limit: maxRows,
       maxDistance,
@@ -75,7 +75,7 @@ export const search = query({
     nextCursor: v.optional(v.string()),
   }),
   async handler(ctx, args) {
-    const { results, nextCursor } = await geospatial.query(
+    const { results, nextCursor } = await geospatial.points.query(
       ctx,
       {
         shape: {
@@ -134,7 +134,7 @@ export const searchPolygon = query({
     if (!args.polygon.exterior || args.polygon.exterior.length < 3) {
       throw new Error("Polygon must have at least 3 exterior points");
     }
-    const { results, nextCursor } = await geospatial.query(
+    const { results, nextCursor } = await geospatial.points.query(
       ctx,
       {
         shape: {
@@ -197,7 +197,7 @@ export const searchPolyline = query({
     if (!Number.isFinite(args.bufferMeters) || args.bufferMeters < 0) {
       throw new Error("bufferMeters must be a finite non-negative number");
     }
-    const { results, nextCursor } = await geospatial.query(
+    const { results, nextCursor } = await geospatial.points.query(
       ctx,
       {
         shape: {
