@@ -39,43 +39,71 @@ export const DEFAULT_MAX_CELLS = 8;
 export const DEFAULT_LEVEL_MOD = 2;
 
 export type GeospatialFilters = Record<string, Primitive | Primitive[]>;
-export type GeospatialDocument<
+export type PointGeometry<
   Key extends string = string,
   Filters extends GeospatialFilters = GeospatialFilters,
 > = {
   key: Key;
+  type: "point";
   coordinates: Point;
   filterKeys: Filters;
   sortKey: number;
 };
 
-export type GeospatialGeometry<
-  Type extends "polygon" | "polyline" = "polygon" | "polyline",
+export type PolygonGeometry<
   Key extends string = string,
   Filters extends GeospatialFilters = GeospatialFilters,
 > = {
   key: Key;
-  type: Type;
-  coordinates: Type extends "polygon"
-    ? Polygon
-    : Type extends "polyline"
-      ? Polyline
-      : Polygon | Polyline;
+  type: "polygon";
+  coordinates: Polygon;
   boundingBox: Rectangle;
   filterKeys?: Filters;
 };
+
+export type PolylineGeometry<
+  Key extends string = string,
+  Filters extends GeospatialFilters = GeospatialFilters,
+> = {
+  key: Key;
+  type: "polyline";
+  coordinates: Polyline;
+  boundingBox: Rectangle;
+  filterKeys?: Filters;
+};
+
+export type GeospatialGeometry<
+  Type extends "point" | "polygon" | "polyline" =
+    | "point"
+    | "polygon"
+    | "polyline",
+  Key extends string = string,
+  Filters extends GeospatialFilters = GeospatialFilters,
+> = Type extends "point"
+  ? PointGeometry<Key, Filters>
+  : Type extends "polygon"
+    ? PolygonGeometry<Key, Filters>
+    : Type extends "polyline"
+      ? PolylineGeometry<Key, Filters>
+      :
+          | PointGeometry<Key, Filters>
+          | PolygonGeometry<Key, Filters>
+          | PolylineGeometry<Key, Filters>;
 
 export type WithDistance<Type> = Type & {
   distance: number;
 };
 
 export type NearestQueryOptions<
-  Doc extends GeospatialDocument = GeospatialDocument,
+  Key extends string = string,
+  Filters extends GeospatialFilters = GeospatialFilters,
 > = {
   point: Point;
   limit: number;
   maxDistance?: number;
-  filter?: NonNullable<GeospatialQuery<Doc>["filter"]>;
+  filter?: NonNullable<
+    GeospatialQuery<GeospatialGeometry<"point", Key, Filters>>["filter"]
+  >;
 };
 
 export interface GeospatialIndexOptions {
@@ -151,12 +179,12 @@ export class PointsNamespace<
   async get(
     ctx: QueryCtx,
     key: PointKey,
-  ): Promise<GeospatialDocument<PointKey, PointFilters> | null> {
+  ): Promise<GeospatialGeometry<"point", PointKey, PointFilters> | null> {
     const result = await ctx.runQuery(this.core.component.document.get, {
       key,
     });
     return result as
-      | (typeof result & GeospatialDocument<PointKey, PointFilters>)
+      | (typeof result & GeospatialGeometry<"point", PointKey, PointFilters>)
       | null;
   }
 
@@ -187,14 +215,14 @@ export class PointsNamespace<
    */
   async query(
     ctx: QueryCtx,
-    query: GeospatialQuery<GeospatialDocument<PointKey, PointFilters>>,
+    query: GeospatialQuery<GeospatialGeometry<"point", PointKey, PointFilters>>,
     cursor?: string,
   ): Promise<{
     results: { key: PointKey; coordinates: Point }[];
     nextCursor?: string;
   }> {
     const filterBuilder = new FilterBuilderImpl<
-      GeospatialDocument<PointKey, PointFilters>
+      GeospatialGeometry<"point", PointKey, PointFilters>
     >();
     if (query.filter) {
       query.filter(filterBuilder);
@@ -227,12 +255,15 @@ export class PointsNamespace<
    * @param options - Query parameters including point, limit, and optional maxDistance.
    * @returns Key-coordinate pairs with their distance from the query point in meters.
    */
+
   async nearest(
     ctx: QueryCtx,
-    options: NearestQueryOptions<GeospatialDocument<PointKey, PointFilters>>,
-  ): Promise<{ key: PointKey; coordinates: Point; distance: number }[]> {
+    options: NearestQueryOptions<PointKey, PointFilters>,
+  ): Promise<
+    WithDistance<GeospatialGeometry<"point", PointKey, PointFilters>>[]
+  > {
     const filterBuilder = new FilterBuilderImpl<
-      GeospatialDocument<PointKey, PointFilters>
+      GeospatialGeometry<"point", PointKey, PointFilters>
     >();
     if (options.filter) {
       options.filter(filterBuilder);
@@ -251,7 +282,7 @@ export class PointsNamespace<
     });
 
     return result as typeof result &
-      { key: PointKey; coordinates: Point; distance: number }[];
+      WithDistance<GeospatialGeometry<"point", PointKey, PointFilters>>[];
   }
 }
 
@@ -843,11 +874,6 @@ export class GeospatialIndex<
   }
 }
 
-export type FilterValue<
-  Doc extends GeospatialDocument,
-  FieldName extends keyof Doc["filterKeys"],
-> = ExtractArray<Doc["filterKeys"][FieldName]>;
-
 type QueryCtx = {
   runQuery: <Query extends FunctionReference<"query", "public" | "internal">>(
     query: Query,
@@ -864,12 +890,17 @@ type MutationCtx = {
   ) => Promise<FunctionReturnType<Mutation>>;
 } & QueryCtx;
 
-export type FilterObject<Doc extends GeospatialDocument> = {
-  [K in keyof Doc["filterKeys"] & string]: {
+export type FilterValue<
+  Doc extends GeospatialGeometry,
+  FieldName extends keyof NonNullable<Doc["filterKeys"]> & string,
+> = ExtractArray<NonNullable<Doc["filterKeys"]>[FieldName]>;
+
+export type FilterObject<Doc extends GeospatialGeometry> = {
+  [K in keyof NonNullable<Doc["filterKeys"]> & string]: {
     filterKey: K;
-    filterValue: ExtractArray<Doc["filterKeys"][K]>;
+    filterValue: ExtractArray<NonNullable<Doc["filterKeys"]>[K]>;
     occur: "should" | "must";
   };
-}[keyof Doc["filterKeys"] & string];
+}[keyof NonNullable<Doc["filterKeys"]> & string];
 
 type ExtractArray<T> = T extends (infer U)[] ? U : T;
