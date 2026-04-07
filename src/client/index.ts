@@ -65,11 +65,7 @@ export type GeospatialGeometry<
   filterKeys?: Filters;
 };
 
-export type GeometryWithDistance<
-  Type extends "polygon" | "polyline" = "polygon" | "polyline",
-  Key extends string = string,
-  Filters extends GeospatialFilters = GeospatialFilters,
-> = GeospatialGeometry<Type, Key, Filters> & {
+export type WithDistance<Type> = Type & {
   distance: number;
 };
 
@@ -467,7 +463,9 @@ export class PolygonsNamespace<
     filterKeys?: PolygonFilters,
     limit?: number,
   ): Promise<{
-    results: GeometryWithDistance<"polygon", PolygonKey, PolygonFilters>[];
+    results: WithDistance<
+      GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>
+    >[];
     truncated: boolean;
   }> {
     const result = await ctx.runQuery(this.core.component.polygon.query.near, {
@@ -477,7 +475,9 @@ export class PolygonsNamespace<
       limit,
     });
     return result as typeof result & {
-      results: GeometryWithDistance<"polygon", PolygonKey, PolygonFilters>[];
+      results: WithDistance<
+        GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>
+      >[];
       truncated: boolean;
     };
   }
@@ -699,7 +699,9 @@ export class PolylinesNamespace<
     filterKeys?: PolylineFilters,
     limit?: number,
   ): Promise<{
-    results: GeometryWithDistance<"polyline", PolylineKey, PolylineFilters>[];
+    results: WithDistance<
+      GeospatialGeometry<"polyline", PolylineKey, PolylineFilters>
+    >[];
     truncated: boolean;
   }> {
     const result = await ctx.runQuery(this.core.component.polyline.query.near, {
@@ -709,7 +711,9 @@ export class PolylinesNamespace<
       limit,
     });
     return result as typeof result & {
-      results: GeometryWithDistance<"polyline", PolylineKey, PolylineFilters>[];
+      results: WithDistance<
+        GeospatialGeometry<"polyline", PolylineKey, PolylineFilters>
+      >[];
       truncated: boolean;
     };
   }
