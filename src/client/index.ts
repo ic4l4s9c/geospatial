@@ -170,14 +170,9 @@ export class PointsNamespace<
     const result = await ctx.runQuery(this.core.component.document.get, {
       key,
     });
-    if (!result) {
-      return null;
-    }
-    return result as NarrowGeospatialDocument<
-      typeof result,
-      PointKey,
-      PointFilters
-    >;
+    return result as
+      | (typeof result & GeospatialDocument<PointKey, PointFilters>)
+      | null;
   }
 
   /**
@@ -233,11 +228,9 @@ export class PointsNamespace<
       maxCells: this.core.maxCells,
       logLevel: this.core.logLevel,
     });
-    return result as {
-      results: NarrowGeospatialDocument<
-        (typeof result.results)[number],
-        PointKey
-      >[];
+
+    return result as typeof result & {
+      results: { key: PointKey; coordinates: Point }[];
       nextCursor?: string;
     };
   }
@@ -253,33 +246,27 @@ export class PointsNamespace<
     ctx: QueryCtx,
     options: NearestQueryOptions<GeospatialDocument<PointKey, PointFilters>>,
   ): Promise<{ key: PointKey; coordinates: Point; distance: number }[]> {
-    const { point, limit, maxDistance, filter } = options;
     const filterBuilder = new FilterBuilderImpl<
       GeospatialDocument<PointKey, PointFilters>
     >();
-    if (filter) {
-      filter(filterBuilder);
+    if (options.filter) {
+      options.filter(filterBuilder);
     }
 
-    const result = await ctx.runQuery(
-      this.core.component.query.nearestPoints,
-      {
-        point,
-        maxDistance,
-        maxResults: limit,
-        minLevel: this.core.minLevel,
-        maxLevel: this.core.maxLevel,
-        levelMod: this.core.levelMod,
-        logLevel: this.core.logLevel,
-        filtering: filterBuilder.filterConditions,
-        sorting: { interval: filterBuilder.interval ?? {} },
-      },
-    );
+    const result = await ctx.runQuery(this.core.component.query.nearestPoints, {
+      point: options.point,
+      maxDistance: options.maxDistance,
+      maxResults: options.limit,
+      minLevel: this.core.minLevel,
+      maxLevel: this.core.maxLevel,
+      levelMod: this.core.levelMod,
+      logLevel: this.core.logLevel,
+      filtering: filterBuilder.filterConditions,
+      sorting: { interval: filterBuilder.interval ?? {} },
+    });
 
-    return result as NarrowGeospatialDocument<
-      (typeof result)[number],
-      PointKey
-    >[];
+    return result as typeof result &
+      { key: PointKey; coordinates: Point; distance: number }[];
   }
 }
 
@@ -369,15 +356,11 @@ export class PolygonsNamespace<
     const result = await ctx.runQuery(this.core.component.geometry.get, {
       key,
     });
-    if (!result) {
-      return null;
-    }
-    return result as NarrowGeospatialGeometry<
-      typeof result,
-      "polygon",
-      PolygonKey,
-      PolygonFilters
-    >;
+
+    return result as
+      | (typeof result &
+          GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>)
+      | null;
   }
 
   /**
@@ -412,12 +395,10 @@ export class PolygonsNamespace<
         limit,
       },
     );
-    return result as NarrowGeospatialGeometryResult<
-      typeof result,
-      "polygon",
-      PolygonKey,
-      PolygonFilters
-    >;
+    return result as typeof result & {
+      results: GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>[];
+      truncated: boolean;
+    };
   }
 
   /**
@@ -453,12 +434,10 @@ export class PolygonsNamespace<
         limit,
       },
     );
-    return result as NarrowGeospatialGeometryResult<
-      typeof result,
-      "polygon",
-      PolygonKey,
-      PolygonFilters
-    >;
+    return result as typeof result & {
+      results: GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>[];
+      truncated: boolean;
+    };
   }
 
   /**
@@ -491,21 +470,16 @@ export class PolygonsNamespace<
     results: GeometryWithDistance<"polygon", PolygonKey, PolygonFilters>[];
     truncated: boolean;
   }> {
-    const result = await ctx.runQuery(
-      this.core.component.polygon.query.near,
-      {
-        point,
-        maxDistance,
-        filterKeys,
-        limit,
-      },
-    );
-    return result as NarrowGeospatialGeometryResult<
-      typeof result,
-      "polygon",
-      PolygonKey,
-      PolygonFilters
-    >;
+    const result = await ctx.runQuery(this.core.component.polygon.query.near, {
+      point,
+      maxDistance,
+      filterKeys,
+      limit,
+    });
+    return result as typeof result & {
+      results: GeometryWithDistance<"polygon", PolygonKey, PolygonFilters>[];
+      truncated: boolean;
+    };
   }
 
   /**
@@ -519,18 +493,11 @@ export class PolygonsNamespace<
     ctx: QueryCtx,
     limit?: number,
   ): Promise<GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>[]> {
-    const result = await ctx.runQuery(
-      this.core.component.polygon.query.list,
-      {
-        limit,
-      },
-    );
-    return result as NarrowGeospatialGeometryList<
-      typeof result,
-      "polygon",
-      PolygonKey,
-      PolygonFilters
-    >;
+    const result = await ctx.runQuery(this.core.component.polygon.query.list, {
+      limit,
+    });
+    return result as typeof result &
+      GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>[];
   }
 
   /**
@@ -660,15 +627,10 @@ export class PolylinesNamespace<
     const result = await ctx.runQuery(this.core.component.geometry.get, {
       key,
     });
-    if (!result) {
-      return null;
-    }
-    return result as NarrowGeospatialGeometry<
-      typeof result,
-      "polyline",
-      PolylineKey,
-      PolylineFilters
-    >;
+    return result as
+      | (typeof result &
+          GeospatialGeometry<"polyline", PolylineKey, PolylineFilters>)
+      | null;
   }
 
   /**
@@ -704,12 +666,10 @@ export class PolylinesNamespace<
         limit,
       },
     );
-    return result as NarrowGeospatialGeometryResult<
-      typeof result,
-      "polyline",
-      PolylineKey,
-      PolylineFilters
-    >;
+    return result as typeof result & {
+      results: GeospatialGeometry<"polyline", PolylineKey, PolylineFilters>[];
+      truncated: boolean;
+    };
   }
 
   /**
@@ -742,21 +702,16 @@ export class PolylinesNamespace<
     results: GeometryWithDistance<"polyline", PolylineKey, PolylineFilters>[];
     truncated: boolean;
   }> {
-    const result = await ctx.runQuery(
-      this.core.component.polyline.query.near,
-      {
-        point,
-        maxDistance,
-        filterKeys,
-        limit,
-      },
-    );
-    return result as NarrowGeospatialGeometryResult<
-      typeof result,
-      "polyline",
-      PolylineKey,
-      PolylineFilters
-    >;
+    const result = await ctx.runQuery(this.core.component.polyline.query.near, {
+      point,
+      maxDistance,
+      filterKeys,
+      limit,
+    });
+    return result as typeof result & {
+      results: GeometryWithDistance<"polyline", PolylineKey, PolylineFilters>[];
+      truncated: boolean;
+    };
   }
 
   /**
@@ -770,18 +725,11 @@ export class PolylinesNamespace<
     ctx: QueryCtx,
     limit?: number,
   ): Promise<GeospatialGeometry<"polyline", PolylineKey, PolylineFilters>[]> {
-    const result = await ctx.runQuery(
-      this.core.component.polyline.query.list,
-      {
-        limit,
-      },
-    );
-    return result as NarrowGeospatialGeometryList<
-      typeof result,
-      "polyline",
-      PolylineKey,
-      PolylineFilters
-    >;
+    const result = await ctx.runQuery(this.core.component.polyline.query.list, {
+      limit,
+    });
+    return result as typeof result &
+      GeospatialGeometry<"polyline", PolylineKey, PolylineFilters>[];
   }
 
   /**
@@ -886,7 +834,7 @@ export class GeospatialIndex<
     this.levelMod = options?.levelMod ?? DEFAULT_LEVEL_MOD;
     this.maxCells = options?.maxCells ?? DEFAULT_MAX_CELLS;
 
-    const config: GeospatialIndexCore = {
+    const core: GeospatialIndexCore = {
       component: this.component,
       minLevel: this.minLevel,
       maxLevel: this.maxLevel,
@@ -895,11 +843,9 @@ export class GeospatialIndex<
       logLevel: this.logLevel,
     };
 
-    this.points = new PointsNamespace<PointKey, PointFilters>(config);
-    this.polygons = new PolygonsNamespace<PolygonKey, PolygonFilters>(config);
-    this.polylines = new PolylinesNamespace<PolylineKey, PolylineFilters>(
-      config,
-    );
+    this.points = new PointsNamespace<PointKey, PointFilters>(core);
+    this.polygons = new PolygonsNamespace<PolygonKey, PolygonFilters>(core);
+    this.polylines = new PolylinesNamespace<PolylineKey, PolylineFilters>(core);
   }
 
   /**
@@ -1060,57 +1006,3 @@ export type FilterObject<Doc extends GeospatialDocument> = {
 }[keyof Doc["filterKeys"] & string];
 
 type ExtractArray<T> = T extends (infer U)[] ? U : T;
-
-type NarrowGeospatialDocument<
-  T extends { key: string; filterKeys?: Record<string, unknown> },
-  Key extends string,
-  Filters extends GeospatialFilters = GeospatialFilters,
-> = Omit<T, "key" | "filterKeys"> & { key: Key; filterKeys: Filters };
-
-type NarrowGeospatialGeometry<
-  T extends {
-    key: string;
-    type: "polygon" | "polyline";
-    filterKeys?: Record<string, unknown>;
-  },
-  Type extends "polygon" | "polyline",
-  Key extends string,
-  Filters extends GeospatialFilters = GeospatialFilters,
-> = Omit<T, "key" | "type" | "filterKeys" | "coordinates"> & {
-  key: Key;
-  type: Type;
-  coordinates: Type extends "polygon"
-    ? Polygon
-    : Type extends "polyline"
-      ? Polyline
-      : never;
-  filterKeys?: Filters;
-};
-
-type NarrowGeospatialGeometryResult<
-  T extends {
-    results: readonly {
-      key: string;
-      type: "polygon" | "polyline";
-      filterKeys?: Record<string, unknown>;
-    }[];
-    truncated: boolean;
-  },
-  Type extends "polygon" | "polyline",
-  Key extends string,
-  Filters extends GeospatialFilters = GeospatialFilters,
-> = {
-  results: NarrowGeospatialGeometry<T["results"][number], Type, Key, Filters>[];
-  truncated: boolean;
-};
-
-type NarrowGeospatialGeometryList<
-  T extends readonly {
-    key: string;
-    type: "polygon" | "polyline";
-    filterKeys?: Record<string, unknown>;
-  }[],
-  Type extends "polygon" | "polyline",
-  Key extends string,
-  Filters extends GeospatialFilters = GeospatialFilters,
-> = NarrowGeospatialGeometry<T[number], Type, Key, Filters>[];
