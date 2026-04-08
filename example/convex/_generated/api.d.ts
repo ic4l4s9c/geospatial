@@ -10,7 +10,14 @@
 
 import type * as constants from "../constants.js";
 import type * as example from "../example.js";
+import type * as geospatial from "../geospatial.js";
 import type * as seed from "../seed.js";
+import type * as seed_areas from "../seed/areas.js";
+import type * as seed_data_areas from "../seed/data/areas.js";
+import type * as seed_data_places from "../seed/data/places.js";
+import type * as seed_data_routes from "../seed/data/routes.js";
+import type * as seed_places from "../seed/places.js";
+import type * as seed_routes from "../seed/routes.js";
 
 import type {
   ApiFromModules,
@@ -21,7 +28,14 @@ import type {
 declare const fullApi: ApiFromModules<{
   constants: typeof constants;
   example: typeof example;
+  geospatial: typeof geospatial;
   seed: typeof seed;
+  "seed/areas": typeof seed_areas;
+  "seed/data/areas": typeof seed_data_areas;
+  "seed/data/places": typeof seed_data_places;
+  "seed/data/routes": typeof seed_data_routes;
+  "seed/places": typeof seed_places;
+  "seed/routes": typeof seed_routes;
 }>;
 
 /**
