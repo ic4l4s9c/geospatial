@@ -7,7 +7,7 @@ import {
   primitive,
   type Rectangle,
   rectangle,
-} from "../types.js";
+} from "../validators.js";
 import { S2Bindings } from "../lib/s2Bindings.js";
 import {
   boundingBoxContainsPoint,

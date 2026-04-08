@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { S2Bindings } from "./s2Bindings.js";
-import { polygon, polyline, primitive, rectangle } from "../types.js";
-import type { Point, Polygon, Rectangle, Primitive } from "../types.js";
+import { polygon, polyline, primitive, rectangle } from "../validators.js";
+import type { Point, Polygon, Rectangle, Primitive } from "../validators.js";
 import type { Id } from "../_generated/dataModel.js";
 import type { QueryCtx } from "../_generated/server.js";
 

@@ -1,9 +1,9 @@
 import { mutation, query } from "./_generated/server.js";
 import { v } from "convex/values";
 import { S2Bindings } from "./lib/s2Bindings.js";
-import { polygon, polyline } from "./types.js";
+import { polygon, polyline } from "./validators.js";
 import { primitive } from "./lib/primitive.js";
-import type { Point, Polygon } from "./types.js";
+import type { Point, Polygon } from "./validators.js";
 
 const MAX_COVERING_CELLS = 30;
 

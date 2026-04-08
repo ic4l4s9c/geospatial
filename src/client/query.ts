@@ -1,4 +1,4 @@
-import type { Polygon, Polyline, Rectangle } from "../component/types.js";
+import type { Polygon, Polyline, Rectangle } from "../component/validators.js";
 import type { GeospatialGeometry, FilterValue, FilterObject } from "./index.js";
 
 /**

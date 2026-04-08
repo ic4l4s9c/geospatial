@@ -35,7 +35,7 @@ import type * as streams_filterKeyRange from "../streams/filterKeyRange.js";
 import type * as streams_intersection from "../streams/intersection.js";
 import type * as streams_union from "../streams/union.js";
 import type * as streams_zigzag from "../streams/zigzag.js";
-import type * as types from "../types.js";
+import type * as validators from "../validators.js";
 
 import type {
   ApiFromModules,
@@ -72,7 +72,7 @@ const fullApi: ApiFromModules<{
   "streams/intersection": typeof streams_intersection;
   "streams/union": typeof streams_union;
   "streams/zigzag": typeof streams_zigzag;
-  types: typeof types;
+  validators: typeof validators;
 }> = anyApi as any;
 
 /**

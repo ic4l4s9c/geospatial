@@ -1,7 +1,7 @@
 import { query } from "../_generated/server.js";
 import { v } from "convex/values";
 import { S2Bindings } from "../lib/s2Bindings.js";
-import { point, polygon } from "../types.js";
+import { point, polygon } from "../validators.js";
 
 
 /**

@@ -7,7 +7,7 @@ import { query } from "../_generated/server.js";
 import { v } from "convex/values";
 import { primitive } from "../lib/primitive.js";
 import { S2Bindings } from "../lib/s2Bindings.js";
-import { polygon, polyline, rectangle } from "../types.js";
+import { polygon, polyline, rectangle } from "../validators.js";
 
 const polylineResult = v.object({
   key: v.string(),

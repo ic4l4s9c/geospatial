@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query, type MutationCtx } from "./_generated/server.js";
-import { point, primitive, type Point } from "./types.js";
+import { point, primitive, type Point } from "./validators.js";
 import { encodeTupleKey } from "./lib/tupleKey.js";
 import { filterCounterKey } from "./streams/filterKeyRange.js";
 import { cellCounterKey } from "./streams/cellRange.js";

@@ -1,10 +1,10 @@
 import {
-  GeospatialIndex,
   point,
   polygon,
   polyline,
   rectangle,
-} from "@convex-dev/geospatial";
+} from "@convex-dev/geospatial/validators";
+import { GeospatialIndex } from "@convex-dev/geospatial";
 import { Id } from "./_generated/dataModel";
 import { components } from "./_generated/api";
 import { mutation, query } from "./_generated/server";

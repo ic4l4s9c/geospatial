@@ -9,14 +9,12 @@ import type {
   Polyline,
   Primitive,
   Rectangle,
-} from "../component/types.js";
-import { point, polygon, polyline, rectangle } from "../component/types.js";
+} from "../component/validators.js";
 import { LOG_LEVELS, type LogLevel } from "../component/lib/logging.js";
 import { FilterBuilderImpl, type GeospatialQuery } from "./query.js";
 import type { ComponentApi } from "../component/_generated/component.js";
 
 export type { Point, Polygon, Polyline, Primitive, GeospatialQuery, Rectangle };
-export { point, polygon, polyline, rectangle };
 export { MIN_CELL_LEVEL, MAX_CELL_LEVEL } from "../component/lib/s2Bindings.js";
 
 // Query shape types for geometry intersection queries (no holes in v1).

@@ -7,7 +7,7 @@ import {
   implIntersects,
   implList,
 } from "../lib/geometryQuery.js";
-import { polygon, primitive, rectangle } from "../types.js";
+import { polygon, primitive, rectangle } from "../validators.js";
 import { S2Bindings } from "../lib/s2Bindings.js";
 
 /**

@@ -1,7 +1,7 @@
 import { query } from "../_generated/server.js";
 import { v } from "convex/values";
 import { S2Bindings } from "../lib/s2Bindings.js";
-import { point, polyline } from "../types.js";
+import { point, polyline } from "../validators.js";
 
 /**
  * Calculate the length of a polyline in meters.
