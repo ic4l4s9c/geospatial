@@ -8,9 +8,12 @@
  * @module
  */
 
+import type * as areas from "../areas.js";
 import type * as constants from "../constants.js";
 import type * as example from "../example.js";
 import type * as geospatial from "../geospatial.js";
+import type * as places from "../places.js";
+import type * as routes from "../routes.js";
 import type * as seed from "../seed.js";
 import type * as seed_areas from "../seed/areas.js";
 import type * as seed_data_areas from "../seed/data/areas.js";
@@ -26,9 +29,12 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  areas: typeof areas;
   constants: typeof constants;
   example: typeof example;
   geospatial: typeof geospatial;
+  places: typeof places;
+  routes: typeof routes;
   seed: typeof seed;
   "seed/areas": typeof seed_areas;
   "seed/data/areas": typeof seed_data_areas;

@@ -1,0 +1,169 @@
+import { mutation, query } from "./_generated/server";
+import { v } from "convex/values";
+import { point, rectangle, polygon, polyline } from "@convex-dev/geospatial/validators";
+import { geospatial } from "./geospatial";
+import schema from "./schema";
+
+const queryShape = v.union(
+  v.object({ type: v.literal("rectangle"), rectangle: rectangle }),
+  v.object({
+    type: v.literal("polygon"),
+    polygon: polygon,
+  })
+);
+
+export const insert = mutation({
+  args: schema.tables.routes.validator.extend({
+    coordinates: polyline,
+  }),
+  handler: async (ctx, args) => {
+    const id = await ctx.db.insert("routes", {
+      name: args.name,
+      description: args.description,
+      mode: args.mode,
+      tags: args.tags,
+      durationMinutes: args.durationMinutes,
+    });
+
+    await geospatial.polylines.insert(ctx, id, args.coordinates, {
+      mode: args.mode,
+      tags: args.tags,
+    });
+
+    return id;
+  },
+});
+
+export const remove = mutation({
+  args: { id: v.id("routes") },
+  handler: async (ctx, args) => {
+    await geospatial.polylines.remove(ctx, args.id);
+    await ctx.db.delete(args.id);
+  },
+});
+
+export const update = mutation({
+  args: schema.tables.routes.validator.partial().extend({
+    id: v.id("routes"),
+    coordinates: v.optional(polyline),
+  }),
+  handler: async (ctx, args) => {
+    const { id, coordinates, ...fields } = args;
+
+    const doc = await ctx.db.get(id);
+    if (!doc) {
+      throw new Error(`Route not found: ${id}`);
+    }
+    await ctx.db.patch(id, fields);
+
+    if (coordinates) {
+      const updatedDoc = await ctx.db.get(id);
+      if (!updatedDoc) {
+        throw new Error(`Route not found: ${id}`);
+      }
+      await geospatial.polylines.update(ctx, id, coordinates, {
+        mode: updatedDoc.mode,
+        tags: updatedDoc.tags,
+      });
+    }
+  },
+});
+
+export const get = query({
+  args: { id: v.id("routes") },
+  handler: async (ctx, args) => {
+    const [doc, geo] = await Promise.all([
+      ctx.db.get(args.id),
+      geospatial.polylines.get(ctx, args.id),
+    ]);
+    if (!doc || !geo) {
+      return null;
+    }
+    return { ...doc, coordinates: geo.coordinates };
+  },
+});
+
+export const list = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const geoResults = await geospatial.polylines.list(ctx, args.limit);
+
+    const hydrated = await Promise.all(
+      geoResults.map(async (g) => {
+        const doc = await ctx.db.get(g.key);
+        return doc ? { ...doc, coordinates: g.coordinates } : null;
+      }),
+    );
+
+    return hydrated.filter(Boolean);
+  },
+});
+
+export const intersects = query({
+  args: {
+    shape: queryShape,
+    mode: v.optional(v.string()),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const { results, truncated } = await geospatial.polylines.intersects(
+      ctx,
+      args.shape,
+      args.mode ? { mode: args.mode, tags: [] } : undefined,
+      args.limit,
+    );
+
+    const hydrated = await Promise.all(
+      results.map(async (g) => {
+        const doc = await ctx.db.get(g.key);
+        return doc ? { ...doc, coordinates: g.coordinates } : null;
+      }),
+    );
+
+    return { results: hydrated.filter(Boolean), truncated };
+  },
+});
+
+export const near = query({
+  args: {
+    coordinates: point,
+    maxDistanceMeters: v.number(),
+    mode: v.optional(v.string()),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const { results, truncated } = await geospatial.polylines.near(
+      ctx,
+      args.coordinates,
+      args.maxDistanceMeters,
+      args.mode ? { mode: args.mode, tags: [] } : undefined,
+      args.limit,
+    );
+
+    const hydrated = await Promise.all(
+      results.map(async (g) => {
+        const doc = await ctx.db.get(g.key);
+        return doc
+          ? { ...doc, coordinates: g.coordinates, distance: g.distance }
+          : null;
+      }),
+    );
+
+    return { results: hydrated.filter(Boolean), truncated };
+  },
+});
+
+export const measure = query({
+  args: { coordinates: polyline },
+  handler: async (ctx, args) => {
+    const [lengthM, centroid] = await Promise.all([
+      geospatial.polylines.length(ctx, args.coordinates),
+      geospatial.polylines.centroid(ctx, args.coordinates),
+    ]);
+    return {
+      lengthM,
+      lengthKm: lengthM / 1_000,
+      centroid,
+    };
+  },
+});
