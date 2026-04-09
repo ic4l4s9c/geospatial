@@ -1,6 +1,12 @@
 import { v } from "convex/values";
 import { S2Bindings } from "./s2Bindings.js";
-import { polygon, polyline, primitive, rectangle } from "../validators.js";
+import {
+  polygon,
+  polyline,
+  primitive,
+  type QueryShape,
+  rectangle,
+} from "../validators.js";
 import type { Point, Polygon, Rectangle, Primitive } from "../validators.js";
 import type { Id } from "../_generated/dataModel.js";
 import type { QueryCtx } from "../_generated/server.js";
@@ -13,17 +19,16 @@ export const geometryResult = v.object({
   type: v.union(v.literal("polygon"), v.literal("polyline")),
   coordinates: v.union(polygon, polyline),
   boundingBox: rectangle,
-  filterKeys: v.optional(v.record(v.string(), v.union(primitive, v.array(primitive)))),
+  filterKeys: v.optional(
+    v.record(v.string(), v.union(primitive, v.array(primitive))),
+  ),
 });
 
 export const geometryWithDistance = geometryResult.extend({
   distance: v.number(),
 });
 
-function boundingBoxesIntersect(
-  a: { south: number; north: number; west: number; east: number },
-  b: { south: number; north: number; west: number; east: number },
-): boolean {
+function boundingBoxesIntersect(a: Rectangle, b: Rectangle): boolean {
   return !(
     a.east < b.west ||
     b.east < a.west ||
@@ -33,7 +38,7 @@ function boundingBoxesIntersect(
 }
 
 export function boundingBoxContainsPoint(
-  bbox: { south: number; north: number; west: number; east: number },
+  bbox: Rectangle,
   point: Point,
 ): boolean {
   return (
@@ -184,9 +189,7 @@ export async function implList(
 }
 
 type IntersectsArgs = {
-  shape:
-    | { type: "rectangle"; rectangle: Rectangle }
-    | { type: "polygon"; polygon: Polygon };
+  shape: QueryShape;
   maxCoveringCells: number;
   filterKeys?: Record<string, Primitive | Primitive[]>;
   limit: number;
@@ -250,7 +253,21 @@ export async function implIntersects(
 }> {
   const { shape, maxCoveringCells, filterKeys, limit, type } = args;
 
-  let queryBbox: { south: number; north: number; west: number; east: number };
+  // For polyline-buffer shapes we take a different path: build a bounding box
+  // that covers the entire corridor, gather candidates from it, then do an
+  // exact per-candidate distance test against the query polyline.
+  if (shape.type === "polyline") {
+    return implIntersectsPolylineBuffer(ctx, s2, {
+      queryPolyline: shape.polyline,
+      bufferMeters: shape.bufferMeters,
+      maxCoveringCells,
+      filterKeys,
+      limit,
+      type,
+    });
+  }
+
+  let queryBbox: Rectangle;
   let queryPolygonPoints: Point[];
 
   if (shape.type === "rectangle") {
@@ -349,6 +366,162 @@ export async function implIntersects(
     }
 
     if (doesIntersect) {
+      results.push({
+        key: geometry.key,
+        type: geometry.type,
+        coordinates: geometry.coordinates,
+        boundingBox: geomBbox,
+        filterKeys: geometry.filterKeys,
+      });
+    }
+  }
+
+  return { results, truncated };
+}
+
+async function implIntersectsPolylineBuffer(
+  ctx: QueryCtx,
+  s2: Awaited<ReturnType<typeof S2Bindings.load>>,
+  args: {
+    queryPolyline: Point[];
+    bufferMeters: number;
+    maxCoveringCells: number;
+    filterKeys?: Record<string, Primitive | Primitive[]>;
+    limit: number;
+    type?: "polygon" | "polyline";
+  },
+): Promise<{
+  results: {
+    key: string;
+    type: "polygon" | "polyline";
+    coordinates: Polygon | Point[];
+    boundingBox: Rectangle;
+    filterKeys?: Record<string, Primitive | Primitive[]>;
+  }[];
+  truncated: boolean;
+}> {
+  const {
+    queryPolyline,
+    bufferMeters,
+    maxCoveringCells,
+    filterKeys,
+    limit,
+    type,
+  } = args;
+
+  if (queryPolyline.length === 0) {
+    return { results: [], truncated: false };
+  }
+  if (bufferMeters < 0) {
+    throw new Error("bufferMeters must be non-negative");
+  }
+
+  // Build a bounding box that conservatively covers the buffered corridor.
+  // We expand each vertex by the buffer distance and take the envelope.
+  const latDelta = bufferMeters / METERS_PER_DEGREE_LAT;
+  const lats = queryPolyline.map((p) => p.latitude);
+  const lngs = queryPolyline.map((p) => p.longitude);
+  const minLat = Math.min(...lats);
+  const maxLat = Math.max(...lats);
+  // Use the smallest cosLat along the polyline for the most conservative
+  // (widest) longitude expansion.
+  const minCosLat = Math.max(
+    0.01,
+    Math.min(...lats.map((lat) => Math.cos((lat * Math.PI) / 180))),
+  );
+  const lngDelta = Math.min(
+    bufferMeters / (METERS_PER_DEGREE_LAT * minCosLat),
+    180,
+  );
+
+  const searchBbox = {
+    south: Math.max(-90, minLat - latDelta),
+    north: Math.min(90, maxLat + latDelta),
+    west: Math.max(-180, Math.min(...lngs) - lngDelta),
+    east: Math.min(180, Math.max(...lngs) + lngDelta),
+  };
+
+  const searchPolygon = rectangleToPolygonPoints(searchBbox);
+  const searchCells = s2.coverPolygonForIndex(searchPolygon, maxCoveringCells);
+
+  const searchTokens = new Set<string>();
+  for (const cellId of searchCells) {
+    searchTokens.add(s2.cellIDToken(cellId));
+    for (const ancestor of s2.cellAncestors(cellId)) {
+      searchTokens.add(s2.cellIDToken(ancestor));
+    }
+  }
+
+  const { candidateIds, truncated } = await gatherCandidates(ctx, searchTokens);
+
+  const results: {
+    key: string;
+    type: "polygon" | "polyline";
+    coordinates: Polygon | Point[];
+    boundingBox: Rectangle;
+    filterKeys?: Record<string, Primitive | Primitive[]>;
+  }[] = [];
+
+  for (const [geometryId] of candidateIds) {
+    if (results.length >= limit) {
+      break;
+    }
+
+    const geometry = await ctx.db.get(geometryId);
+    if (!geometry) {
+      continue;
+    }
+    if (type && geometry.type !== type) {
+      continue;
+    }
+    if (!matchesFilterKeys(geometry, filterKeys)) {
+      continue;
+    }
+
+    const geomBbox = {
+      south: geometry.south,
+      north: geometry.north,
+      west: geometry.west,
+      east: geometry.east,
+    };
+    if (!boundingBoxesIntersect(geomBbox, searchBbox)) {
+      continue;
+    }
+
+    // Exact test: does any part of the stored geometry fall within bufferMeters
+    // of the query polyline?
+    let withinBuffer = false;
+    if (geometry.type === "polygon") {
+      // A polygon is within the buffer if its exterior ring comes within
+      // bufferMeters of the query polyline, OR if the query polyline passes
+      // through the polygon interior.
+      const polygonPoints = (geometry.coordinates as Polygon).exterior;
+      const distToRing = s2.chordAngleToMeters(
+        s2.distanceToPolyline(queryPolyline, polygonPoints[0]),
+      );
+      if (distToRing <= bufferMeters) {
+        withinBuffer = true;
+      } else {
+        // Query polyline may be fully inside the polygon — check first vertex.
+        withinBuffer = s2.polygonContainsPoint(polygonPoints, queryPolyline[0]);
+      }
+    } else {
+      // Polyline: distance from the query polyline to any vertex of the stored
+      // polyline. We check each stored vertex against the query polyline and
+      // short-circuit on the first hit.
+      const storedPoints = geometry.coordinates as Point[];
+      for (const pt of storedPoints) {
+        const dist = s2.chordAngleToMeters(
+          s2.distanceToPolyline(queryPolyline, pt),
+        );
+        if (dist <= bufferMeters) {
+          withinBuffer = true;
+          break;
+        }
+      }
+    }
+
+    if (withinBuffer) {
       results.push({
         key: geometry.key,
         type: geometry.type,
@@ -477,9 +650,15 @@ export async function implGeometriesNear(
 
   for (const [geometryId] of candidateIds) {
     const geometry = await ctx.db.get(geometryId);
-    if (!geometry) continue;
-    if (type && geometry.type !== type) continue;
-    if (!matchesFilterKeys(geometry, filterKeys)) continue;
+    if (!geometry) {
+      continue;
+    }
+    if (type && geometry.type !== type) {
+      continue;
+    }
+    if (!matchesFilterKeys(geometry, filterKeys)) {
+      continue;
+    }
 
     // For polygons, a point inside has distance 0. For points outside,
     // measure the chord angle to the nearest edge and convert to meters.

@@ -36,5 +36,19 @@ export type Polygon = Infer<typeof polygon>;
 export const polyline = v.array(point);
 export type Polyline = Infer<typeof polyline>;
 
+export const queryShape = v.union(
+  v.object({ type: v.literal("rectangle"), rectangle: rectangle }),
+  v.object({
+    type: v.literal("polygon"),
+    polygon: polygon,
+  }),
+  v.object({
+    type: v.literal("polyline"),
+    polyline: polyline,
+    bufferMeters: v.number(),
+  }),
+);
+export type QueryShape = Infer<typeof queryShape>;
+
 export type Meters = number;
 export type ChordAngle = number;

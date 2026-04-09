@@ -8,6 +8,7 @@ import type {
   Polygon,
   Polyline,
   Primitive,
+  QueryShape,
   Rectangle,
 } from "../component/validators.js";
 import { LOG_LEVELS, type LogLevel } from "../component/lib/logging.js";
@@ -16,11 +17,6 @@ import type { ComponentApi } from "../component/_generated/component.js";
 
 export type { Point, Polygon, Polyline, Primitive, GeospatialQuery, Rectangle };
 export { MIN_CELL_LEVEL, MAX_CELL_LEVEL } from "../component/lib/s2Bindings.js";
-
-// Query shape types for geometry intersection queries (no holes in v1).
-export type QueryShape =
-  | { type: "rectangle"; rectangle: Rectangle }
-  | { type: "polygon"; polygon: Polygon };
 
 declare global {
   const Convex: Record<string, unknown>;

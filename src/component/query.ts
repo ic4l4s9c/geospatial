@@ -1,5 +1,11 @@
 import { v, type Infer } from "convex/values";
-import { type Point, point, polygon, polyline, primitive, rectangle } from "./validators.js";
+import {
+  type Point,
+  point,
+  primitive,
+  queryShape,
+  rectangle,
+} from "./validators.js";
 import { query } from "./_generated/server.js";
 import type { PointSet, Stats } from "./streams/zigzag.js";
 import { Intersection } from "./streams/intersection.js";
@@ -22,12 +28,6 @@ const equalityCondition = v.object({
   filterKey: v.string(),
   filterValue: primitive,
 });
-
-const queryShape = v.union(
-  v.object({ type: v.literal("rectangle"), rectangle }),
-  v.object({ type: v.literal("polygon"), polygon }),
-  v.object({ type: v.literal("polyline"), polyline, bufferMeters: v.number() }),
-);
 
 const geospatialQuery = v.object({
   shape: queryShape,

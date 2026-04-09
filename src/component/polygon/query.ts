@@ -1,10 +1,12 @@
 import { v } from "convex/values";
 import { query } from "../_generated/server.js";
 import {
+  point,
   type Polygon,
   polygon,
   type Primitive,
   primitive,
+  queryShape,
   type Rectangle,
   rectangle,
 } from "../validators.js";
@@ -50,10 +52,7 @@ export const list = query({
  */
 export const intersects = query({
   args: {
-    shape: v.union(
-      v.object({ type: v.literal("rectangle"), rectangle }),
-      v.object({ type: v.literal("polygon"), polygon }),
-    ),
+    shape: queryShape,
     maxCoveringCells: v.optional(v.number()),
     filterKeys: v.optional(
       v.record(v.string(), v.union(primitive, v.array(primitive))),
@@ -76,7 +75,6 @@ export const intersects = query({
   },
 });
 
-
 /**
  * Find all polygons that contain a given point.
  *
@@ -85,11 +83,10 @@ export const intersects = query({
  */
 export const containsPoint = query({
   args: {
-    point: v.object({
-      latitude: v.number(),
-      longitude: v.number(),
-    }),
-    filterKeys: v.optional(v.record(v.string(), v.union(primitive, v.array(primitive)))),
+    point: point,
+    filterKeys: v.optional(
+      v.record(v.string(), v.union(primitive, v.array(primitive))),
+    ),
     limit: v.optional(v.number()),
   },
   returns: v.object({
@@ -165,12 +162,11 @@ export const containsPoint = query({
  */
 export const near = query({
   args: {
-    point: v.object({
-      latitude: v.number(),
-      longitude: v.number(),
-    }),
+    point: point,
     maxDistance: v.number(),
-    filterKeys: v.optional(v.record(v.string(), v.union(primitive, v.array(primitive)))),
+    filterKeys: v.optional(
+      v.record(v.string(), v.union(primitive, v.array(primitive))),
+    ),
     limit: v.optional(v.number()),
   },
   returns: v.object({

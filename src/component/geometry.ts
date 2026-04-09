@@ -1,7 +1,7 @@
 import { mutation, query } from "./_generated/server.js";
 import { v } from "convex/values";
 import { S2Bindings } from "./lib/s2Bindings.js";
-import { polygon, polyline } from "./validators.js";
+import { polygon, polyline, type Rectangle } from "./validators.js";
 import { primitive } from "./lib/primitive.js";
 import type { Point, Polygon } from "./validators.js";
 
@@ -64,12 +64,7 @@ function validatePointBounds(points: Point[]): void {
   }
 }
 
-function computeBoundingBox(points: Point[]): {
-  south: number;
-  north: number;
-  west: number;
-  east: number;
-} {
+function computeBoundingBox(points: Point[]): Rectangle {
   if (points.length === 0) {
     throw new Error("Cannot compute bounding box for empty points array");
   }

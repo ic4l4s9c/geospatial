@@ -7,7 +7,11 @@ import {
   implIntersects,
   implList,
 } from "../lib/geometryQuery.js";
-import { polygon, primitive, rectangle } from "../validators.js";
+import {
+  point,
+  primitive,
+  queryShape,
+} from "../validators.js";
 import { S2Bindings } from "../lib/s2Bindings.js";
 
 /**
@@ -32,10 +36,7 @@ export const list = query({
  */
 export const intersects = query({
   args: {
-    shape: v.union(
-      v.object({ type: v.literal("rectangle"), rectangle }),
-      v.object({ type: v.literal("polygon"), polygon }),
-    ),
+    shape: queryShape,
     maxCoveringCells: v.optional(v.number()),
     filterKeys: v.optional(v.record(v.string(), v.union(primitive, v.array(primitive)))),
     limit: v.optional(v.number()),
@@ -64,10 +65,7 @@ export const intersects = query({
  */
 export const geometriesNear = query({
   args: {
-    point: v.object({
-      latitude: v.number(),
-      longitude: v.number(),
-    }),
+    point: point,
     maxDistance: v.number(),
     filterKeys: v.optional(v.record(v.string(), v.union(primitive, v.array(primitive)))),
     limit: v.optional(v.number()),

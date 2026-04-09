@@ -3,7 +3,6 @@ import { v } from "convex/values";
 import { S2Bindings } from "../lib/s2Bindings.js";
 import { point, polygon } from "../validators.js";
 
-
 /**
  * Calculate the perimeter of a polygon in meters.
  * Uses great-circle distance on Earth's surface.

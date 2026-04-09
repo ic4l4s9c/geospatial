@@ -227,6 +227,11 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     >;
                   };
                   type: "polygon";
+                }
+              | {
+                  bufferMeters: number;
+                  polyline: Array<{ latitude: number; longitude: number }>;
+                  type: "polyline";
                 };
           },
           {
@@ -443,6 +448,11 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     >;
                   };
                   type: "polygon";
+                }
+              | {
+                  bufferMeters: number;
+                  polyline: Array<{ latitude: number; longitude: number }>;
+                  type: "polyline";
                 };
           },
           {
@@ -601,6 +611,11 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     >;
                   };
                   type: "polygon";
+                }
+              | {
+                  bufferMeters: number;
+                  polyline: Array<{ latitude: number; longitude: number }>;
+                  type: "polyline";
                 };
           },
           {

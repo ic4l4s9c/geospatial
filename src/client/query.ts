@@ -1,4 +1,4 @@
-import type { Polygon, Polyline, Rectangle } from "../component/validators.js";
+import type { QueryShape } from "../component/validators.js";
 import type { GeospatialGeometry, FilterValue, FilterObject } from "./index.js";
 
 /**
@@ -201,8 +201,3 @@ export class FilterBuilderImpl<Doc extends GeospatialGeometry> {
     return this;
   }
 }
-
-export type QueryShape =
-  | { type: "rectangle"; rectangle: Rectangle }
-  | { type: "polygon"; polygon: Polygon }
-  | { type: "polyline"; polyline: Polyline; bufferMeters: number };

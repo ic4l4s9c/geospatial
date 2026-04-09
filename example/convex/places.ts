@@ -1,12 +1,12 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { point, rectangle } from "@convex-dev/geospatial/validators";
+import {
+  point,
+  queryShape,
+  rectangle,
+} from "@convex-dev/geospatial/validators";
 import { geospatial } from "./geospatial";
 import schema from "./schema";
-
-const queryShape = v.union(
-  v.object({ type: v.literal("rectangle"), rectangle: rectangle }),
-);
 
 export const insert = mutation({
   args: schema.tables.places.validator.extend({
