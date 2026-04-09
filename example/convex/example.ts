@@ -271,7 +271,7 @@ export const geometriesNearPoint = query({
     maxDistance: v.number(),
   },
   handler: async (ctx, args) => {
-    return await geospatial.polygons.near(ctx, args.point, args.maxDistance);
+    return await geospatial.polygons.nearest(ctx, args.point, args.maxDistance);
   },
 });
 

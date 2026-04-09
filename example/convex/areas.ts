@@ -127,7 +127,7 @@ export const intersects = query({
   },
 });
 
-export const near = query({
+export const nearest = query({
   args: {
     coordinates: point,
     maxDistanceMeters: v.number(),
@@ -135,7 +135,7 @@ export const near = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const { results, truncated } = await geospatial.polygons.near(
+    const { results, truncated } = await geospatial.polygons.nearest(
       ctx,
       args.coordinates,
       args.maxDistanceMeters,

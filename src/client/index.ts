@@ -462,11 +462,11 @@ export class PolygonsNamespace<
    *          matches may exist.
    *
    * @example
-   * const { results, truncated } = await geo.polygons.near(ctx, {
+   * const { results, truncated } = await geo.polygons.nearest(ctx, {
    *   latitude: 40.7128, longitude: -74.0060
    * }, 5000);
    */
-  async near(
+  async nearest(
     ctx: QueryCtx,
     point: Point,
     maxDistance: number,
@@ -676,11 +676,11 @@ export class PolylinesNamespace<
    *          matches may exist.
    *
    * @example
-   * const { results, truncated } = await geo.polylines.near(ctx, {
+   * const { results, truncated } = await geo.polylines.nearest(ctx, {
    *   latitude: 40.7128, longitude: -74.0060
    * }, 5000);
    */
-  async near(
+  async nearest(
     ctx: QueryCtx,
     point: Point,
     maxDistance: number,
