@@ -31,9 +31,7 @@ import { useNearestQuery } from "./useNearestQuery.js";
 import { usePolygonQuery } from "./usePolygonQuery.js";
 import { usePolylineQuery } from "./usePolylineQuery.js";
 import {
-  useGeometriesQuery,
   useContainsPointQuery,
-  usePolygonMeasurements,
 } from "./useGeometriesQuery.js";
 import { FunctionReturnType } from "convex/server";
 
@@ -550,16 +548,7 @@ function App() {
   const [selectedGeometryKey, setSelectedGeometryKey] = useState<string | null>(
     null
   );
-  const { geometries, seedStates, deleteGeometry } = useGeometriesQuery();
   const { results: containsResults } = useContainsPointQuery(geometryQueryPoint);
-
-  // Get selected polygon for measurements
-  const selectedGeometry = geometries.find((g) => g.key === selectedGeometryKey);
-  const selectedPolygon =
-    selectedGeometry?.type === "polygon"
-      ? (selectedGeometry.coordinates as { exterior: Point[] })
-      : null;
-  const { area, perimeter, centroid } = usePolygonMeasurements(selectedPolygon);
 
   const commonButtonStyle = {
     backgroundColor: "var(--accent-primary)",
@@ -969,16 +958,6 @@ function App() {
               }}
             >
               <button
-                onClick={() => seedStates().catch(console.error)}
-                style={{
-                  ...commonButtonStyle,
-                  marginLeft: 0,
-                  backgroundColor: "#6366f1",
-                }}
-              >
-                Seed State Polygons
-              </button>
-              <button
                 onClick={() => setGeometryQueryPoint(null)}
                 style={{
                   ...commonButtonStyle,
@@ -990,19 +969,6 @@ function App() {
               </button>
             </div>
           </div>
-          {geometries.length > 0 && (
-            <div
-              style={{
-                width: "100%",
-                fontSize: "14px",
-                color: "var(--text-secondary)",
-                textAlign: "center",
-              }}
-            >
-              {geometries.length} stored geometries:{" "}
-              {geometries.map((g) => g.filterKeys?.name || g.key).join(", ")}
-            </div>
-          )}
           {geometryQueryPoint && (
             <div
               style={{
@@ -1021,52 +987,6 @@ function App() {
                     .map((r) => (r.filterKeys as StateFilterKeys | undefined)?.name || r.key)
                     .join(", ")
                 : "No polygons"}
-            </div>
-          )}
-          {/* Measurements panel for selected geometry */}
-          {selectedGeometryKey && selectedGeometry && (
-            <div
-              style={{
-                width: "100%",
-                fontSize: "14px",
-                backgroundColor: "#fdf4ff",
-                padding: "12px 16px",
-                borderRadius: "6px",
-                border: "1px solid #ec4899",
-                color: "#831843",
-              }}
-            >
-              <div style={{ fontWeight: "bold", marginBottom: "8px" }}>
-                📐 Measurements: {(selectedGeometry.filterKeys as StateFilterKeys | undefined)?.name || selectedGeometryKey}
-              </div>
-              {area !== null && perimeter !== null && centroid && (
-                <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
-                  <span>
-                    Area: <strong>{formatArea(area)}</strong>
-                  </span>
-                  <span>
-                    Perimeter: <strong>{formatDistance(perimeter)}</strong>
-                  </span>
-                  <span>
-                    Centroid: <strong>({centroid.latitude.toFixed(4)}, {centroid.longitude.toFixed(4)})</strong>
-                  </span>
-                </div>
-              )}
-              <button
-                onClick={() => setSelectedGeometryKey(null)}
-                style={{
-                  marginTop: "8px",
-                  padding: "4px 12px",
-                  fontSize: "12px",
-                  backgroundColor: "#ec4899",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                }}
-              >
-                Clear Selection
-              </button>
             </div>
           )}
         </div>
@@ -1207,11 +1127,11 @@ function App() {
             showDebugCells={showDebugCells}
             geometryQueryPoint={geometryQueryPoint}
             setGeometryQueryPoint={setGeometryQueryPoint}
-            storedGeometries={geometries}
+            storedGeometries={[]}
             containsResults={containsResults}
             selectedGeometryKey={selectedGeometryKey}
             setSelectedGeometryKey={setSelectedGeometryKey}
-            selectedCentroid={centroid}
+            selectedCentroid={null}
           />
         </MapContainer>
       </div>

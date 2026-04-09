@@ -266,37 +266,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           },
           Name
         >;
-        list: FunctionReference<
-          "query",
-          "internal",
-          { limit?: number },
-          Array<{
-            boundingBox: {
-              east: number;
-              north: number;
-              south: number;
-              west: number;
-            };
-            coordinates:
-              | {
-                  exterior: Array<{ latitude: number; longitude: number }>;
-                  holes?: Array<Array<{ latitude: number; longitude: number }>>;
-                }
-              | Array<{ latitude: number; longitude: number }>;
-            filterKeys?: Record<
-              string,
-              | string
-              | number
-              | boolean
-              | null
-              | bigint
-              | Array<string | number | boolean | null | bigint>
-            >;
-            key: string;
-            type: "polygon" | "polyline";
-          }>,
-          Name
-        >;
       };
       remove: FunctionReference<
         "mutation",
@@ -483,35 +452,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           },
           Name
         >;
-        list: FunctionReference<
-          "query",
-          "internal",
-          { limit?: number },
-          Array<{
-            boundingBox: {
-              east: number;
-              north: number;
-              south: number;
-              west: number;
-            };
-            coordinates: {
-              exterior: Array<{ latitude: number; longitude: number }>;
-              holes?: Array<Array<{ latitude: number; longitude: number }>>;
-            };
-            filterKeys?: Record<
-              string,
-              | string
-              | number
-              | boolean
-              | null
-              | bigint
-              | Array<string | number | boolean | null | bigint>
-            >;
-            key: string;
-            type: "polygon";
-          }>,
-          Name
-        >;
         near: FunctionReference<
           "query",
           "internal",
@@ -641,32 +581,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             }>;
             truncated: boolean;
           },
-          Name
-        >;
-        list: FunctionReference<
-          "query",
-          "internal",
-          { limit?: number },
-          Array<{
-            boundingBox: {
-              east: number;
-              north: number;
-              south: number;
-              west: number;
-            };
-            coordinates: Array<{ latitude: number; longitude: number }>;
-            filterKeys?: Record<
-              string,
-              | string
-              | number
-              | boolean
-              | null
-              | bigint
-              | Array<string | number | boolean | null | bigint>
-            >;
-            key: string;
-            type: "polyline";
-          }>,
           Name
         >;
         near: FunctionReference<

@@ -79,22 +79,6 @@ export const get = query({
   },
 });
 
-export const list = query({
-  args: { limit: v.optional(v.number()) },
-  handler: async (ctx, args) => {
-    const geoResults = await geospatial.polylines.list(ctx, args.limit);
-
-    const hydrated = await Promise.all(
-      geoResults.map(async (g) => {
-        const doc = await ctx.db.get(g.key);
-        return doc ? { ...doc, coordinates: g.coordinates } : null;
-      }),
-    );
-
-    return hydrated.filter(Boolean);
-  },
-});
-
 export const intersects = query({
   args: {
     shape: queryShape,

@@ -5,7 +5,6 @@ import {
   geometryWithDistance,
   implGeometriesNear,
   implIntersects,
-  implList,
 } from "../lib/geometryQuery.js";
 import {
   point,
@@ -13,19 +12,6 @@ import {
   queryShape,
 } from "../validators.js";
 import { S2Bindings } from "../lib/s2Bindings.js";
-
-/**
- * List all stored geometries.
- */
-export const list = query({
-  args: {
-    limit: v.optional(v.number()),
-  },
-  returns: v.array(geometryResult),
-  handler: async (ctx, args) => {
-    return implList(ctx, { limit: args.limit ?? 100 });
-  },
-});
 
 /**
  * Find all geometries of any type that intersect a given shape.

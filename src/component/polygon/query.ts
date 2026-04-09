@@ -16,7 +16,6 @@ import {
   gatherCandidates,
   implGeometriesNear,
   implIntersects,
-  implList,
   matchesFilterKeys,
 } from "../lib/geometryQuery.js";
 
@@ -32,19 +31,6 @@ const polygonResult = v.object({
 
 const polygonWithDistance = polygonResult.extend({
   distance: v.number(),
-});
-
-/**
- * List stored polygons.
- */
-export const list = query({
-  args: {
-    limit: v.optional(v.number()),
-  },
-  returns: v.array(polygonResult),
-  handler: async (ctx, args) => {
-    return implList(ctx, { limit: args.limit ?? 100, type: "polygon" });
-  },
 });
 
 /**

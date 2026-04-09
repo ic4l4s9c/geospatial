@@ -1,27 +1,6 @@
-import { useQuery, useMutation } from "convex/react";
+import { useQuery } from "convex/react";
 import { api } from "../convex/_generated/api";
 import type { Point, Polygon } from "@convex-dev/geospatial";
-
-/**
- * Hook to interact with stored geometries (polygons/polylines).
- */
-export function useGeometriesQuery() {
-  // List all stored geometries
-  const geometriesResult = useQuery(api.example.listGeometries);
-
-  // Seed state polygons
-  const seedStates = useMutation(api.seed.seedStatePolygons);
-
-  // Delete a geometry
-  const deleteGeometry = useMutation(api.example.deleteGeometry);
-
-  return {
-    geometries: geometriesResult ?? [],
-    seedStates,
-    deleteGeometry,
-    loading: geometriesResult === undefined,
-  };
-}
 
 /**
  * Hook to query which geometries contain a given point.

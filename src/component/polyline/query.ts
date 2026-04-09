@@ -1,7 +1,6 @@
 import {
   implGeometriesNear,
   implIntersects,
-  implList,
 } from "../lib/geometryQuery.js";
 import { query } from "../_generated/server.js";
 import { v } from "convex/values";
@@ -21,19 +20,6 @@ const polylineResult = v.object({
 
 const polylineWithDistance = polylineResult.extend({
   distance: v.number(),
-});
-
-/**
- * List stored polylines.
- */
-export const list = query({
-  args: {
-    limit: v.optional(v.number()),
-  },
-  returns: v.array(polylineResult),
-  handler: async (ctx, args) => {
-    return implList(ctx, { limit: args.limit ?? 100, type: "polyline" });
-  },
 });
 
 /**

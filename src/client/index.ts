@@ -493,24 +493,6 @@ export class PolygonsNamespace<
   }
 
   /**
-   * List stored polygons.
-   *
-   * @param ctx   - The Convex query context.
-   * @param limit - Maximum number of results, default 100.
-   * @returns Array of stored polygons.
-   */
-  async list(
-    ctx: QueryCtx,
-    limit?: number,
-  ): Promise<GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>[]> {
-    const result = await ctx.runQuery(this.core.component.polygon.query.list, {
-      limit,
-    });
-    return result as typeof result &
-      GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>[];
-  }
-
-  /**
    * Calculate the area of a polygon in square meters.
    *
    * @param ctx     - The Convex query context.
@@ -722,24 +704,6 @@ export class PolylinesNamespace<
       >[];
       truncated: boolean;
     };
-  }
-
-  /**
-   * List stored polylines.
-   *
-   * @param ctx   - The Convex query context.
-   * @param limit - Maximum number of results, default 100.
-   * @returns Array of stored polylines.
-   */
-  async list(
-    ctx: QueryCtx,
-    limit?: number,
-  ): Promise<GeospatialGeometry<"polyline", PolylineKey, PolylineFilters>[]> {
-    const result = await ctx.runQuery(this.core.component.polyline.query.list, {
-      limit,
-    });
-    return result as typeof result &
-      GeospatialGeometry<"polyline", PolylineKey, PolylineFilters>[];
   }
 
   /**

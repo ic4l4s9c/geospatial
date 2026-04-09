@@ -244,17 +244,6 @@ export const debugCells = query({
   },
 });
 
-export const listGeometries = query({
-  args: {},
-  handler: async (ctx) => {
-    const [polygons, polylines] = await Promise.all([
-      geospatial.polygons.list(ctx),
-      geospatial.polylines.list(ctx),
-    ]);
-    return [...polygons, ...polylines];
-  },
-});
-
 export const geometryContainsPoint = query({
   args: {
     point,
