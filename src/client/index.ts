@@ -345,7 +345,7 @@ export class PolygonsNamespace<
       type: "polygon",
       coordinates: polygon,
       filterKeys,
-      sortKey,
+      sortKey: sortKey ?? Math.random(),
     });
   }
 
@@ -594,7 +594,7 @@ export class PolylinesNamespace<
       type: "polyline",
       coordinates: polyline,
       filterKeys,
-      sortKey,
+      sortKey: sortKey ?? Math.random(),
     });
   }
 

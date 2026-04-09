@@ -161,7 +161,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             | Array<string | number | boolean | null | bigint>
           >;
           key: string;
-          sortKey?: number;
+          sortKey: number;
           type: "polygon" | "polyline";
         },
         null,

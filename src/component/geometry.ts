@@ -92,7 +92,7 @@ export const insert = mutation({
     type: v.union(v.literal("polygon"), v.literal("polyline")),
     coordinates: v.union(polygon, polyline),
     filterKeys: v.optional(v.record(v.string(), v.union(primitive, v.array(primitive)))),
-    sortKey: v.optional(v.number()),
+    sortKey: v.number(),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -120,7 +120,7 @@ export const insert = mutation({
       type: args.type,
       coordinates: args.coordinates,
       ...bbox,
-      sortKey: args.sortKey ?? 0,
+      sortKey: args.sortKey,
       filterKeys: args.filterKeys,
     });
 

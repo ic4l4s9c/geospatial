@@ -35,6 +35,7 @@ describe("Geometry Storage", () => {
       const t = convexTest(schema, modules);
 
       await t.mutation(api.geometry.insert, {
+        sortKey: 0,
         key: "manhattan",
         type: "polygon",
         coordinates: MANHATTAN_POLYGON,
@@ -51,6 +52,7 @@ describe("Geometry Storage", () => {
       const t = convexTest(schema, modules);
 
       await t.mutation(api.geometry.insert, {
+        sortKey: 0,
         key: "route",
         type: "polyline",
         coordinates: MANHATTAN_ROUTE,
@@ -66,6 +68,7 @@ describe("Geometry Storage", () => {
       const t = convexTest(schema, modules);
 
       await t.mutation(api.geometry.insert, {
+        sortKey: 0,
         key: "manhattan",
         type: "polygon",
         coordinates: MANHATTAN_POLYGON,
@@ -81,6 +84,7 @@ describe("Geometry Storage", () => {
       const t = convexTest(schema, modules);
 
       await t.mutation(api.geometry.insert, {
+        sortKey: 0,
         key: "manhattan",
         type: "polygon",
         coordinates: MANHATTAN_POLYGON,
@@ -88,6 +92,7 @@ describe("Geometry Storage", () => {
 
       await expect(
         t.mutation(api.geometry.insert, {
+          sortKey: 0,
           key: "manhattan",
           type: "polygon",
           coordinates: MANHATTAN_POLYGON,
@@ -99,6 +104,7 @@ describe("Geometry Storage", () => {
       const t = convexTest(schema, modules);
 
       await t.mutation(api.geometry.insert, {
+        sortKey: 0,
         key: "test",
         type: "polygon",
         coordinates: {
@@ -134,6 +140,7 @@ describe("Geometry Storage", () => {
       const t = convexTest(schema, modules);
 
       await t.mutation(api.geometry.insert, {
+        sortKey: 0,
         key: "manhattan",
         type: "polygon",
         coordinates: MANHATTAN_POLYGON,
@@ -152,6 +159,7 @@ describe("Geometry Storage", () => {
       const t = convexTest(schema, modules);
 
       await t.mutation(api.geometry.insert, {
+        sortKey: 0,
         key: "manhattan",
         type: "polygon",
         coordinates: MANHATTAN_POLYGON,
@@ -168,6 +176,7 @@ describe("Geometry Storage", () => {
       const t = convexTest(schema, modules);
 
       await t.mutation(api.geometry.insert, {
+        sortKey: 0,
         key: "manhattan",
         type: "polygon",
         coordinates: MANHATTAN_POLYGON,
@@ -194,6 +203,7 @@ describe("Geometry Storage", () => {
 
       // Insert two overlapping polygons
       await t.mutation(api.geometry.insert, {
+        sortKey: 0,
         key: "large",
         type: "polygon",
         coordinates: {
@@ -207,6 +217,7 @@ describe("Geometry Storage", () => {
       });
 
       await t.mutation(api.geometry.insert, {
+        sortKey: 0,
         key: "small",
         type: "polygon",
         coordinates: {
@@ -234,6 +245,7 @@ describe("Geometry Storage", () => {
       const t = convexTest(schema, modules);
 
       await t.mutation(api.geometry.insert, {
+        sortKey: 0,
         key: "manhattan",
         type: "polygon",
         coordinates: MANHATTAN_POLYGON,
@@ -260,6 +272,7 @@ describe("Geometry Storage", () => {
       const t = convexTest(schema, modules);
 
       await t.mutation(api.geometry.insert, {
+        sortKey: 0,
         key: "manhattan",
         type: "polygon",
         coordinates: MANHATTAN_POLYGON,
@@ -286,6 +299,7 @@ describe("Geometry Storage", () => {
 
       // Insert a polyline
       await t.mutation(api.geometry.insert, {
+        sortKey: 0,
         key: "route",
         type: "polyline",
         coordinates: MANHATTAN_ROUTE,
@@ -316,6 +330,7 @@ describe("Geometry Storage", () => {
       const t = convexTest(schema, modules);
 
       await t.mutation(api.geometry.insert, {
+        sortKey: 0,
         key: "manhattan",
         type: "polygon",
         coordinates: MANHATTAN_POLYGON,
@@ -339,6 +354,7 @@ describe("Geometry Storage", () => {
       const t = convexTest(schema, modules);
 
       await t.mutation(api.geometry.insert, {
+        sortKey: 0,
         key: "manhattan",
         type: "polygon",
         coordinates: MANHATTAN_POLYGON,
@@ -358,6 +374,7 @@ describe("Geometry Storage", () => {
 
       // Insert Manhattan polygon
       await t.mutation(api.geometry.insert, {
+        sortKey: 0,
         key: "manhattan",
         type: "polygon",
         coordinates: MANHATTAN_POLYGON,
@@ -365,6 +382,7 @@ describe("Geometry Storage", () => {
 
       // Insert a larger polygon that also contains the query point
       await t.mutation(api.geometry.insert, {
+        sortKey: 0,
         key: "nyc",
         type: "polygon",
         coordinates: {
@@ -397,6 +415,7 @@ describe("Geometry Storage", () => {
       const t = convexTest(schema, modules);
 
       await t.mutation(api.geometry.insert, {
+        sortKey: 0,
         key: "route",
         type: "polyline",
         coordinates: MANHATTAN_ROUTE,
@@ -419,6 +438,7 @@ describe("Geometry Storage", () => {
 
       // Insert a Texas-sized polygon (~700,000 km²)
       await t.mutation(api.geometry.insert, {
+        sortKey: 0,
         key: "texas",
         type: "polygon",
         coordinates: {
@@ -433,6 +453,7 @@ describe("Geometry Storage", () => {
 
       // Insert a building-sized polygon (~100m × 100m)
       await t.mutation(api.geometry.insert, {
+        sortKey: 0,
         key: "building",
         type: "polygon",
         coordinates: {
