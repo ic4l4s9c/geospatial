@@ -53,6 +53,7 @@ export type PolygonGeometry<
   coordinates: Polygon;
   boundingBox: Rectangle;
   filterKeys?: Filters;
+  sortKey: number;
 };
 
 export type PolylineGeometry<
@@ -64,6 +65,7 @@ export type PolylineGeometry<
   coordinates: Polyline;
   boundingBox: Rectangle;
   filterKeys?: Filters;
+  sortKey: number;
 };
 
 export type GeospatialGeometry<
