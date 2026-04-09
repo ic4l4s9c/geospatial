@@ -287,7 +287,7 @@ export class ClosestPointQuery {
   }
 
   private pointMatchesCondition(point: Doc<"points">, filter: FilterCondition) {
-    const value = point.filterKeys[filter.filterKey];
+    const value = point.filterKeys?.[filter.filterKey];
     if (value === undefined) {
       return false;
     }

@@ -30,7 +30,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         { key: string },
         {
           coordinates: { latitude: number; longitude: number };
-          filterKeys: Record<
+          filterKeys?: Record<
             string,
             | string
             | number
@@ -50,7 +50,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         {
           document: {
             coordinates: { latitude: number; longitude: number };
-            filterKeys: Record<
+            filterKeys?: Record<
               string,
               | string
               | number

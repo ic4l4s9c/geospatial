@@ -13,6 +13,7 @@ import {
 } from "../validators.js";
 import { S2Bindings } from "../lib/s2Bindings.js";
 import { equalityCondition } from "../query.js";
+import { filterKeys } from "../schema.js";
 
 /**
  * Find all geometries of any type that intersect a given shape.
@@ -25,7 +26,7 @@ export const intersects = query({
   args: {
     shape: queryShape,
     maxCoveringCells: v.optional(v.number()),
-    filterKeys: v.optional(v.record(v.string(), v.union(primitive, v.array(primitive)))),
+    filterKeys: filterKeys,
     limit: v.optional(v.number()),
   },
   returns: v.object({

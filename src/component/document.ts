@@ -6,12 +6,13 @@ import { filterCounterKey } from "./streams/filterKeyRange.js";
 import { cellCounterKey } from "./streams/cellRange.js";
 import * as approximateCounter from "./lib/approximateCounter.js";
 import { S2Bindings } from "./lib/s2Bindings.js";
+import { filterKeys } from "./schema.js";
 
 const geoDocument = v.object({
   key: v.string(),
   coordinates: point,
   sortKey: v.number(),
-  filterKeys: v.record(v.string(), v.union(primitive, v.array(primitive))),
+  filterKeys: filterKeys,
 });
 
 export const insert = mutation({
@@ -34,7 +35,7 @@ export const insert = mutation({
       await approximateCounter.increment(ctx, pointId, cellCounterKey(cell));
     }
     for (const [filterKey, filterDoc] of Object.entries(
-      args.document.filterKeys,
+      args.document.filterKeys ?? {},
     )) {
       const valueArray = filterDoc instanceof Array ? filterDoc : [filterDoc];
       for (const filterValue of valueArray) {
@@ -194,7 +195,7 @@ async function removePointByKey(
     await ctx.db.delete(existingCell._id);
     await approximateCounter.decrement(ctx, existing._id, cellCounterKey(cell));
   }
-  for (const [filterKey, filterDoc] of Object.entries(existing.filterKeys)) {
+  for (const [filterKey, filterDoc] of Object.entries(existing.filterKeys ?? {})) {
     const valueArray = filterDoc instanceof Array ? filterDoc : [filterDoc];
     for (const filterValue of valueArray) {
       const existingFilterKey = await ctx.db

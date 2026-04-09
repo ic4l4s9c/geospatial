@@ -5,6 +5,7 @@ import { primitive } from "../lib/primitive.js";
 import { S2Bindings } from "../lib/s2Bindings.js";
 import { point, polyline, queryShape, rectangle } from "../validators.js";
 import { equalityCondition } from "../query.js";
+import { filterKeys } from "../schema.js";
 
 const polylineResult = v.object({
   key: v.string(),
@@ -27,9 +28,7 @@ export const intersects = query({
   args: {
     shape: queryShape,
     maxCoveringCells: v.optional(v.number()),
-    filterKeys: v.optional(
-      v.record(v.string(), v.union(primitive, v.array(primitive))),
-    ),
+    filterKeys: filterKeys,
     limit: v.optional(v.number()),
   },
   returns: v.object({

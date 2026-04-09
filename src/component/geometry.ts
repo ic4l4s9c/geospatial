@@ -4,6 +4,7 @@ import { S2Bindings } from "./lib/s2Bindings.js";
 import { polygon, polyline, rectangle, type Rectangle } from "./validators.js";
 import { primitive } from "./lib/primitive.js";
 import type { Point, Polygon } from "./validators.js";
+import { filterKeys } from "./schema.js";
 
 const MAX_COVERING_CELLS = 30;
 
@@ -91,7 +92,7 @@ export const insert = mutation({
     key: v.string(),
     type: v.union(v.literal("polygon"), v.literal("polyline")),
     coordinates: v.union(polygon, polyline),
-    filterKeys: v.optional(v.record(v.string(), v.union(primitive, v.array(primitive)))),
+    filterKeys: filterKeys,
     sortKey: v.number(),
   },
   returns: v.null(),
@@ -171,7 +172,7 @@ export const update = mutation({
   args: {
     key: v.string(),
     coordinates: v.optional(v.union(polygon, polyline)),
-    filterKeys: v.optional(v.record(v.string(), v.union(primitive, v.array(primitive)))),
+    filterKeys: filterKeys,
     sortKey: v.optional(v.number()),
   },
   returns: v.boolean(),
@@ -243,7 +244,7 @@ export const get = query({
       coordinates: v.union(polygon, polyline),
       boundingBox: rectangle,
       sortKey: v.number(),
-      filterKeys: v.optional(v.record(v.string(), v.union(primitive, v.array(primitive)))),
+      filterKeys: filterKeys,
     }),
     v.null(),
   ),

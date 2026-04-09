@@ -2,12 +2,16 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import { point, polygon, polyline, primitive } from "./validators.js";
 
+export const filterKeys = v.optional(
+  v.record(v.string(), v.union(primitive, v.array(primitive))),
+);
+
 export default defineSchema({
   points: defineTable({
     key: v.string(),
     coordinates: point,
     sortKey: v.number(),
-    filterKeys: v.record(v.string(), v.union(primitive, v.array(primitive))),
+    filterKeys: filterKeys,
   }).index("key", ["key"]),
 
   pointsByCell: defineTable({
@@ -35,7 +39,7 @@ export default defineSchema({
     west: v.number(),
     east: v.number(),
     sortKey: v.number(),
-    filterKeys: v.optional(v.record(v.string(), v.union(primitive, v.array(primitive)))),
+    filterKeys: filterKeys,
   })
     .index("byKey", ["key"])
     .index("byType", ["type"])

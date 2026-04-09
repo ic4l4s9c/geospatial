@@ -52,7 +52,7 @@ export type PolygonGeometry<
   type: "polygon";
   coordinates: Polygon;
   boundingBox: Rectangle;
-  filterKeys?: Filters;
+  filterKeys: Filters;
   sortKey: number;
 };
 
@@ -64,7 +64,7 @@ export type PolylineGeometry<
   type: "polyline";
   coordinates: Polyline;
   boundingBox: Rectangle;
-  filterKeys?: Filters;
+  filterKeys: Filters;
   sortKey: number;
 };
 
@@ -149,7 +149,7 @@ export class PointsNamespace<
     ctx: MutationCtx,
     key: PointKey,
     coordinates: Point,
-    filterKeys: PointFilters,
+    filterKeys?: PointFilters,
     sortKey?: number,
   ): Promise<void> {
     await ctx.runMutation(this.core.component.document.insert, {
