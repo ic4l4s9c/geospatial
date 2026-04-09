@@ -1,7 +1,7 @@
 import { mutation, query } from "./_generated/server.js";
 import { v } from "convex/values";
 import { S2Bindings } from "./lib/s2Bindings.js";
-import { polygon, polyline, type Rectangle } from "./validators.js";
+import { polygon, polyline, rectangle, type Rectangle } from "./validators.js";
 import { primitive } from "./lib/primitive.js";
 import type { Point, Polygon } from "./validators.js";
 
@@ -241,12 +241,7 @@ export const get = query({
       key: v.string(),
       type: v.union(v.literal("polygon"), v.literal("polyline")),
       coordinates: v.union(polygon, polyline),
-      boundingBox: v.object({
-        south: v.number(),
-        north: v.number(),
-        west: v.number(),
-        east: v.number(),
-      }),
+      boundingBox: rectangle,
       sortKey: v.number(),
       filterKeys: v.optional(v.record(v.string(), v.union(primitive, v.array(primitive)))),
     }),
