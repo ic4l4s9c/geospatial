@@ -7,6 +7,7 @@ import schema from "./schema";
 export const insert = mutation({
   args: schema.tables.areas.validator.extend({
     coordinates: polygon,
+    sortKey: v.optional(v.number()),
   }),
   handler: async (ctx, args) => {
     const id = await ctx.db.insert("areas", {
@@ -17,10 +18,13 @@ export const insert = mutation({
       color: args.color,
     });
 
-    await geospatial.polygons.insert(ctx, id, args.coordinates, {
-      type: args.type,
-      tags: args.tags,
-    });
+    await geospatial.polygons.insert(
+      ctx,
+      id,
+      args.coordinates,
+      { type: args.type, tags: args.tags },
+      args.sortKey ?? Date.now(),
+    );
 
     return id;
   },
@@ -38,9 +42,10 @@ export const update = mutation({
   args: schema.tables.areas.validator.partial().extend({
     id: v.id("areas"),
     coordinates: v.optional(polygon),
+    sortKey: v.optional(v.number()),
   }),
   handler: async (ctx, args) => {
-    const { id, coordinates, ...fields } = args;
+    const { id, coordinates, sortKey, ...fields } = args;
 
     const doc = await ctx.db.get(id);
     if (!doc) {
@@ -48,13 +53,15 @@ export const update = mutation({
     }
     await ctx.db.patch(id, fields);
 
-    if (coordinates) {
-      const updatedDoc = await ctx.db.get(id);
-      await geospatial.polygons.update(ctx, id, coordinates, {
-        type: updatedDoc!.type,
-        tags: updatedDoc!.tags,
-      });
-    }
+    const type = args.type ?? doc.type;
+    const tags = args.tags ?? doc.tags;
+    await geospatial.polygons.update(
+      ctx,
+      id,
+      coordinates,
+      { type, tags },
+      sortKey,
+    );
   },
 });
 

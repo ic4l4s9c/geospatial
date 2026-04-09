@@ -13,7 +13,7 @@ export const insert = mutation({
     coordinates: point,
   }),
   handler: async (ctx, args) => {
-    const { coordinates, ...fields } = args
+    const { coordinates, ...fields } = args;
     const id = await ctx.db.insert("places", fields);
 
     await geospatial.points.insert(
@@ -101,15 +101,13 @@ export const nearest = query({
     category: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { coordinates, limit, maxDistanceMeters, category } = args
+    const { coordinates, limit, maxDistanceMeters, category } = args;
 
     const results = await geospatial.points.nearest(ctx, {
       point: coordinates,
-      limit: limit,
+      limit,
       maxDistance: maxDistanceMeters,
-      filter: category
-        ? (q) => q.eq("category", category)
-        : undefined,
+      filter: category ? (q) => q.eq("category", category) : undefined,
     });
 
     const hydrated = await Promise.all(

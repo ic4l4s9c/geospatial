@@ -7,6 +7,7 @@ import schema from "./schema";
 export const insert = mutation({
   args: schema.tables.routes.validator.extend({
     coordinates: polyline,
+    sortKey: v.optional(v.number()),
   }),
   handler: async (ctx, args) => {
     const id = await ctx.db.insert("routes", {
@@ -17,10 +18,13 @@ export const insert = mutation({
       durationMinutes: args.durationMinutes,
     });
 
-    await geospatial.polylines.insert(ctx, id, args.coordinates, {
-      mode: args.mode,
-      tags: args.tags,
-    });
+    await geospatial.polylines.insert(
+      ctx,
+      id,
+      args.coordinates,
+      { mode: args.mode, tags: args.tags },
+      args.sortKey ?? Date.now(),
+    );
 
     return id;
   },
@@ -38,9 +42,10 @@ export const update = mutation({
   args: schema.tables.routes.validator.partial().extend({
     id: v.id("routes"),
     coordinates: v.optional(polyline),
+    sortKey: v.optional(v.number()),
   }),
   handler: async (ctx, args) => {
-    const { id, coordinates, ...fields } = args;
+    const { id, coordinates, sortKey, ...fields } = args;
 
     const doc = await ctx.db.get(id);
     if (!doc) {
@@ -48,16 +53,15 @@ export const update = mutation({
     }
     await ctx.db.patch(id, fields);
 
-    if (coordinates) {
-      const updatedDoc = await ctx.db.get(id);
-      if (!updatedDoc) {
-        throw new Error(`Route not found: ${id}`);
-      }
-      await geospatial.polylines.update(ctx, id, coordinates, {
-        mode: updatedDoc.mode,
-        tags: updatedDoc.tags,
-      });
-    }
+    const mode = args.mode ?? doc.mode;
+    const tags = args.tags ?? doc.tags;
+    await geospatial.polylines.update(
+      ctx,
+      id,
+      coordinates,
+      { mode, tags },
+      sortKey,
+    );
   },
 });
 
