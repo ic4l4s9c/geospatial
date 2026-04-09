@@ -320,7 +320,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           key: string;
           sortKey?: number;
         },
-        null,
+        boolean,
         Name
       >;
     };

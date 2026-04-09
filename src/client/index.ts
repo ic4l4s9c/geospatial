@@ -374,8 +374,8 @@ export class PolygonsNamespace<
     coordinates?: Polygon,
     filterKeys?: PolygonFilters,
     sortKey?: number,
-  ): Promise<void> {
-    await ctx.runMutation(this.core.component.geometry.update, {
+  ): Promise<boolean> {
+    return await ctx.runMutation(this.core.component.geometry.update, {
       key,
       coordinates,
       filterKeys,
@@ -623,8 +623,8 @@ export class PolylinesNamespace<
     coordinates?: Polyline,
     filterKeys?: PolylineFilters,
     sortKey?: number,
-  ): Promise<void> {
-    await ctx.runMutation(this.core.component.geometry.update, {
+  ): Promise<boolean> {
+    return await ctx.runMutation(this.core.component.geometry.update, {
       key,
       coordinates,
       filterKeys,

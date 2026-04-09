@@ -174,7 +174,7 @@ export const update = mutation({
     filterKeys: v.optional(v.record(v.string(), v.union(primitive, v.array(primitive)))),
     sortKey: v.optional(v.number()),
   },
-  returns: v.null(),
+  returns: v.boolean(),
   handler: async (ctx, args) => {
     const s2 = await S2Bindings.load();
 
@@ -183,7 +183,7 @@ export const update = mutation({
       .withIndex("byKey", (q) => q.eq("key", args.key))
       .first();
     if (!existing) {
-      throw new Error(`Geometry with key "${args.key}" not found`);
+      return false
     }
 
     if (args.coordinates !== undefined) {
@@ -227,6 +227,7 @@ export const update = mutation({
         ...(args.sortKey !== undefined && { sortKey: args.sortKey }),
       });
     }
+    return true
   },
 });
 
