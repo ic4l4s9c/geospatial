@@ -320,8 +320,8 @@ export class PolygonsNamespace<
    * @param ctx - The Convex mutation context.
    * @param key - The unique string key of the polygon to remove.
    */
-  async remove(ctx: MutationCtx, key: PolygonKey): Promise<void> {
-    await ctx.runMutation(this.core.component.geometry.remove, { key });
+  async remove(ctx: MutationCtx, key: PolygonKey): Promise<boolean> {
+    return await ctx.runMutation(this.core.component.geometry.remove, { key });
   }
 
   /**
@@ -587,8 +587,8 @@ export class PolylinesNamespace<
    * @param ctx - The Convex mutation context.
    * @param key - The unique string key of the polyline to remove.
    */
-  async remove(ctx: MutationCtx, key: PolylineKey): Promise<void> {
-    await ctx.runMutation(this.core.component.geometry.remove, { key });
+  async remove(ctx: MutationCtx, key: PolylineKey): Promise<boolean> {
+    return await ctx.runMutation(this.core.component.geometry.remove, { key });
   }
 
   /**

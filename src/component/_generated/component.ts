@@ -302,7 +302,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "mutation",
         "internal",
         { key: string },
-        null,
+        boolean,
         Name
       >;
       update: FunctionReference<

@@ -142,14 +142,14 @@ export const insert = mutation({
  */
 export const remove = mutation({
   args: { key: v.string() },
-  returns: v.null(),
+  returns: v.boolean(),
   handler: async (ctx, args) => {
     const geometry = await ctx.db
       .query("geometries")
       .withIndex("byKey", (q) => q.eq("key", args.key))
       .first();
     if (!geometry) {
-      throw new Error(`Geometry with key "${args.key}" not found`);
+      return false
     }
     await ctx.db.delete(geometry._id);
 
@@ -160,6 +160,7 @@ export const remove = mutation({
     for (const cell of cells) {
       await ctx.db.delete(cell._id);
     }
+    return true
   },
 });
 
