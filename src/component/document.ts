@@ -53,6 +53,62 @@ export const insert = mutation({
   },
 });
 
+export const update = mutation({
+  args: {
+    key: v.string(),
+    coordinates: v.optional(point),
+    sortKey: v.optional(v.number()),
+    filterKeys: v.optional(
+      v.record(v.string(), v.union(primitive, v.array(primitive))),
+    ),
+    minLevel: v.number(),
+    maxLevel: v.number(),
+    levelMod: v.number(),
+    maxCells: v.number(),
+  },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("points")
+      .withIndex("key", (q) => q.eq("key", args.key))
+      .first();
+    if (!existing) {
+      return false;
+    }
+    const s2 = await S2Bindings.load();
+    const document = {
+      key: args.key,
+      coordinates: args.coordinates ?? existing.coordinates,
+      filterKeys: { ...existing.filterKeys, ...args.filterKeys },
+      sortKey: args.sortKey ?? existing.sortKey,
+    };
+    await removePointByKey(ctx, s2, args.key, args);
+    const pointId = await ctx.db.insert("points", document);
+    const cells = s2Cells(s2, document.coordinates, args);
+    const tupleKey = encodeTupleKey(document.sortKey, pointId);
+    for (const cell of cells) {
+      await ctx.db.insert("pointsByCell", { cell, tupleKey });
+      await approximateCounter.increment(ctx, pointId, cellCounterKey(cell));
+    }
+    for (const [filterKey, filterDoc] of Object.entries(document.filterKeys)) {
+      const valueArray = filterDoc instanceof Array ? filterDoc : [filterDoc];
+      for (const filterValue of valueArray) {
+        await ctx.db.insert("pointsByFilterKey", {
+          filterKey,
+          filterValue,
+          tupleKey,
+        });
+        await approximateCounter.increment(
+          ctx,
+          pointId,
+          filterCounterKey(filterKey, filterValue),
+        );
+      }
+    }
+    return true;
+  },
+});
+
 export const get = query({
   args: {
     key: v.string(),

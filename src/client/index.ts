@@ -183,6 +183,41 @@ export class PointsNamespace<
   }
 
   /**
+   * Update an existing key's coordinates, filter keys, or sort key.
+   * Only the fields provided will change; omitted fields keep their
+   * existing values.
+   *
+   * @param ctx         - The Convex mutation context.
+   * @param key         - The unique string key to update.
+   * @param coordinates - New geographic coordinate `{ latitude, longitude }`,
+   *                      keeps existing if omitted.
+   * @param filterKeys  - New filter keys to associate with the key, keeps
+   *                      existing if omitted. All filter keys must be provided
+   *                      together when updating — partial filter key updates
+   *                      are not supported.
+   * @param sortKey     - New sort key, keeps existing if omitted.
+   * @returns `true` if the key existed and was updated, `false` otherwise.
+   */
+  async update(
+    ctx: MutationCtx,
+    key: PointKey,
+    coordinates?: Point,
+    filterKeys?: PointFilters,
+    sortKey?: number,
+  ): Promise<boolean> {
+    return await ctx.runMutation(this.core.component.document.update, {
+      key,
+      coordinates,
+      filterKeys,
+      sortKey,
+      minLevel: this.core.minLevel,
+      maxLevel: this.core.maxLevel,
+      levelMod: this.core.levelMod,
+      maxCells: this.core.maxCells,
+    });
+  }
+
+  /**
    * Remove a key-coordinate pair from the index.
    *
    * @param ctx - The Convex mutation context.

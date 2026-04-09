@@ -83,6 +83,30 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         boolean,
         Name
       >;
+      update: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          coordinates?: { latitude: number; longitude: number };
+          filterKeys?: Record<
+            string,
+            | string
+            | number
+            | boolean
+            | null
+            | bigint
+            | Array<string | number | boolean | null | bigint>
+          >;
+          key: string;
+          levelMod: number;
+          maxCells: number;
+          maxLevel: number;
+          minLevel: number;
+          sortKey?: number;
+        },
+        boolean,
+        Name
+      >;
     };
     geometry: {
       get: FunctionReference<
