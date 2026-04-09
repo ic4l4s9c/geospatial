@@ -112,13 +112,12 @@ export const nearest = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const { results, truncated } = await geospatial.polylines.nearest(
-      ctx,
-      args.coordinates,
-      args.maxDistanceMeters,
-      args.mode ? { mode: args.mode, tags: [] } : undefined,
-      args.limit,
-    );
+    const { results, truncated } = await geospatial.polylines.nearest(ctx, {
+      point: args.coordinates,
+      maxDistance: args.maxDistanceMeters,
+      limit: args.limit ?? 100,
+      filter: args.mode ? (q) => q.eq("mode", args.mode!) : undefined,
+    });
 
     const hydrated = await Promise.all(
       results.map(async (g) => {

@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { type Infer, v } from "convex/values";
 import { S2Bindings } from "./s2Bindings.js";
 import {
   polygon,
@@ -10,6 +10,7 @@ import {
 import type { Point, Polygon, Rectangle, Primitive } from "../validators.js";
 import type { Id } from "../_generated/dataModel.js";
 import type { QueryCtx } from "../_generated/server.js";
+import type { equalityCondition } from "../query.js";
 
 const MAX_CANDIDATES = 1000;
 const METERS_PER_DEGREE_LAT = 111_000;
@@ -27,6 +28,8 @@ export const geometryResult = v.object({
 export const geometryWithDistance = geometryResult.extend({
   distance: v.number(),
 });
+
+export type FilterCondition = Infer<typeof equalityCondition>
 
 function boundingBoxesIntersect(a: Rectangle, b: Rectangle): boolean {
   return !(
@@ -87,6 +90,54 @@ export function matchesFilterKeys(
   });
 }
 
+/**
+ * Checks whether a geometry's filterKeys satisfy a list of must/should
+ * conditions, mirroring the logic used by the points nearest query.
+ */
+export function matchesFilterConditions(
+  geometry: { filterKeys?: Record<string, Primitive | Primitive[]> },
+  mustFilters: FilterCondition[],
+  shouldFilters: FilterCondition[],
+): boolean {
+  const filterKeys = geometry.filterKeys;
+
+  for (const filter of mustFilters) {
+    const value = filterKeys?.[filter.filterKey];
+    if (value === undefined) {
+      return false;
+    }
+    if (Array.isArray(value)) {
+      if (!value.some((v) => v === filter.filterValue)) {
+        return false;
+      }
+    } else {
+      if (value !== filter.filterValue) {
+        return false;
+      }
+    }
+  }
+
+  if (shouldFilters.length > 0) {
+    let anyMatch = false;
+    for (const filter of shouldFilters) {
+      const value = filterKeys?.[filter.filterKey];
+      if (value === undefined) continue;
+      if (Array.isArray(value)) {
+        if (value.some((v) => v === filter.filterValue)) {
+          anyMatch = true;
+          break;
+        }
+      } else if (value === filter.filterValue) {
+        anyMatch = true;
+        break;
+      }
+    }
+    if (!anyMatch) return false;
+  }
+
+  return true;
+}
+
 export async function gatherCandidates(
   ctx: QueryCtx,
   tokens: Iterable<string>,
@@ -103,9 +154,13 @@ export async function gatherCandidates(
       break;
     }
 
+    // Match both exact token (geometry indexed at this level or coarser ancestor)
+    // and all descendant tokens (geometry indexed at a finer level within this cell).
     const matches = await ctx.db
       .query("geometryCells")
-      .withIndex("byCellToken", (q) => q.eq("cellToken", token))
+      .withIndex("byCellToken", (q) =>
+        q.gte("cellToken", token).lt("cellToken", token + "~"),
+      )
       .take(MAX_CANDIDATES - candidateIds.size);
 
     for (const match of matches) {
@@ -470,9 +525,9 @@ async function implIntersectsPolylineBuffer(
 
 type NearArgs = {
   point: Point;
-  maxDistance: number;
-  filterKeys?: Record<string, Primitive | Primitive[]>;
-  limit: number;
+  maxDistance?: number;
+  filtering: FilterCondition[];
+  maxResults: number;
 };
 
 export async function implGeometriesNear(
@@ -535,38 +590,43 @@ export async function implGeometriesNear(
   }[];
   truncated: boolean;
 }> {
-  const { point: queryPoint, maxDistance, filterKeys, limit, type } = args;
+  const { point: queryPoint, maxDistance, filtering, maxResults, type } = args;
 
-  if (maxDistance < 0) {
+  if (maxDistance !== undefined && maxDistance < 0) {
     throw new Error("maxDistance must be non-negative");
   }
 
-  // Convert maxDistance to a lat/lng bounding box. Longitude degrees shrink
-  // toward the poles, so we compensate with cosLat. Near the poles we clamp
-  // to ±180 to avoid division by near-zero.
-  const latDelta = maxDistance / METERS_PER_DEGREE_LAT;
-  const cosLat = Math.cos((queryPoint.latitude * Math.PI) / 180);
-  const lngDelta =
-    cosLat > 0.01
-      ? Math.min(maxDistance / (METERS_PER_DEGREE_LAT * cosLat), 180)
-      : 180;
+  const mustFilters = filtering.filter((f) => f.occur === "must");
+  const shouldFilters = filtering.filter((f) => f.occur === "should");
 
-  const searchBbox = {
-    south: Math.max(-90, queryPoint.latitude - latDelta),
-    north: Math.min(90, queryPoint.latitude + latDelta),
-    west: Math.max(-180, queryPoint.longitude - lngDelta),
-    east: Math.min(180, queryPoint.longitude + lngDelta),
-  };
-
-  const searchPolygon = rectangleToPolygonPoints(searchBbox);
-  const searchCells = s2.coverPolygonForIndex(searchPolygon, 50);
-
-  // Include ancestor cells so we match geometries indexed at coarser levels.
+  // When maxDistance is undefined, search the entire world.
   const searchTokens = new Set<string>();
-  for (const cellId of searchCells) {
-    searchTokens.add(s2.cellIDToken(cellId));
-    for (const ancestor of s2.cellAncestors(cellId)) {
-      searchTokens.add(s2.cellIDToken(ancestor));
+  if (maxDistance !== undefined) {
+    const latDelta = maxDistance / METERS_PER_DEGREE_LAT;
+    const cosLat = Math.cos((queryPoint.latitude * Math.PI) / 180);
+    const lngDelta =
+      cosLat > 0.01
+        ? Math.min(maxDistance / (METERS_PER_DEGREE_LAT * cosLat), 180)
+        : 180;
+
+    const searchBbox = {
+      south: Math.max(-90, queryPoint.latitude - latDelta),
+      north: Math.min(90, queryPoint.latitude + latDelta),
+      west: Math.max(-180, queryPoint.longitude - lngDelta),
+      east: Math.min(180, queryPoint.longitude + lngDelta),
+    };
+
+    const searchPolygon = rectangleToPolygonPoints(searchBbox);
+    const searchCells = s2.coverPolygonForIndex(searchPolygon, 50);
+    for (const cellId of searchCells) {
+      searchTokens.add(s2.cellIDToken(cellId));
+      for (const ancestor of s2.cellAncestors(cellId)) {
+        searchTokens.add(s2.cellIDToken(ancestor));
+      }
+    }
+  } else {
+    for (const cellId of s2.initialCells(0)) {
+      searchTokens.add(s2.cellIDToken(cellId));
     }
   }
 
@@ -589,7 +649,9 @@ export async function implGeometriesNear(
     if (type && geometry.type !== type) {
       continue;
     }
-    if (!matchesFilterKeys(geometry, filterKeys)) {
+
+    // Use must/should filter conditions instead of the old flat filterKeys dict.
+    if (!matchesFilterConditions(geometry, mustFilters, shouldFilters)) {
       continue;
     }
 
@@ -612,7 +674,7 @@ export async function implGeometriesNear(
       );
     }
 
-    if (distanceMeters <= maxDistance) {
+    if (maxDistance === undefined || distanceMeters <= maxDistance) {
       results.push({
         key: geometry.key,
         type: geometry.type,
@@ -630,5 +692,5 @@ export async function implGeometriesNear(
   }
 
   results.sort((a, b) => a.distance - b.distance);
-  return { results: results.slice(0, limit), truncated };
+  return { results: results.slice(0, maxResults), truncated };
 }

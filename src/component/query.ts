@@ -23,7 +23,7 @@ import { PREFETCH_SIZE } from "./streams/constants.js";
 
 export { PREFETCH_SIZE } from "./streams/constants.js";
 
-const equalityCondition = v.object({
+export const equalityCondition = v.object({
   occur: v.union(v.literal("should"), v.literal("must")),
   filterKey: v.string(),
   filterValue: primitive,

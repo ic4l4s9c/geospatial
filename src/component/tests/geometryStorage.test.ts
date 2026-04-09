@@ -341,7 +341,9 @@ describe("Geometry Storage", () => {
 
       const result = await t.query(api.geometry.query.geometriesNear, {
         point: nearPoint,
-        maxDistance: 5000, // 5km
+        maxDistance: 5000,
+        maxResults: 100,
+        filtering: [],
       });
 
       expect(result.results.length).toBe(1);
@@ -363,6 +365,8 @@ describe("Geometry Storage", () => {
       const result = await t.query(api.geometry.query.geometriesNear, {
         point: POINT_INSIDE,
         maxDistance: 1000,
+        maxResults: 100,
+        filtering: [],
       });
 
       expect(result.results.length).toBe(1);
@@ -400,6 +404,8 @@ describe("Geometry Storage", () => {
       const result = await t.query(api.geometry.query.geometriesNear, {
         point: queryPoint,
         maxDistance: 5000,
+        maxResults: 100,
+        filtering: [],
       });
 
       // Both polygons contain the point, so both have distance=0
@@ -424,11 +430,140 @@ describe("Geometry Storage", () => {
       const result = await t.query(api.geometry.query.geometriesNear, {
         point: { latitude: 40.75, longitude: -73.99 },
         maxDistance: 1000,
+        maxResults: 100,
+        filtering: [],
       });
 
       expect(result.results.length).toBe(1);
       expect(result.results[0].key).toBe("route");
       expect(result.results[0].type).toBe("polyline");
+    });
+
+    test("respects must filter conditions", async () => {
+      const t = convexTest(schema, modules);
+
+      await t.mutation(api.geometry.insert, {
+        sortKey: 0,
+        key: "manhattan",
+        type: "polygon",
+        coordinates: MANHATTAN_POLYGON,
+        filterKeys: { borough: "manhattan" },
+      });
+
+      await t.mutation(api.geometry.insert, {
+        sortKey: 0,
+        key: "nyc",
+        type: "polygon",
+        coordinates: {
+          exterior: [
+            { latitude: 40.5, longitude: -74.3 },
+            { latitude: 40.5, longitude: -73.7 },
+            { latitude: 40.95, longitude: -73.7 },
+            { latitude: 40.95, longitude: -74.3 },
+          ],
+        },
+        filterKeys: { borough: "nyc" },
+      });
+
+      // Should only find manhattan with must filter
+      const result = await t.query(api.geometry.query.geometriesNear, {
+        point: POINT_INSIDE,
+        maxDistance: 5000,
+        maxResults: 100,
+        filtering: [
+          { filterKey: "borough", filterValue: "manhattan", occur: "must" },
+        ],
+      });
+
+      expect(result.results.length).toBe(1);
+      expect(result.results[0].key).toBe("manhattan");
+    });
+
+    test("respects should filter conditions", async () => {
+      const t = convexTest(schema, modules);
+
+      await t.mutation(api.geometry.insert, {
+        sortKey: 0,
+        key: "manhattan",
+        type: "polygon",
+        coordinates: MANHATTAN_POLYGON,
+        filterKeys: { borough: "manhattan" },
+      });
+
+      await t.mutation(api.geometry.insert, {
+        sortKey: 0,
+        key: "nyc",
+        type: "polygon",
+        coordinates: {
+          exterior: [
+            { latitude: 40.5, longitude: -74.3 },
+            { latitude: 40.5, longitude: -73.7 },
+            { latitude: 40.95, longitude: -73.7 },
+            { latitude: 40.95, longitude: -74.3 },
+          ],
+        },
+        filterKeys: { borough: "nyc" },
+      });
+
+      await t.mutation(api.geometry.insert, {
+        sortKey: 0,
+        key: "other",
+        type: "polygon",
+        coordinates: {
+          exterior: [
+            { latitude: 40.5, longitude: -74.3 },
+            { latitude: 40.5, longitude: -73.7 },
+            { latitude: 40.95, longitude: -73.7 },
+            { latitude: 40.95, longitude: -74.3 },
+          ],
+        },
+        filterKeys: { borough: "other" },
+      });
+
+      // Should find manhattan and nyc with should filters (not other)
+      const result = await t.query(api.geometry.query.geometriesNear, {
+        point: POINT_INSIDE,
+        maxDistance: 5000,
+        maxResults: 100,
+        filtering: [
+          { filterKey: "borough", filterValue: "manhattan", occur: "should" },
+          { filterKey: "borough", filterValue: "nyc", occur: "should" },
+        ],
+      });
+
+      expect(result.results.length).toBe(2);
+      const keys = result.results.map((r) => r.key).sort();
+      expect(keys).toEqual(["manhattan", "nyc"]);
+    });
+
+    test("respects maxResults limit", async () => {
+      const t = convexTest(schema, modules);
+
+      // Insert several polygons all containing POINT_INSIDE
+      for (let i = 0; i < 5; i++) {
+        await t.mutation(api.geometry.insert, {
+          sortKey: 0,
+          key: `polygon-${i}`,
+          type: "polygon",
+          coordinates: {
+            exterior: [
+              { latitude: 40.5, longitude: -74.3 },
+              { latitude: 40.5, longitude: -73.7 },
+              { latitude: 40.95, longitude: -73.7 },
+              { latitude: 40.95, longitude: -74.3 },
+            ],
+          },
+        });
+      }
+
+      const result = await t.query(api.geometry.query.geometriesNear, {
+        point: POINT_INSIDE,
+        maxDistance: 5000,
+        maxResults: 3,
+        filtering: [],
+      });
+
+      expect(result.results.length).toBe(3);
     });
   });
 
@@ -468,7 +603,9 @@ describe("Geometry Storage", () => {
 
       // Both should be queryable
       const texasResult = await t.query(api.geometry.get, { key: "texas" });
-      const buildingResult = await t.query(api.geometry.get, { key: "building" });
+      const buildingResult = await t.query(api.geometry.get, {
+        key: "building",
+      });
 
       expect(texasResult).not.toBeNull();
       expect(buildingResult).not.toBeNull();

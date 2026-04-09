@@ -135,13 +135,12 @@ export const nearest = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const { results, truncated } = await geospatial.polygons.nearest(
-      ctx,
-      args.coordinates,
-      args.maxDistanceMeters,
-      args.type ? { type: args.type, tags: [] } : undefined,
-      args.limit,
-    );
+    const { results, truncated } = await geospatial.polygons.nearest(ctx, {
+      point: args.coordinates,
+      maxDistance: args.maxDistanceMeters,
+      limit: args.limit ?? 100,
+      filter: args.type ? (q) => q.eq("type", args.type!) : undefined,
+    });
 
     const hydrated = await Promise.all(
       results.map(async (g) => {

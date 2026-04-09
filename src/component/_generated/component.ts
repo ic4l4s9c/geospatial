@@ -172,17 +172,13 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           "query",
           "internal",
           {
-            filterKeys?: Record<
-              string,
-              | string
-              | number
-              | boolean
-              | null
-              | bigint
-              | Array<string | number | boolean | null | bigint>
-            >;
-            limit?: number;
-            maxDistance: number;
+            filtering: Array<{
+              filterKey: string;
+              filterValue: string | number | boolean | null | bigint;
+              occur: "should" | "must";
+            }>;
+            maxDistance?: number;
+            maxResults?: number;
             point: { latitude: number; longitude: number };
           },
           {
@@ -476,21 +472,17 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           },
           Name
         >;
-        near: FunctionReference<
+        nearest: FunctionReference<
           "query",
           "internal",
           {
-            filterKeys?: Record<
-              string,
-              | string
-              | number
-              | boolean
-              | null
-              | bigint
-              | Array<string | number | boolean | null | bigint>
-            >;
-            limit?: number;
-            maxDistance: number;
+            filtering: Array<{
+              filterKey: string;
+              filterValue: string | number | boolean | null | bigint;
+              occur: "should" | "must";
+            }>;
+            maxDistance?: number;
+            maxResults?: number;
             point: { latitude: number; longitude: number };
           },
           {
@@ -607,21 +599,17 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           },
           Name
         >;
-        near: FunctionReference<
+        nearest: FunctionReference<
           "query",
           "internal",
           {
-            filterKeys?: Record<
-              string,
-              | string
-              | number
-              | boolean
-              | null
-              | bigint
-              | Array<string | number | boolean | null | bigint>
-            >;
-            limit?: number;
-            maxDistance: number;
+            filtering: Array<{
+              filterKey: string;
+              filterValue: string | number | boolean | null | bigint;
+              occur: "should" | "must";
+            }>;
+            maxDistance?: number;
+            maxResults?: number;
             point: { latitude: number; longitude: number };
           },
           {

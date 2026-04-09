@@ -89,6 +89,7 @@ export type WithDistance<Type> = Type & {
 };
 
 export type NearestQueryOptions<
+  Type extends "point" | "polygon" | "polyline",
   Key extends string = string,
   Filters extends GeospatialFilters = GeospatialFilters,
 > = {
@@ -96,7 +97,7 @@ export type NearestQueryOptions<
   limit: number;
   maxDistance?: number;
   filter?: NonNullable<
-    GeospatialQuery<GeospatialGeometry<"point", Key, Filters>>["filter"]
+    GeospatialQuery<GeospatialGeometry<Type, Key, Filters>>["filter"]
   >;
 };
 
@@ -287,7 +288,7 @@ export class PointsNamespace<
 
   async nearest(
     ctx: QueryCtx,
-    options: NearestQueryOptions<PointKey, PointFilters>,
+    options: NearestQueryOptions<"point", PointKey, PointFilters>,
   ): Promise<
     WithDistance<GeospatialGeometry<"point", PointKey, PointFilters>>[]
   > {
@@ -487,38 +488,44 @@ export class PolygonsNamespace<
    * @note Near poles (|latitude| > 85°), precision may be degraded due to
    *       longitude compression. Use smaller `maxDistance` values in these areas.
    *
-   * @param ctx         - The Convex query context.
-   * @param point       - The geographic point to search around.
-   * @param maxDistance - Maximum distance in meters, must be non-negative.
-   * @param filterKeys  - Optional filter keys to match.
-   * @param limit       - Maximum number of results, default 100.
+   * @param ctx     - The Convex query context.
+   * @param options - Query parameters including point, limit, maxDistance, and optional filter.
    * @returns Results sorted by distance ascending and a `truncated` flag that
    *          is true when the internal candidate set hit its limit and further
    *          matches may exist.
    *
    * @example
    * const { results, truncated } = await geo.polygons.nearest(ctx, {
-   *   latitude: 40.7128, longitude: -74.0060
-   * }, 5000);
+   *   point: { latitude: 40.7128, longitude: -74.0060 },
+   *   maxDistance: 5000,
+   *   limit: 10,
+   * });
    */
   async nearest(
     ctx: QueryCtx,
-    point: Point,
-    maxDistance: number,
-    filterKeys?: PolygonFilters,
-    limit?: number,
+    options: NearestQueryOptions<"polygon", PolygonKey, PolygonFilters>,
   ): Promise<{
     results: WithDistance<
       GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>
     >[];
     truncated: boolean;
   }> {
-    const result = await ctx.runQuery(this.core.component.polygon.query.near, {
-      point,
-      maxDistance,
-      filterKeys,
-      limit,
-    });
+    const filterBuilder = new FilterBuilderImpl<
+      GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>
+    >();
+    if (options.filter) {
+      options.filter(filterBuilder);
+    }
+
+    const result = await ctx.runQuery(
+      this.core.component.polygon.query.nearest,
+      {
+        point: options.point,
+        maxDistance: options.maxDistance,
+        maxResults: options.limit,
+        filtering: filterBuilder.filterConditions,
+      },
+    );
     return result as typeof result & {
       results: WithDistance<
         GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>
@@ -701,38 +708,44 @@ export class PolylinesNamespace<
    * @note Near poles (|latitude| > 85°), precision may be degraded due to
    *       longitude compression. Use smaller `maxDistance` values in these areas.
    *
-   * @param ctx         - The Convex query context.
-   * @param point       - The geographic point to search around.
-   * @param maxDistance - Maximum distance in meters, must be non-negative.
-   * @param filterKeys  - Optional filter keys to match.
-   * @param limit       - Maximum number of results, default 100.
+   * @param ctx     - The Convex query context.
+   * @param options - Query parameters including point, limit, maxDistance, and optional filter.
    * @returns Results sorted by distance ascending and a `truncated` flag that
    *          is true when the internal candidate set hit its limit and further
    *          matches may exist.
    *
    * @example
    * const { results, truncated } = await geo.polylines.nearest(ctx, {
-   *   latitude: 40.7128, longitude: -74.0060
-   * }, 5000);
+   *   point: { latitude: 40.7128, longitude: -74.0060 },
+   *   maxDistance: 5000,
+   *   limit: 10,
+   * });
    */
   async nearest(
     ctx: QueryCtx,
-    point: Point,
-    maxDistance: number,
-    filterKeys?: PolylineFilters,
-    limit?: number,
+    options: NearestQueryOptions<"polyline", PolylineKey, PolylineFilters>,
   ): Promise<{
     results: WithDistance<
       GeospatialGeometry<"polyline", PolylineKey, PolylineFilters>
     >[];
     truncated: boolean;
   }> {
-    const result = await ctx.runQuery(this.core.component.polyline.query.near, {
-      point,
-      maxDistance,
-      filterKeys,
-      limit,
-    });
+    const filterBuilder = new FilterBuilderImpl<
+      GeospatialGeometry<"polyline", PolylineKey, PolylineFilters>
+    >();
+    if (options.filter) {
+      options.filter(filterBuilder);
+    }
+
+    const result = await ctx.runQuery(
+      this.core.component.polyline.query.nearest,
+      {
+        point: options.point,
+        maxDistance: options.maxDistance,
+        maxResults: options.limit,
+        filtering: filterBuilder.filterConditions,
+      },
+    );
     return result as typeof result & {
       results: WithDistance<
         GeospatialGeometry<"polyline", PolylineKey, PolylineFilters>
