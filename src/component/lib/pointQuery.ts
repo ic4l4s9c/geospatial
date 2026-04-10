@@ -339,16 +339,13 @@ export class ClosestPointQuery {
 
   distanceThreshold(): ChordAngle | undefined {
     const worstEntry = this.results.peek();
-    if (worstEntry && this.results.size() >= this.maxResults) {
-      if (
-        this.maxDistanceChordAngle &&
-        worstEntry.distance > this.maxDistanceChordAngle
-      ) {
-        throw new Error("Max distance exceeded by entry in heap?");
-      }
-      return worstEntry.distance;
+    if (!worstEntry || this.results.size() < this.maxResults) {
+      return this.maxDistanceChordAngle;
     }
-    return this.maxDistanceChordAngle;
+    if (this.maxDistanceChordAngle && worstEntry.distance > this.maxDistanceChordAngle) {
+      throw new Error("Max distance exceeded by entry in heap?");
+    }
+    return worstEntry.distance;
   }
 }
 
