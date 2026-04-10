@@ -1,12 +1,11 @@
 import { v } from "convex/values";
 import { mutation, query, type MutationCtx } from "./_generated/server.js";
-import { point, primitive, type Point } from "./validators.js";
+import { point, primitive, type Point, filterKeys } from "./validators.js";
 import { encodeCursor } from "./lib/cursor.js";
 import { filterCounterKey } from "./streams/filterKeyRange.js";
 import { cellCounterKey } from "./streams/cellRange.js";
 import * as approximateCounter from "./lib/approximateCounter.js";
 import { S2Bindings } from "./lib/s2Bindings.js";
-import { filterKeys } from "./schema.js";
 
 const geoDocument = v.object({
   key: v.string(),

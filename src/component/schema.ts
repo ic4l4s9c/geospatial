@@ -1,10 +1,13 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
-import { point, polygon, polyline, primitive } from "./validators.js";
+import {
+  filterKeys,
+  point,
+  polygon,
+  polyline,
+  primitive,
+} from "./validators.js";
 
-export const filterKeys = v.optional(
-  v.record(v.string(), v.union(primitive, v.array(primitive))),
-);
 
 export default defineSchema({
   points: defineTable({

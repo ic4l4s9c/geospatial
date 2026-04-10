@@ -1,4 +1,5 @@
 import { v, type Infer } from "convex/values";
+import { primitive } from "./lib/primitive.js";
 
 export type { Primitive } from "./lib/primitive.js";
 export { primitive } from "./lib/primitive.js";
@@ -49,6 +50,10 @@ export const queryShape = v.union(
   }),
 );
 export type QueryShape = Infer<typeof queryShape>;
+
+export const filterKeys = v.optional(
+  v.record(v.string(), v.union(primitive, v.array(primitive))),
+);
 
 export type Meters = number;
 export type ChordAngle = number;

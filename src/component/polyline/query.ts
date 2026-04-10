@@ -1,20 +1,16 @@
 import { implGeometriesNear, implIntersects } from "../lib/geometryQuery.js";
 import { query } from "../_generated/server.js";
 import { v } from "convex/values";
-import { primitive } from "../lib/primitive.js";
 import { S2Bindings } from "../lib/s2Bindings.js";
-import { point, polyline, queryShape, rectangle } from "../validators.js";
+import { point, polyline, queryShape, rectangle, filterKeys } from "../validators.js";
 import { equalityCondition } from "../query.js";
-import { filterKeys } from "../schema.js";
 
 const polylineResult = v.object({
   key: v.string(),
   type: v.literal("polyline"),
   coordinates: polyline,
   boundingBox: rectangle,
-  filterKeys: v.optional(
-    v.record(v.string(), v.union(primitive, v.array(primitive))),
-  ),
+  filterKeys: filterKeys,
 });
 
 const polylineWithDistance = polylineResult.extend({
