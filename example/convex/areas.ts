@@ -84,11 +84,12 @@ export const containsPoint = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const { results, truncated } = await geospatial.polygons.containsPoint(
+    const { results, nextCursor } = await geospatial.polygons.containsPoint(
       ctx,
       args.coordinates,
-      args.type ? { type: args.type, tags: [] } : undefined,
-      args.limit,
+      args.type
+        ? { filterKeys: { type: args.type, tags: [] }, limit: args.limit }
+        : undefined,
     );
 
     const hydrated = await Promise.all(
@@ -98,7 +99,7 @@ export const containsPoint = query({
       }),
     );
 
-    return { results: hydrated.filter(Boolean), truncated };
+    return { results: hydrated.filter(Boolean), nextCursor };
   },
 });
 
@@ -109,11 +110,12 @@ export const intersects = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const { results, truncated } = await geospatial.polygons.intersects(
+    const { results, nextCursor } = await geospatial.polygons.intersects(
       ctx,
       args.shape,
-      args.type ? { type: args.type, tags: [] } : undefined,
-      args.limit,
+      args.type
+        ? { filterKeys: { type: args.type, tags: [] }, limit: args.limit }
+        : undefined,
     );
 
     const hydrated = await Promise.all(
@@ -123,7 +125,7 @@ export const intersects = query({
       }),
     );
 
-    return { results: hydrated.filter(Boolean), truncated };
+    return { results: hydrated.filter(Boolean), nextCursor };
   },
 });
 
@@ -135,7 +137,7 @@ export const nearest = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const { results, truncated } = await geospatial.polygons.nearest(ctx, {
+    const { results, nextCursor } = await geospatial.polygons.nearest(ctx, {
       point: args.coordinates,
       maxDistance: args.maxDistanceMeters,
       limit: args.limit ?? 100,
@@ -151,7 +153,7 @@ export const nearest = query({
       }),
     );
 
-    return { results: hydrated.filter(Boolean), truncated };
+    return { results: hydrated.filter(Boolean), nextCursor };
   },
 });
 

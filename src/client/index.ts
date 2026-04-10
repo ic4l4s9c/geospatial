@@ -101,6 +101,7 @@ export type NearestQueryOptions<
   filter?: NonNullable<
     GeospatialQuery<GeospatialGeometry<Type, Key, Filters>>["filter"]
   >;
+  cursor?: string;
 };
 
 export interface GeospatialIndexOptions {
@@ -242,13 +243,11 @@ export class PointsNamespace<
    *
    * @param ctx    - The Convex query context.
    * @param query  - The query to execute.
-   * @param cursor - Continuation cursor for paginating through results.
    * @returns Matching key-coordinate pairs and an optional continuation cursor.
    */
   async query(
     ctx: QueryCtx,
     query: GeospatialQuery<GeospatialGeometry<"point", PointKey, PointFilters>>,
-    cursor?: string,
   ): Promise<{
     results: { key: PointKey; coordinates: Point }[];
     nextCursor?: string;
@@ -266,7 +265,7 @@ export class PointsNamespace<
         sorting: { interval: filterBuilder.interval ?? {} },
         maxResults: query.limit ?? 64,
       },
-      cursor,
+      cursor: query.cursor,
       minLevel: this.core.minLevel,
       maxLevel: this.core.maxLevel,
       levelMod: this.core.levelMod,
@@ -311,6 +310,7 @@ export class PointsNamespace<
       logLevel: this.core.logLevel,
       filtering: filterBuilder.filterConditions,
       sorting: { interval: filterBuilder.interval ?? {} },
+      cursor: options.cursor,
     });
 
     return result as typeof result &
@@ -410,77 +410,82 @@ export class PolygonsNamespace<
   /**
    * Find all polygons that contain a given point.
    *
-   * @param ctx        - The Convex query context.
-   * @param point      - The geographic point to check.
-   * @param filterKeys - Optional filter keys to match.
-   * @param limit      - Maximum number of results, default 100.
-   * @returns Results array and a `truncated` flag that is true when the
-   *          internal candidate set hit its limit and further matches may exist.
+   * @param ctx    - The Convex query context.
+   * @param point  - The geographic point to check.
+   * @param options - Optional query options: filterKeys, limit, cursor.
+   * @returns Results array and an optional continuation cursor.
    *
    * @example
-   * const { results, truncated } = await geo.polygons.containsPoint(ctx, {
-   *   latitude: 40.7128, longitude: -74.0060
-   * }, { type: "delivery-zone" });
+   * const { results, nextCursor } = await geo.polygons.containsPoint(ctx,
+   *   { latitude: 40.7128, longitude: -74.0060 },
+   *   { filterKeys: { type: "delivery-zone" }, limit: 10 }
+   * );
    */
   async containsPoint(
     ctx: QueryCtx,
     point: Point,
-    filterKeys?: PolygonFilters,
-    limit?: number,
+    options?: {
+      filterKeys?: PolygonFilters;
+      limit?: number;
+      cursor?: string;
+    },
   ): Promise<{
     results: GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>[];
-    truncated: boolean;
+    nextCursor?: string;
   }> {
     const result = await ctx.runQuery(
       this.core.component.polygon.query.containsPoint,
       {
         point,
-        filterKeys,
-        limit,
+        filterKeys: options?.filterKeys,
+        limit: options?.limit,
+        cursor: options?.cursor,
       },
     );
     return result as typeof result & {
       results: GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>[];
-      truncated: boolean;
+      nextCursor?: string;
     };
   }
 
   /**
    * Find all polygons that intersect a given shape.
    *
-   * @param ctx        - The Convex query context.
-   * @param shape      - The query shape (rectangle or polygon, no holes).
-   * @param filterKeys - Optional filter keys to match.
-   * @param limit      - Maximum number of results, default 100.
-   * @returns Results array and a `truncated` flag that is true when the
-   *          internal candidate set hit its limit and further matches may exist.
+   * @param ctx    - The Convex query context.
+   * @param shape  - The query shape (rectangle or polygon, no holes).
+   * @param options - Optional query options: filterKeys, limit, cursor.
+   * @returns Results array and an optional continuation cursor.
    *
    * @example
-   * const { results, truncated } = await geo.polygons.intersects(ctx, {
-   *   type: "rectangle",
-   *   rectangle: { south: 40, north: 41, west: -75, east: -74 }
-   * });
+   * const { results, nextCursor } = await geo.polygons.intersects(ctx,
+   *   { type: "rectangle", rectangle: { south: 40, north: 41, west: -75, east: -74 } },
+   *   { limit: 10 }
+   * );
    */
   async intersects(
     ctx: QueryCtx,
     shape: QueryShape,
-    filterKeys?: PolygonFilters,
-    limit?: number,
+    options?: {
+      filterKeys?: PolygonFilters;
+      limit?: number;
+      cursor?: string;
+    },
   ): Promise<{
     results: GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>[];
-    truncated: boolean;
+    nextCursor?: string;
   }> {
     const result = await ctx.runQuery(
       this.core.component.polygon.query.intersects,
       {
         shape,
-        filterKeys,
-        limit,
+        filterKeys: options?.filterKeys,
+        limit: options?.limit,
+        cursor: options?.cursor,
       },
     );
     return result as typeof result & {
       results: GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>[];
-      truncated: boolean;
+      nextCursor?: string;
     };
   }
 
@@ -491,13 +496,11 @@ export class PolygonsNamespace<
    *       longitude compression. Use smaller `maxDistance` values in these areas.
    *
    * @param ctx     - The Convex query context.
-   * @param options - Query parameters including point, limit, maxDistance, and optional filter.
-   * @returns Results sorted by distance ascending and a `truncated` flag that
-   *          is true when the internal candidate set hit its limit and further
-   *          matches may exist.
+   * @param options - Query parameters including point, limit, maxDistance, filter, and cursor.
+   * @returns Results sorted by distance ascending and an optional continuation cursor.
    *
    * @example
-   * const { results, truncated } = await geo.polygons.nearest(ctx, {
+   * const { results, nextCursor } = await geo.polygons.nearest(ctx, {
    *   point: { latitude: 40.7128, longitude: -74.0060 },
    *   maxDistance: 5000,
    *   limit: 10,
@@ -510,7 +513,7 @@ export class PolygonsNamespace<
     results: WithDistance<
       GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>
     >[];
-    truncated: boolean;
+    nextCursor?: string;
   }> {
     const filterBuilder = new FilterBuilderImpl<
       GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>
@@ -526,13 +529,14 @@ export class PolygonsNamespace<
         maxDistance: options.maxDistance,
         maxResults: options.limit,
         filtering: filterBuilder.filterConditions,
+        cursor: options.cursor,
       },
     );
     return result as typeof result & {
       results: WithDistance<
         GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>
       >[];
-      truncated: boolean;
+      nextCursor?: string;
     };
   }
 
@@ -668,39 +672,41 @@ export class PolylinesNamespace<
   /**
    * Find all polylines that intersect a given shape.
    *
-   * @param ctx        - The Convex query context.
-   * @param shape      - The query shape (rectangle or polygon, no holes).
-   * @param filterKeys - Optional filter keys to match.
-   * @param limit      - Maximum number of results, default 100.
-   * @returns Results array and a `truncated` flag that is true when the
-   *          internal candidate set hit its limit and further matches may exist.
+   * @param ctx    - The Convex query context.
+   * @param shape  - The query shape (rectangle or polygon, no holes).
+   * @param options - Optional query options: filterKeys, limit, cursor.
+   * @returns Results array and an optional continuation cursor.
    *
    * @example
-   * const { results, truncated } = await geo.polylines.intersects(ctx, {
-   *   type: "rectangle",
-   *   rectangle: { south: 40, north: 41, west: -75, east: -74 }
-   * });
+   * const { results, nextCursor } = await geo.polylines.intersects(ctx,
+   *   { type: "rectangle", rectangle: { south: 40, north: 41, west: -75, east: -74 } },
+   *   { limit: 10 }
+   * );
    */
   async intersects(
     ctx: QueryCtx,
     shape: QueryShape,
-    filterKeys?: PolylineFilters,
-    limit?: number,
+    options?: {
+      filterKeys?: PolylineFilters;
+      limit?: number;
+      cursor?: string;
+    },
   ): Promise<{
     results: GeospatialGeometry<"polyline", PolylineKey, PolylineFilters>[];
-    truncated: boolean;
+    nextCursor?: string;
   }> {
     const result = await ctx.runQuery(
       this.core.component.polyline.query.intersects,
       {
         shape,
-        filterKeys,
-        limit,
+        filterKeys: options?.filterKeys,
+        limit: options?.limit,
+        cursor: options?.cursor,
       },
     );
     return result as typeof result & {
       results: GeospatialGeometry<"polyline", PolylineKey, PolylineFilters>[];
-      truncated: boolean;
+      nextCursor?: string;
     };
   }
 
@@ -711,13 +717,11 @@ export class PolylinesNamespace<
    *       longitude compression. Use smaller `maxDistance` values in these areas.
    *
    * @param ctx     - The Convex query context.
-   * @param options - Query parameters including point, limit, maxDistance, and optional filter.
-   * @returns Results sorted by distance ascending and a `truncated` flag that
-   *          is true when the internal candidate set hit its limit and further
-   *          matches may exist.
+   * @param options - Query parameters including point, limit, maxDistance, filter, and cursor.
+   * @returns Results sorted by distance ascending and an optional continuation cursor.
    *
    * @example
-   * const { results, truncated } = await geo.polylines.nearest(ctx, {
+   * const { results, nextCursor } = await geo.polylines.nearest(ctx, {
    *   point: { latitude: 40.7128, longitude: -74.0060 },
    *   maxDistance: 5000,
    *   limit: 10,
@@ -730,7 +734,7 @@ export class PolylinesNamespace<
     results: WithDistance<
       GeospatialGeometry<"polyline", PolylineKey, PolylineFilters>
     >[];
-    truncated: boolean;
+    nextCursor?: string;
   }> {
     const filterBuilder = new FilterBuilderImpl<
       GeospatialGeometry<"polyline", PolylineKey, PolylineFilters>
@@ -746,13 +750,14 @@ export class PolylinesNamespace<
         maxDistance: options.maxDistance,
         maxResults: options.limit,
         filtering: filterBuilder.filterConditions,
+        cursor: options.cursor,
       },
     );
     return result as typeof result & {
       results: WithDistance<
         GeospatialGeometry<"polyline", PolylineKey, PolylineFilters>
       >[];
-      truncated: boolean;
+      nextCursor?: string;
     };
   }
 

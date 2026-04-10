@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query, type MutationCtx } from "./_generated/server.js";
 import { point, primitive, type Point } from "./validators.js";
-import { encodeTupleKey } from "./lib/tupleKey.js";
+import { encodeCursor } from "./lib/cursor.js";
 import { filterCounterKey } from "./streams/filterKeyRange.js";
 import { cellCounterKey } from "./streams/cellRange.js";
 import * as approximateCounter from "./lib/approximateCounter.js";
@@ -29,7 +29,10 @@ export const insert = mutation({
     await removePointByKey(ctx, s2, args.document.key, args);
     const pointId = await ctx.db.insert("points", args.document);
     const cells = s2Cells(s2, args.document.coordinates, args);
-    const tupleKey = encodeTupleKey(args.document.sortKey, pointId);
+    const tupleKey = encodeCursor({
+      sortKey: args.document.sortKey,
+      secondary: pointId,
+    });
     for (const cell of cells) {
       await ctx.db.insert("pointsByCell", { cell, tupleKey });
       await approximateCounter.increment(ctx, pointId, cellCounterKey(cell));
@@ -86,7 +89,10 @@ export const update = mutation({
     await removePointByKey(ctx, s2, args.key, args);
     const pointId = await ctx.db.insert("points", document);
     const cells = s2Cells(s2, document.coordinates, args);
-    const tupleKey = encodeTupleKey(document.sortKey, pointId);
+    const tupleKey = encodeCursor({
+      sortKey: document.sortKey,
+      secondary: pointId,
+    });
     for (const cell of cells) {
       await ctx.db.insert("pointsByCell", { cell, tupleKey });
       await approximateCounter.increment(ctx, pointId, cellCounterKey(cell));
@@ -181,7 +187,10 @@ async function removePointByKey(
     return false;
   }
   const cells = s2Cells(s2, existing.coordinates, opts);
-  const tupleKey = encodeTupleKey(existing.sortKey, existing._id);
+  const tupleKey = encodeCursor({
+    sortKey: existing.sortKey,
+    secondary: existing._id,
+  });
   for (const cell of cells) {
     const existingCell = await ctx.db
       .query("pointsByCell")
@@ -195,7 +204,9 @@ async function removePointByKey(
     await ctx.db.delete(existingCell._id);
     await approximateCounter.decrement(ctx, existing._id, cellCounterKey(cell));
   }
-  for (const [filterKey, filterDoc] of Object.entries(existing.filterKeys ?? {})) {
+  for (const [filterKey, filterDoc] of Object.entries(
+    existing.filterKeys ?? {},
+  )) {
     const valueArray = filterDoc instanceof Array ? filterDoc : [filterDoc];
     for (const filterValue of valueArray) {
       const existingFilterKey = await ctx.db

@@ -8,12 +8,12 @@ import type { Point, Polygon } from "@convex-dev/geospatial";
 export function useContainsPointQuery(point: Point | null) {
   const result = useQuery(
     api.example.geometryContainsPoint,
-    point ? { point } : "skip"
+    point ? { point } : "skip",
   );
 
   return {
     results: result?.results ?? [],
-    truncated: result?.truncated ?? false,
+    truncated: !!result?.nextCursor,
     loading: point !== null && result === undefined,
   };
 }
@@ -23,16 +23,16 @@ export function useContainsPointQuery(point: Point | null) {
  */
 export function useGeometriesNearQuery(
   point: Point | null,
-  maxDistance: number
+  maxDistance: number,
 ) {
   const result = useQuery(
     api.example.geometriesNearPoint,
-    point ? { point, maxDistance } : "skip"
+    point ? { point, maxDistance } : "skip",
   );
 
   return {
     results: result?.results ?? [],
-    truncated: result?.truncated ?? false,
+    truncated: !!result?.nextCursor,
     loading: point !== null && result === undefined,
   };
 }
@@ -43,7 +43,7 @@ export function useGeometriesNearQuery(
 export function usePolygonMeasurements(polygon: Polygon | null) {
   const result = useQuery(
     api.example.measurePolygon,
-    polygon ? { polygon } : "skip"
+    polygon ? { polygon } : "skip",
   );
 
   return {

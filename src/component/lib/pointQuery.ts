@@ -10,7 +10,7 @@ import { Union } from "../streams/union.js";
 import { Intersection } from "../streams/intersection.js";
 import type { PointSet, Stats } from "../streams/zigzag.js";
 import { PREFETCH_SIZE } from "../streams/constants.js";
-import { decodeTupleKey } from "./tupleKey.js";
+import { decodeCursor } from "./cursor.js";
 import type { Logger } from "./logging.js";
 import type { Interval } from "./interval.js";
 
@@ -34,6 +34,7 @@ export class ClosestPointQuery {
   private readonly checkFilters: boolean;
   private static readonly FILTER_SUBDIVIDE_THRESHOLD = 8;
   private cellStreams = new Map<string, CellStreamState>();
+  private readonly cursorData?: { sortKey: number; secondary: string };
 
   constructor(
     private s2: S2Bindings,
@@ -46,6 +47,7 @@ export class ClosestPointQuery {
     private levelMod: number,
     filtering: FilterCondition[] = [],
     interval: Interval = {},
+    cursor?: string,
   ) {
     this.toProcess = new Heap<CellCandidate>((a, b) => a.distance - b.distance);
     this.results = new Heap<Result>((a, b) => b.distance - a.distance);
@@ -58,6 +60,18 @@ export class ClosestPointQuery {
     this.sortInterval = interval;
     this.checkFilters =
       this.mustFilters.length > 0 || this.shouldFilters.length > 0;
+
+    if (cursor) {
+      this.cursorData = decodeCursor(cursor);
+      if (this.sortInterval.startInclusive === undefined) {
+        this.sortInterval.startInclusive = this.cursorData.sortKey;
+      } else {
+        this.sortInterval.startInclusive = Math.max(
+          this.sortInterval.startInclusive,
+          this.cursorData.sortKey,
+        );
+      }
+    }
 
     for (const cellID of this.s2.initialCells(this.minLevel)) {
       const distance = this.s2.minDistanceToCell(this.point, cellID);
@@ -115,7 +129,21 @@ export class ClosestPointQuery {
             streamState.done = true;
             break;
           }
-          const { pointId, sortKey } = decodeTupleKey(tupleKey);
+          const { sortKey, secondary: pointId } = decodeCursor(tupleKey);
+          const pointIdTyped = pointId as Id<"points">;
+          if (this.cursorData) {
+            if (
+              sortKey < this.cursorData.sortKey ||
+              (sortKey === this.cursorData.sortKey &&
+                pointId < this.cursorData.secondary)
+            ) {
+              const next = await streamState.stream.advance();
+              if (next === null) {
+                streamState.done = true;
+              }
+              continue;
+            }
+          }
           if (!this.withinSortInterval(sortKey)) {
             const next = await streamState.stream.advance();
             if (next === null) {
@@ -123,7 +151,7 @@ export class ClosestPointQuery {
             }
             continue;
           }
-          const point = await ctx.db.get(pointId);
+          const point = await ctx.db.get(pointIdTyped);
           if (!point) {
             throw new Error("Point not found");
           }
@@ -342,7 +370,10 @@ export class ClosestPointQuery {
     if (!worstEntry || this.results.size() < this.maxResults) {
       return this.maxDistanceChordAngle;
     }
-    if (this.maxDistanceChordAngle && worstEntry.distance > this.maxDistanceChordAngle) {
+    if (
+      this.maxDistanceChordAngle &&
+      worstEntry.distance > this.maxDistanceChordAngle
+    ) {
       throw new Error("Max distance exceeded by entry in heap?");
     }
     return worstEntry.distance;

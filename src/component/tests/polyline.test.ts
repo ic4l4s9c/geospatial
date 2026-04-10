@@ -241,9 +241,7 @@ test("polyline query - with filters", async () => {
   const result = await t.query(api.query.execute, {
     query: {
       shape: { type: "polyline", polyline, bufferMeters },
-      filtering: [
-        { occur: "must", filterKey: "category", filterValue: "gas" },
-      ],
+      filtering: [{ occur: "must", filterKey: "category", filterValue: "gas" }],
       sorting: { interval: {} },
       maxResults: 10,
     },
@@ -288,7 +286,11 @@ test("polyline query - pagination with cursor", async () => {
     const result: ExecuteResult = await t.query(api.query.execute, {
       query: {
         shape: { type: "polyline" as const, polyline, bufferMeters },
-        filtering: [] as { occur: "should" | "must"; filterKey: string; filterValue: string }[],
+        filtering: [] as {
+          occur: "should" | "must";
+          filterKey: string;
+          filterValue: string;
+        }[],
         sorting: { interval: {} },
         maxResults: pageSize,
       },
@@ -338,12 +340,18 @@ test("S2Bindings - distanceToPolyline", async () => {
   ];
 
   // Point on the line should have distance ~0
-  const distanceOnLine = s2.distanceToPolyline(polylinePoints, { latitude: 0, longitude: 0.5 });
+  const distanceOnLine = s2.distanceToPolyline(polylinePoints, {
+    latitude: 0,
+    longitude: 0.5,
+  });
   const metersOnLine = s2.chordAngleToMeters(distanceOnLine);
   expect(metersOnLine).toBeLessThan(1); // Should be essentially 0
 
   // Point 1 degree north (~111km) should have that distance
-  const distanceNorth = s2.distanceToPolyline(polylinePoints, { latitude: 1, longitude: 0.5 });
+  const distanceNorth = s2.distanceToPolyline(polylinePoints, {
+    latitude: 1,
+    longitude: 0.5,
+  });
   const metersNorth = s2.chordAngleToMeters(distanceNorth);
   expect(metersNorth).toBeGreaterThan(100000); // Should be ~111km
   expect(metersNorth).toBeLessThan(120000);
@@ -358,7 +366,10 @@ test("S2Bindings - distanceToPolyline at endpoints", async () => {
   ];
 
   // Point beyond the endpoint should measure distance to endpoint
-  const distanceBeyond = s2.distanceToPolyline(polylinePoints, { latitude: 0, longitude: 2 });
+  const distanceBeyond = s2.distanceToPolyline(polylinePoints, {
+    latitude: 0,
+    longitude: 2,
+  });
   const metersBeyond = s2.chordAngleToMeters(distanceBeyond);
 
   // Should be ~111km (distance from (0,2) to (0,1))
@@ -377,7 +388,10 @@ test("S2Bindings - distanceToPolyline multi-segment", async () => {
   ];
 
   // Point close to second segment
-  const distance = s2.distanceToPolyline(polylinePoints, { latitude: 0.5, longitude: 1 });
+  const distance = s2.distanceToPolyline(polylinePoints, {
+    latitude: 0.5,
+    longitude: 1,
+  });
   const meters = s2.chordAngleToMeters(distance);
   expect(meters).toBeLessThan(1); // Should be essentially 0 (on the line)
 });
@@ -392,25 +406,38 @@ describe("property-based polyline tests", () => {
       fc.float({ min: Math.fround(-90), max: Math.fround(90), noNaN: true }), // center lng
       fc.integer({ min: 2, max: 20 }), // number of points
     )
-    .map(([centerLat, centerLng, numPoints]): {
-      points: { latitude: number; longitude: number }[];
-      center: { latitude: number; longitude: number };
-    } => {
-      const points: { latitude: number; longitude: number }[] = [];
-      for (let i = 0; i < numPoints; i++) {
-        points.push({
-          latitude: centerLat + (i * 0.1),
-          longitude: centerLng + (i * 0.1),
-        });
-      }
-      return { points, center: { latitude: centerLat, longitude: centerLng } };
-    });
+    .map(
+      ([centerLat, centerLng, numPoints]): {
+        points: { latitude: number; longitude: number }[];
+        center: { latitude: number; longitude: number };
+      } => {
+        const points: { latitude: number; longitude: number }[] = [];
+        for (let i = 0; i < numPoints; i++) {
+          points.push({
+            latitude: centerLat + i * 0.1,
+            longitude: centerLng + i * 0.1,
+          });
+        }
+        return {
+          points,
+          center: { latitude: centerLat, longitude: centerLng },
+        };
+      },
+    );
 
   fcTest.prop({ polyline: arbitraryPolyline })(
     "coverPolylineBuffered returns valid cells",
     async ({ polyline }) => {
       const s2 = await s2Promise;
-      const cells = s2.coverPolylineBuffered(polyline.points, 10000, 4, 16, 2, 8, 4);
+      const cells = s2.coverPolylineBuffered(
+        polyline.points,
+        10000,
+        4,
+        16,
+        2,
+        8,
+        4,
+      );
 
       expect(cells.length).toBeGreaterThan(0);
       // After expansion, we may have more than maxCells, but should be reasonable

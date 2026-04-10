@@ -19,6 +19,10 @@ export interface GeospatialQuery<Doc extends GeospatialGeometry> {
    * An optional limit on the number of results to return (default: 64).
    */
   limit?: number;
+  /**
+   * Continuation cursor for paginating through results.
+   */
+  cursor?: string;
 }
 
 interface GeospatialFilterBuilder<Doc extends GeospatialGeometry> {

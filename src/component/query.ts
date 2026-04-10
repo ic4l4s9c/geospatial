@@ -13,9 +13,9 @@ import { Union } from "./streams/union.js";
 import { FilterKeyRange } from "./streams/filterKeyRange.js";
 import { CellRange } from "./streams/cellRange.js";
 import { interval } from "./lib/interval.js";
-import { decodeTupleKey, type TupleKey } from "./lib/tupleKey.js";
+import { decodeCursor, type Cursor } from "./lib/cursor.js";
 import { Channel, ChannelClosedError } from "async-channel";
-import type { Doc } from "./_generated/dataModel.js";
+import type { Doc, Id } from "./_generated/dataModel.js";
 import { createLogger, logLevel } from "./lib/logging.js";
 import { S2Bindings } from "./lib/s2Bindings.js";
 import { ClosestPointQuery } from "./lib/pointQuery.js";
@@ -145,7 +145,9 @@ export const execute = query({
         (poly.interiors &&
           Array.isArray(poly.interiors) &&
           poly.interiors.length > 0) ||
-        (poly.interior && Array.isArray(poly.interior) && poly.interior.length > 0)
+        (poly.interior &&
+          Array.isArray(poly.interior) &&
+          poly.interior.length > 0)
       ) {
         throw new Error("Polygon holes are not supported");
       }
@@ -247,7 +249,7 @@ export const execute = query({
 
     // Finally, consume the stream and fetch the resulting IDs.
     const channel = new Channel<{
-      tupleKey: TupleKey;
+      tupleKey: Cursor;
       docPromise: Promise<Doc<"points"> | null>;
     }>(8);
     const producer = async () => {
@@ -258,9 +260,13 @@ export const execute = query({
           if (tupleKey === null) {
             break;
           }
-          const { pointId } = decodeTupleKey(tupleKey);
+          const { secondary: pointId } = decodeCursor(tupleKey);
+          const pointIdTyped = pointId as Id<"points">;
           try {
-            await channel.push({ tupleKey, docPromise: ctx.db.get(pointId) });
+            await channel.push({
+              tupleKey,
+              docPromise: ctx.db.get(pointIdTyped),
+            });
           } catch (e) {
             if (e instanceof ChannelClosedError) {
               break;
@@ -279,7 +285,7 @@ export const execute = query({
       logger.debug("Producer shutting down");
     };
     const results: { key: string; coordinates: Point }[] = [];
-    let nextCursor: TupleKey | undefined = undefined;
+    let nextCursor: Cursor | undefined = undefined;
     const consumer = async () => {
       try {
         for await (const { tupleKey, docPromise } of channel) {
@@ -339,7 +345,7 @@ export const nearestPoints = query({
     minLevel: v.number(),
     maxLevel: v.number(),
     levelMod: v.number(),
-    nextCursor: v.optional(v.string()),
+    cursor: v.optional(v.string()),
     filtering: v.array(equalityCondition),
     sorting: v.object({
       interval,
@@ -364,6 +370,7 @@ export const nearestPoints = query({
       args.levelMod,
       args.filtering,
       args.sorting.interval,
+      args.cursor,
     );
     const results = await query.execute(ctx);
     return results;

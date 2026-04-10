@@ -30,10 +30,11 @@ export const intersects = query({
     maxCoveringCells: v.optional(v.number()),
     filterKeys: filterKeys,
     limit: v.optional(v.number()),
+    cursor: v.optional(v.string()),
   },
   returns: v.object({
     results: v.array(polylineResult),
-    truncated: v.boolean(),
+    nextCursor: v.optional(v.string()),
   }),
   handler: async (ctx, args) => {
     const s2 = await S2Bindings.load();
@@ -43,6 +44,7 @@ export const intersects = query({
       filterKeys: args.filterKeys,
       limit: args.limit ?? 100,
       type: "polyline",
+      cursor: args.cursor,
     });
   },
 });
@@ -56,10 +58,11 @@ export const nearest = query({
     maxDistance: v.optional(v.number()),
     filtering: v.array(equalityCondition),
     maxResults: v.optional(v.number()),
+    cursor: v.optional(v.string()),
   },
   returns: v.object({
     results: v.array(polylineWithDistance),
-    truncated: v.boolean(),
+    nextCursor: v.optional(v.string()),
   }),
   handler: async (ctx, args) => {
     const s2 = await S2Bindings.load();
@@ -69,6 +72,7 @@ export const nearest = query({
       filtering: args.filtering,
       maxResults: args.maxResults ?? 100,
       type: "polyline",
+      cursor: args.cursor,
     });
   },
 });

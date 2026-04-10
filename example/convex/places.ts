@@ -61,26 +61,23 @@ export const queryByShape = query({
   handler: async (ctx, args) => {
     const { category, tags, shape, limit, cursor } = args;
 
-    const { results, nextCursor } = await geospatial.points.query(
-      ctx,
-      {
-        shape,
-        limit: limit ?? 64,
-        filter:
-          category || tags?.length
-            ? (q) => {
-                const afterIn = tags?.length ? q.in("tags", tags) : null;
-                if (category) {
-                  return afterIn
-                    ? afterIn.eq("category", category)
-                    : q.eq("category", category);
-                }
-                return afterIn!;
-              }
-            : undefined,
-      },
+    const { results, nextCursor } = await geospatial.points.query(ctx, {
+      shape,
+      limit: limit ?? 64,
       cursor,
-    );
+      filter:
+        category || tags?.length
+          ? (q) => {
+              const afterIn = tags?.length ? q.in("tags", tags) : null;
+              if (category) {
+                return afterIn
+                  ? afterIn.eq("category", category)
+                  : q.eq("category", category);
+              }
+              return afterIn!;
+            }
+          : undefined,
+    });
 
     const hydrated = await Promise.all(
       results.map(async ({ key, coordinates }) => {
@@ -132,20 +129,17 @@ export const queryByRating = query({
     cursor: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { results, nextCursor } = await geospatial.points.query(
-      ctx,
-      {
-        shape: args.shape,
-        limit: args.limit ?? 64,
-        filter: (q) => {
-          const b = q.gte("sortKey", args.minRating);
-          return args.maxRating !== undefined
-            ? b.lt("sortKey", args.maxRating)
-            : b;
-        },
+    const { results, nextCursor } = await geospatial.points.query(ctx, {
+      shape: args.shape,
+      limit: args.limit ?? 64,
+      cursor: args.cursor,
+      filter: (q) => {
+        const b = q.gte("sortKey", args.minRating);
+        return args.maxRating !== undefined
+          ? b.lt("sortKey", args.maxRating)
+          : b;
       },
-      args.cursor,
-    );
+    });
 
     const hydrated = await Promise.all(
       results.map(async ({ key, coordinates }) => {

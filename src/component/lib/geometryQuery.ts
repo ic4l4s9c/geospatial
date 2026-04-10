@@ -11,6 +11,7 @@ import type { Point, Polygon, Rectangle, Primitive } from "../validators.js";
 import type { Id } from "../_generated/dataModel.js";
 import type { QueryCtx } from "../_generated/server.js";
 import type { equalityCondition } from "../query.js";
+import { decodeCursor, encodeCursor } from "./cursor.js";
 
 const MAX_CANDIDATES = 1000;
 const METERS_PER_DEGREE_LAT = 111_000;
@@ -29,7 +30,7 @@ export const geometryWithDistance = geometryResult.extend({
   distance: v.number(),
 });
 
-export type FilterCondition = Infer<typeof equalityCondition>
+export type FilterCondition = Infer<typeof equalityCondition>;
 
 function boundingBoxesIntersect(a: Rectangle, b: Rectangle): boolean {
   return !(
@@ -181,6 +182,7 @@ type IntersectsArgs = {
   maxCoveringCells: number;
   filterKeys?: Record<string, Primitive | Primitive[]>;
   limit: number;
+  cursor?: string;
 };
 
 export async function implIntersects(
@@ -195,7 +197,7 @@ export async function implIntersects(
     boundingBox: Rectangle;
     filterKeys?: Record<string, Primitive | Primitive[]>;
   }[];
-  truncated: boolean;
+  nextCursor?: string;
 }>;
 export async function implIntersects(
   ctx: QueryCtx,
@@ -209,7 +211,7 @@ export async function implIntersects(
     boundingBox: Rectangle;
     filterKeys?: Record<string, Primitive | Primitive[]>;
   }[];
-  truncated: boolean;
+  nextCursor?: string;
 }>;
 export async function implIntersects(
   ctx: QueryCtx,
@@ -223,7 +225,7 @@ export async function implIntersects(
     boundingBox: Rectangle;
     filterKeys?: Record<string, Primitive | Primitive[]>;
   }[];
-  truncated: boolean;
+  nextCursor?: string;
 }>;
 export async function implIntersects(
   ctx: QueryCtx,
@@ -237,7 +239,7 @@ export async function implIntersects(
     boundingBox: Rectangle;
     filterKeys?: Record<string, Primitive | Primitive[]>;
   }[];
-  truncated: boolean;
+  nextCursor?: string;
 }> {
   const { shape, maxCoveringCells, filterKeys, limit, type } = args;
 
@@ -252,6 +254,7 @@ export async function implIntersects(
       filterKeys,
       limit,
       type,
+      cursor: args.cursor,
     });
   }
 
@@ -303,7 +306,10 @@ export async function implIntersects(
     }
   }
 
-  const { candidateIds, truncated } = await gatherCandidates(ctx, queryTokens);
+  const { candidateIds } = await gatherCandidates(ctx, queryTokens);
+
+  const cursor = args.cursor ? decodeCursor(args.cursor) : undefined;
+  const cursorExceeded = cursor === undefined;
 
   const results: {
     key: string;
@@ -311,6 +317,7 @@ export async function implIntersects(
     coordinates: Polygon | Point[];
     boundingBox: Rectangle;
     filterKeys?: Record<string, Primitive | Primitive[]>;
+    sortKey: number;
   }[] = [];
 
   for (const [geometryId] of candidateIds) {
@@ -327,6 +334,17 @@ export async function implIntersects(
     }
     if (!matchesFilterKeys(geometry, filterKeys)) {
       continue;
+    }
+
+    if (!cursorExceeded) {
+      const geoSortKey = geometry.sortKey;
+      const geoKey = geometry.key;
+      if (
+        geoSortKey < cursor.sortKey ||
+        (geoSortKey === cursor.sortKey && geoKey <= cursor.secondary)
+      ) {
+        continue;
+      }
     }
 
     // Cheap bounding box rejection before the exact S2 test.
@@ -360,11 +378,23 @@ export async function implIntersects(
         coordinates: geometry.coordinates,
         boundingBox: geomBbox,
         filterKeys: geometry.filterKeys,
+        sortKey: geometry.sortKey,
       });
+      if (results.length === limit) {
+        break;
+      }
     }
   }
 
-  return { results, truncated };
+  const nextCursor =
+    results.length === limit
+      ? encodeCursor({
+          sortKey: results[results.length - 1].sortKey,
+          secondary: results[results.length - 1].key,
+        })
+      : undefined;
+
+  return { results, nextCursor };
 }
 
 async function implIntersectsPolylineBuffer(
@@ -377,6 +407,7 @@ async function implIntersectsPolylineBuffer(
     filterKeys?: Record<string, Primitive | Primitive[]>;
     limit: number;
     type?: "polygon" | "polyline";
+    cursor?: string;
   },
 ): Promise<{
   results: {
@@ -386,7 +417,7 @@ async function implIntersectsPolylineBuffer(
     boundingBox: Rectangle;
     filterKeys?: Record<string, Primitive | Primitive[]>;
   }[];
-  truncated: boolean;
+  nextCursor?: string;
 }> {
   const {
     queryPolyline,
@@ -395,10 +426,11 @@ async function implIntersectsPolylineBuffer(
     filterKeys,
     limit,
     type,
+    cursor,
   } = args;
 
   if (queryPolyline.length === 0) {
-    return { results: [], truncated: false };
+    return { results: [], nextCursor: undefined };
   }
   if (bufferMeters < 0) {
     throw new Error("bufferMeters must be non-negative");
@@ -440,7 +472,9 @@ async function implIntersectsPolylineBuffer(
     }
   }
 
-  const { candidateIds, truncated } = await gatherCandidates(ctx, searchTokens);
+  const { candidateIds } = await gatherCandidates(ctx, searchTokens);
+
+  const cursorData = cursor ? decodeCursor<number, string>(cursor) : undefined;
 
   const results: {
     key: string;
@@ -448,6 +482,7 @@ async function implIntersectsPolylineBuffer(
     coordinates: Polygon | Point[];
     boundingBox: Rectangle;
     filterKeys?: Record<string, Primitive | Primitive[]>;
+    sortKey: number;
   }[] = [];
 
   for (const [geometryId] of candidateIds) {
@@ -464,6 +499,17 @@ async function implIntersectsPolylineBuffer(
     }
     if (!matchesFilterKeys(geometry, filterKeys)) {
       continue;
+    }
+
+    if (cursorData) {
+      const geoSortKey = geometry.sortKey;
+      const geoKey = geometry.key;
+      if (
+        geoSortKey < cursorData.sortKey ||
+        (geoSortKey === cursorData.sortKey && geoKey <= cursorData.secondary)
+      ) {
+        continue;
+      }
     }
 
     const geomBbox = {
@@ -516,11 +562,20 @@ async function implIntersectsPolylineBuffer(
         coordinates: geometry.coordinates,
         boundingBox: geomBbox,
         filterKeys: geometry.filterKeys,
+        sortKey: geometry.sortKey,
       });
     }
   }
 
-  return { results, truncated };
+  const nextCursor =
+    results.length === limit
+      ? encodeCursor({
+          sortKey: results[results.length - 1].sortKey,
+          secondary: results[results.length - 1].key,
+        })
+      : undefined;
+
+  return { results, nextCursor };
 }
 
 type NearArgs = {
@@ -528,6 +583,7 @@ type NearArgs = {
   maxDistance?: number;
   filtering: FilterCondition[];
   maxResults: number;
+  cursor?: string;
 };
 
 export async function implGeometriesNear(
@@ -543,7 +599,7 @@ export async function implGeometriesNear(
     filterKeys?: Record<string, Primitive | Primitive[]>;
     distance: number;
   }[];
-  truncated: boolean;
+  nextCursor?: string;
 }>;
 export async function implGeometriesNear(
   ctx: QueryCtx,
@@ -558,7 +614,7 @@ export async function implGeometriesNear(
     filterKeys?: Record<string, Primitive | Primitive[]>;
     distance: number;
   }[];
-  truncated: boolean;
+  nextCursor?: string;
 }>;
 export async function implGeometriesNear(
   ctx: QueryCtx,
@@ -573,7 +629,7 @@ export async function implGeometriesNear(
     filterKeys?: Record<string, Primitive | Primitive[]>;
     distance: number;
   }[];
-  truncated: boolean;
+  nextCursor?: string;
 }>;
 export async function implGeometriesNear(
   ctx: QueryCtx,
@@ -588,9 +644,16 @@ export async function implGeometriesNear(
     filterKeys?: Record<string, Primitive | Primitive[]>;
     distance: number;
   }[];
-  truncated: boolean;
+  nextCursor?: string;
 }> {
-  const { point: queryPoint, maxDistance, filtering, maxResults, type } = args;
+  const {
+    point: queryPoint,
+    maxDistance,
+    filtering,
+    maxResults,
+    type,
+    cursor,
+  } = args;
 
   if (maxDistance !== undefined && maxDistance < 0) {
     throw new Error("maxDistance must be non-negative");
@@ -598,6 +661,8 @@ export async function implGeometriesNear(
 
   const mustFilters = filtering.filter((f) => f.occur === "must");
   const shouldFilters = filtering.filter((f) => f.occur === "should");
+
+  const cursorData = cursor ? decodeCursor(cursor) : undefined;
 
   // When maxDistance is undefined, search the entire world.
   const searchTokens = new Set<string>();
@@ -630,7 +695,7 @@ export async function implGeometriesNear(
     }
   }
 
-  const { candidateIds, truncated } = await gatherCandidates(ctx, searchTokens);
+  const { candidateIds } = await gatherCandidates(ctx, searchTokens);
 
   const results: {
     key: string;
@@ -675,6 +740,16 @@ export async function implGeometriesNear(
     }
 
     if (maxDistance === undefined || distanceMeters <= maxDistance) {
+      if (cursorData) {
+        if (
+          distanceMeters < cursorData.sortKey ||
+          (distanceMeters === cursorData.sortKey &&
+            geometry.key <= cursorData.secondary)
+        ) {
+          continue;
+        }
+      }
+
       results.push({
         key: geometry.key,
         type: geometry.type,
@@ -692,5 +767,14 @@ export async function implGeometriesNear(
   }
 
   results.sort((a, b) => a.distance - b.distance);
-  return { results: results.slice(0, maxResults), truncated };
+  const slicedResults = results.slice(0, maxResults);
+  const nextCursor =
+    slicedResults.length === maxResults && results.length > maxResults
+      ? encodeCursor({
+          sortKey: slicedResults[slicedResults.length - 1].distance,
+          secondary: slicedResults[slicedResults.length - 1].key,
+        })
+      : undefined;
+
+  return { results: slicedResults, nextCursor };
 }

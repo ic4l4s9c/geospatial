@@ -6,11 +6,7 @@ import {
   implGeometriesNear,
   implIntersects,
 } from "../lib/geometryQuery.js";
-import {
-  point,
-  primitive,
-  queryShape,
-} from "../validators.js";
+import { point, primitive, queryShape } from "../validators.js";
 import { S2Bindings } from "../lib/s2Bindings.js";
 import { equalityCondition } from "../query.js";
 import { filterKeys } from "../schema.js";
@@ -28,10 +24,11 @@ export const intersects = query({
     maxCoveringCells: v.optional(v.number()),
     filterKeys: filterKeys,
     limit: v.optional(v.number()),
+    cursor: v.optional(v.string()),
   },
   returns: v.object({
     results: v.array(geometryResult),
-    truncated: v.boolean(),
+    nextCursor: v.optional(v.string()),
   }),
   handler: async (ctx, args) => {
     const s2 = await S2Bindings.load();
@@ -40,6 +37,7 @@ export const intersects = query({
       maxCoveringCells: args.maxCoveringCells ?? 30,
       filterKeys: args.filterKeys,
       limit: args.limit ?? 100,
+      cursor: args.cursor,
     });
   },
 });
@@ -57,10 +55,11 @@ export const geometriesNear = query({
     maxDistance: v.optional(v.number()),
     filtering: v.array(equalityCondition),
     maxResults: v.optional(v.number()),
+    cursor: v.optional(v.string()),
   },
   returns: v.object({
     results: v.array(geometryWithDistance),
-    truncated: v.boolean(),
+    nextCursor: v.optional(v.string()),
   }),
   handler: async (ctx, args) => {
     const s2 = await S2Bindings.load();
@@ -69,6 +68,7 @@ export const geometriesNear = query({
       maxDistance: args.maxDistance,
       filtering: args.filtering,
       maxResults: args.maxResults ?? 100,
+      cursor: args.cursor,
     });
   },
 });

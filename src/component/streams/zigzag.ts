@@ -1,20 +1,20 @@
-import type { TupleKey } from "../lib/tupleKey.js";
+import type { Cursor } from "../lib/cursor.js";
 
 export interface PointSet {
   /**
    * Advance the stream to the next item and return it. Return null if the stream is exhausted.
    */
-  advance(): Promise<TupleKey | null>;
+  advance(): Promise<Cursor | null>;
 
   /**
    * Return the current item in the stream.
    */
-  current(): Promise<TupleKey | null>;
+  current(): Promise<Cursor | null>;
 
   /**
    * Seek to the given tuple.
    */
-  seek(tuple: TupleKey): Promise<void>;
+  seek(tuple: Cursor): Promise<void>;
 
   /**
    * Estimate on the number of elements in the stream.

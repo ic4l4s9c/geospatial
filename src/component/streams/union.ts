@@ -1,9 +1,9 @@
 import { Heap } from "heap-js";
-import type { TupleKey } from "../lib/tupleKey.js";
+import type { Cursor } from "../lib/cursor.js";
 import type { PointSet } from "./zigzag.js";
 
 type HeapEntry = {
-  tuple: TupleKey;
+  tuple: Cursor;
   stream: PointSet;
 };
 
@@ -34,7 +34,7 @@ export class Union implements PointSet {
     return heap;
   }
 
-  async current(): Promise<TupleKey | null> {
+  async current(): Promise<Cursor | null> {
     const heap = await this.initializeHeap();
     const smallest = heap.peek();
     if (smallest === undefined) {
@@ -43,7 +43,7 @@ export class Union implements PointSet {
     return smallest.tuple;
   }
 
-  async advance(): Promise<TupleKey | null> {
+  async advance(): Promise<Cursor | null> {
     const heap = await this.initializeHeap();
     const smallest = heap.pop();
     if (smallest === undefined) {
@@ -71,7 +71,7 @@ export class Union implements PointSet {
     return smallest.tuple;
   }
 
-  async seek(tuple: TupleKey): Promise<void> {
+  async seek(tuple: Cursor): Promise<void> {
     const heap = await this.initializeHeap();
 
     // Remove the heap entries that are less than `pos`.

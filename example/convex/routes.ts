@@ -86,11 +86,12 @@ export const intersects = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const { results, truncated } = await geospatial.polylines.intersects(
+    const { results, nextCursor } = await geospatial.polylines.intersects(
       ctx,
       args.shape,
-      args.mode ? { mode: args.mode, tags: [] } : undefined,
-      args.limit,
+      args.mode
+        ? { filterKeys: { mode: args.mode, tags: [] }, limit: args.limit }
+        : undefined,
     );
 
     const hydrated = await Promise.all(
@@ -100,7 +101,7 @@ export const intersects = query({
       }),
     );
 
-    return { results: hydrated.filter(Boolean), truncated };
+    return { results: hydrated.filter(Boolean), nextCursor };
   },
 });
 
@@ -112,7 +113,7 @@ export const nearest = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const { results, truncated } = await geospatial.polylines.nearest(ctx, {
+    const { results, nextCursor } = await geospatial.polylines.nearest(ctx, {
       point: args.coordinates,
       maxDistance: args.maxDistanceMeters,
       limit: args.limit ?? 100,
@@ -128,7 +129,7 @@ export const nearest = query({
       }),
     );
 
-    return { results: hydrated.filter(Boolean), truncated };
+    return { results: hydrated.filter(Boolean), nextCursor };
   },
 });
 

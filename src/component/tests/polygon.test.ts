@@ -226,14 +226,22 @@ test("S2Bindings - polygonContainsPoint", async () => {
   ];
 
   // Center should be inside
-  expect(s2.polygonContainsPoint(squarePoints, { latitude: 0, longitude: 0 })).toBe(true);
+  expect(
+    s2.polygonContainsPoint(squarePoints, { latitude: 0, longitude: 0 }),
+  ).toBe(true);
 
   // Corner area should be inside
-  expect(s2.polygonContainsPoint(squarePoints, { latitude: 0.5, longitude: 0.5 })).toBe(true);
+  expect(
+    s2.polygonContainsPoint(squarePoints, { latitude: 0.5, longitude: 0.5 }),
+  ).toBe(true);
 
   // Outside should be outside
-  expect(s2.polygonContainsPoint(squarePoints, { latitude: 2, longitude: 2 })).toBe(false);
-  expect(s2.polygonContainsPoint(squarePoints, { latitude: 0, longitude: 5 })).toBe(false);
+  expect(
+    s2.polygonContainsPoint(squarePoints, { latitude: 2, longitude: 2 }),
+  ).toBe(false);
+  expect(
+    s2.polygonContainsPoint(squarePoints, { latitude: 0, longitude: 5 }),
+  ).toBe(false);
 });
 
 test("S2Bindings - polygon with clockwise points normalizes correctly", async () => {
@@ -248,8 +256,12 @@ test("S2Bindings - polygon with clockwise points normalizes correctly", async ()
   ];
 
   // Should still work correctly due to loop.Normalize()
-  expect(s2.polygonContainsPoint(clockwiseSquare, { latitude: 0, longitude: 0 })).toBe(true);
-  expect(s2.polygonContainsPoint(clockwiseSquare, { latitude: 5, longitude: 5 })).toBe(false);
+  expect(
+    s2.polygonContainsPoint(clockwiseSquare, { latitude: 0, longitude: 0 }),
+  ).toBe(true);
+  expect(
+    s2.polygonContainsPoint(clockwiseSquare, { latitude: 5, longitude: 5 }),
+  ).toBe(false);
 });
 
 test("polygon query - concave L-shape", async () => {
@@ -363,7 +375,11 @@ test("polygon query - pagination with cursor", async () => {
     const result: ExecuteResult = await t.query(api.query.execute, {
       query: {
         shape: { type: "polygon" as const, polygon: squarePolygon },
-        filtering: [] as { occur: "should" | "must"; filterKey: string; filterValue: string }[],
+        filtering: [] as {
+          occur: "should" | "must";
+          filterKey: string;
+          filterValue: string;
+        }[],
         sorting: { interval: {} },
         maxResults: pageSize,
       },
@@ -483,15 +499,26 @@ test("S2Bindings - points near polygon boundary", async () => {
   ];
 
   // Test points very close to boundary (inside)
-  expect(s2.polygonContainsPoint(squarePoints, { latitude: 0.999, longitude: 0 })).toBe(true);
-  expect(s2.polygonContainsPoint(squarePoints, { latitude: 0, longitude: 0.999 })).toBe(true);
+  expect(
+    s2.polygonContainsPoint(squarePoints, { latitude: 0.999, longitude: 0 }),
+  ).toBe(true);
+  expect(
+    s2.polygonContainsPoint(squarePoints, { latitude: 0, longitude: 0.999 }),
+  ).toBe(true);
 
   // Test points very close to boundary (outside)
-  expect(s2.polygonContainsPoint(squarePoints, { latitude: 1.001, longitude: 0 })).toBe(false);
-  expect(s2.polygonContainsPoint(squarePoints, { latitude: 0, longitude: 1.001 })).toBe(false);
+  expect(
+    s2.polygonContainsPoint(squarePoints, { latitude: 1.001, longitude: 0 }),
+  ).toBe(false);
+  expect(
+    s2.polygonContainsPoint(squarePoints, { latitude: 0, longitude: 1.001 }),
+  ).toBe(false);
 
   // Test corners (exactly on vertex - behavior may vary, but should be consistent)
-  const cornerResult = s2.polygonContainsPoint(squarePoints, { latitude: 1, longitude: 1 });
+  const cornerResult = s2.polygonContainsPoint(squarePoints, {
+    latitude: 1,
+    longitude: 1,
+  });
   // Just verify it doesn't crash and returns a boolean
   expect(typeof cornerResult).toBe("boolean");
 });
@@ -510,15 +537,25 @@ test("S2Bindings - concave polygon containment", async () => {
   ];
 
   // Inside the L
-  expect(s2.polygonContainsPoint(lShape, { latitude: 0.5, longitude: 0.5 })).toBe(true);
-  expect(s2.polygonContainsPoint(lShape, { latitude: 0.5, longitude: 1.5 })).toBe(true);
-  expect(s2.polygonContainsPoint(lShape, { latitude: 1.5, longitude: 0.5 })).toBe(true);
+  expect(
+    s2.polygonContainsPoint(lShape, { latitude: 0.5, longitude: 0.5 }),
+  ).toBe(true);
+  expect(
+    s2.polygonContainsPoint(lShape, { latitude: 0.5, longitude: 1.5 }),
+  ).toBe(true);
+  expect(
+    s2.polygonContainsPoint(lShape, { latitude: 1.5, longitude: 0.5 }),
+  ).toBe(true);
 
   // In the notch (outside)
-  expect(s2.polygonContainsPoint(lShape, { latitude: 1.5, longitude: 1.5 })).toBe(false);
+  expect(
+    s2.polygonContainsPoint(lShape, { latitude: 1.5, longitude: 1.5 }),
+  ).toBe(false);
 
   // Clearly outside
-  expect(s2.polygonContainsPoint(lShape, { latitude: 3, longitude: 3 })).toBe(false);
+  expect(s2.polygonContainsPoint(lShape, { latitude: 3, longitude: 3 })).toBe(
+    false,
+  );
 });
 
 describe("property-based polygon tests", () => {
@@ -533,27 +570,36 @@ describe("property-based polygon tests", () => {
       fc.float({ min: Math.fround(0.1), max: Math.fround(5), noNaN: true }), // radius in degrees
       fc.integer({ min: 3, max: 20 }), // number of vertices
     )
-    .map(([centerLat, centerLng, radius, numVertices]): {
-      center: { latitude: number; longitude: number };
-      vertices: { latitude: number; longitude: number }[];
-      radius: number;
-    } => {
-      const vertices: { latitude: number; longitude: number }[] = [];
-      for (let i = 0; i < numVertices; i++) {
-        const angle = (2 * Math.PI * i) / numVertices;
-        vertices.push({
-          latitude: centerLat + radius * Math.sin(angle) * 0.5,
-          longitude: centerLng + radius * Math.cos(angle),
-        });
-      }
-      return { center: { latitude: centerLat, longitude: centerLng }, vertices, radius };
-    });
+    .map(
+      ([centerLat, centerLng, radius, numVertices]): {
+        center: { latitude: number; longitude: number };
+        vertices: { latitude: number; longitude: number }[];
+        radius: number;
+      } => {
+        const vertices: { latitude: number; longitude: number }[] = [];
+        for (let i = 0; i < numVertices; i++) {
+          const angle = (2 * Math.PI * i) / numVertices;
+          vertices.push({
+            latitude: centerLat + radius * Math.sin(angle) * 0.5,
+            longitude: centerLng + radius * Math.cos(angle),
+          });
+        }
+        return {
+          center: { latitude: centerLat, longitude: centerLng },
+          vertices,
+          radius,
+        };
+      },
+    );
 
   fcTest.prop({ polygon: arbitraryConvexPolygon })(
     "center point is always inside convex polygon",
     async ({ polygon }) => {
       const s2 = await s2Promise;
-      const contains = s2.polygonContainsPoint(polygon.vertices, polygon.center);
+      const contains = s2.polygonContainsPoint(
+        polygon.vertices,
+        polygon.center,
+      );
       expect(contains).toBe(true);
     },
   );
@@ -564,7 +610,10 @@ describe("property-based polygon tests", () => {
       const s2 = await s2Promise;
       // Point very far from center (at least 2x radius away)
       const farPoint = {
-        latitude: Math.max(-89, Math.min(89, polygon.center.latitude + polygon.radius * 3)),
+        latitude: Math.max(
+          -89,
+          Math.min(89, polygon.center.latitude + polygon.radius * 3),
+        ),
         longitude: polygon.center.longitude + polygon.radius * 3,
       };
       const contains = s2.polygonContainsPoint(polygon.vertices, farPoint);

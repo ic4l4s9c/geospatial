@@ -19,6 +19,7 @@ import {
   matchesFilterKeys,
 } from "../lib/geometryQuery.js";
 import { equalityCondition } from "../query.js";
+import { decodeCursor, encodeCursor } from "../lib/cursor.js";
 
 const polygonResult = v.object({
   key: v.string(),
@@ -45,10 +46,11 @@ export const intersects = query({
       v.record(v.string(), v.union(primitive, v.array(primitive))),
     ),
     limit: v.optional(v.number()),
+    cursor: v.optional(v.string()),
   },
   returns: v.object({
     results: v.array(polygonResult),
-    truncated: v.boolean(),
+    nextCursor: v.optional(v.string()),
   }),
   handler: async (ctx, args) => {
     const s2 = await S2Bindings.load();
@@ -58,6 +60,7 @@ export const intersects = query({
       filterKeys: args.filterKeys,
       limit: args.limit ?? 100,
       type: "polygon",
+      cursor: args.cursor,
     });
   },
 });
@@ -75,14 +78,17 @@ export const containsPoint = query({
       v.record(v.string(), v.union(primitive, v.array(primitive))),
     ),
     limit: v.optional(v.number()),
+    cursor: v.optional(v.string()),
   },
   returns: v.object({
     results: v.array(polygonResult),
-    truncated: v.boolean(),
+    nextCursor: v.optional(v.string()),
   }),
   handler: async (ctx, args) => {
     const s2 = await S2Bindings.load();
-    const { point: queryPoint, filterKeys, limit = 100 } = args;
+    const { point: queryPoint, filterKeys, limit = 100, cursor } = args;
+
+    const cursorData = cursor ? decodeCursor(cursor) : undefined;
 
     // Get all S2 cells at every level that contain this point, then look up
     // which stored geometries index those cells. Any polygon containing the
@@ -90,10 +96,7 @@ export const containsPoint = query({
     const pointCells = s2.pointCellsAllLevels(queryPoint);
     const pointTokens = pointCells.map((cellId) => s2.cellIDToken(cellId));
 
-    const { candidateIds, truncated } = await gatherCandidates(
-      ctx,
-      pointTokens,
-    );
+    const { candidateIds } = await gatherCandidates(ctx, pointTokens);
 
     const results: {
       key: string;
@@ -101,6 +104,7 @@ export const containsPoint = query({
       coordinates: Polygon;
       boundingBox: Rectangle;
       filterKeys?: Record<string, Primitive | Primitive[]>;
+      sortKey: number;
     }[] = [];
 
     for (const [geometryId] of candidateIds) {
@@ -117,6 +121,17 @@ export const containsPoint = query({
       }
       if (!matchesFilterKeys(geometry, filterKeys)) {
         continue;
+      }
+
+      if (cursorData) {
+        const geoSortKey = geometry.sortKey;
+        const geoKey = geometry.key;
+        if (
+          geoSortKey < cursorData.sortKey ||
+          (geoSortKey === cursorData.sortKey && geoKey <= cursorData.secondary)
+        ) {
+          continue;
+        }
       }
 
       // Cheap bounding box rejection before the exact S2 test.
@@ -138,11 +153,20 @@ export const containsPoint = query({
           coordinates: poly,
           boundingBox: bbox,
           filterKeys: geometry.filterKeys,
+          sortKey: geometry.sortKey,
         });
       }
     }
 
-    return { results, truncated };
+    const nextCursor =
+      results.length === limit
+        ? encodeCursor({
+            sortKey: results[results.length - 1].sortKey,
+            secondary: results[results.length - 1].key,
+          })
+        : undefined;
+
+    return { results, nextCursor };
   },
 });
 
@@ -155,10 +179,11 @@ export const nearest = query({
     maxDistance: v.optional(v.number()),
     filtering: v.array(equalityCondition),
     maxResults: v.optional(v.number()),
+    cursor: v.optional(v.string()),
   },
   returns: v.object({
     results: v.array(polygonWithDistance),
-    truncated: v.boolean(),
+    nextCursor: v.optional(v.string()),
   }),
   handler: async (ctx, args) => {
     const s2 = await S2Bindings.load();
@@ -168,6 +193,7 @@ export const nearest = query({
       filtering: args.filtering,
       maxResults: args.maxResults ?? 100,
       type: "polygon",
+      cursor: args.cursor,
     });
   },
 });

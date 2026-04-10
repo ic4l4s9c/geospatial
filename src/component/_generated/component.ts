@@ -172,6 +172,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           "query",
           "internal",
           {
+            cursor?: string;
             filtering: Array<{
               filterKey: string;
               filterValue: string | number | boolean | null | bigint;
@@ -182,6 +183,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             point: { latitude: number; longitude: number };
           },
           {
+            nextCursor?: string;
             results: Array<{
               boundingBox: {
                 east: number;
@@ -210,7 +212,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               key: string;
               type: "polygon" | "polyline";
             }>;
-            truncated: boolean;
           },
           Name
         >;
@@ -218,6 +219,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           "query",
           "internal",
           {
+            cursor?: string;
             filterKeys?: Record<
               string,
               | string
@@ -255,6 +257,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                 };
           },
           {
+            nextCursor?: string;
             results: Array<{
               boundingBox: {
                 east: number;
@@ -282,7 +285,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               key: string;
               type: "polygon" | "polyline";
             }>;
-            truncated: boolean;
           },
           Name
         >;
@@ -364,6 +366,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           "query",
           "internal",
           {
+            cursor?: string;
             filterKeys?: Record<
               string,
               | string
@@ -377,6 +380,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             point: { latitude: number; longitude: number };
           },
           {
+            nextCursor?: string;
             results: Array<{
               boundingBox: {
                 east: number;
@@ -400,7 +404,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               key: string;
               type: "polygon";
             }>;
-            truncated: boolean;
           },
           Name
         >;
@@ -408,6 +411,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           "query",
           "internal",
           {
+            cursor?: string;
             filterKeys?: Record<
               string,
               | string
@@ -445,6 +449,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                 };
           },
           {
+            nextCursor?: string;
             results: Array<{
               boundingBox: {
                 east: number;
@@ -468,7 +473,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               key: string;
               type: "polygon";
             }>;
-            truncated: boolean;
           },
           Name
         >;
@@ -476,6 +480,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           "query",
           "internal",
           {
+            cursor?: string;
             filtering: Array<{
               filterKey: string;
               filterValue: string | number | boolean | null | bigint;
@@ -486,6 +491,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             point: { latitude: number; longitude: number };
           },
           {
+            nextCursor?: string;
             results: Array<{
               boundingBox: {
                 east: number;
@@ -510,7 +516,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               key: string;
               type: "polygon";
             }>;
-            truncated: boolean;
           },
           Name
         >;
@@ -538,6 +543,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           "query",
           "internal",
           {
+            cursor?: string;
             filterKeys?: Record<
               string,
               | string
@@ -575,6 +581,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                 };
           },
           {
+            nextCursor?: string;
             results: Array<{
               boundingBox: {
                 east: number;
@@ -595,7 +602,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               key: string;
               type: "polyline";
             }>;
-            truncated: boolean;
           },
           Name
         >;
@@ -603,6 +609,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           "query",
           "internal",
           {
+            cursor?: string;
             filtering: Array<{
               filterKey: string;
               filterValue: string | number | boolean | null | bigint;
@@ -613,6 +620,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             point: { latitude: number; longitude: number };
           },
           {
+            nextCursor?: string;
             results: Array<{
               boundingBox: {
                 east: number;
@@ -634,7 +642,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               key: string;
               type: "polyline";
             }>;
-            truncated: boolean;
           },
           Name
         >;
@@ -721,6 +728,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "query",
         "internal",
         {
+          cursor?: string;
           filtering: Array<{
             filterKey: string;
             filterValue: string | number | boolean | null | bigint;
@@ -732,7 +740,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           maxLevel: number;
           maxResults: number;
           minLevel: number;
-          nextCursor?: string;
           point: { latitude: number; longitude: number };
           sorting: {
             interval: { endExclusive?: number; startInclusive?: number };

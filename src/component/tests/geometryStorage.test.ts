@@ -152,7 +152,7 @@ describe("Geometry Storage", () => {
 
       expect(result.results.length).toBe(1);
       expect(result.results[0].key).toBe("manhattan");
-      expect(result.truncated).toBe(false);
+      expect(result.nextCursor).toBeUndefined();
     });
 
     test("returns empty for point outside all polygons", async () => {

@@ -150,7 +150,7 @@ export const remove = mutation({
       .withIndex("byKey", (q) => q.eq("key", args.key))
       .first();
     if (!geometry) {
-      return false
+      return false;
     }
     await ctx.db.delete(geometry._id);
 
@@ -161,7 +161,7 @@ export const remove = mutation({
     for (const cell of cells) {
       await ctx.db.delete(cell._id);
     }
-    return true
+    return true;
   },
 });
 
@@ -184,7 +184,7 @@ export const update = mutation({
       .withIndex("byKey", (q) => q.eq("key", args.key))
       .first();
     if (!existing) {
-      return false
+      return false;
     }
 
     if (args.coordinates !== undefined) {
@@ -228,7 +228,7 @@ export const update = mutation({
         ...(args.sortKey !== undefined && { sortKey: args.sortKey }),
       });
     }
-    return true
+    return true;
   },
 });
 

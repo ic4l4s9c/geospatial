@@ -75,26 +75,23 @@ export const search = query({
     nextCursor: v.optional(v.string()),
   }),
   async handler(ctx, args) {
-    const { results, nextCursor } = await geospatial.points.query(
-      ctx,
-      {
-        shape: {
-          type: "rectangle",
-          rectangle: args.rectangle,
-        },
-        filter: (q) => {
-          for (const condition of args.mustFilter) {
-            q = q.eq("name", condition);
-          }
-          if (!args.shouldFilter.length) {
-            return q;
-          }
-          return q.in("name", args.shouldFilter);
-        },
-        limit: args.maxRows,
+    const { results, nextCursor } = await geospatial.points.query(ctx, {
+      shape: {
+        type: "rectangle",
+        rectangle: args.rectangle,
       },
-      args.cursor,
-    );
+      filter: (q) => {
+        for (const condition of args.mustFilter) {
+          q = q.eq("name", condition);
+        }
+        if (!args.shouldFilter.length) {
+          return q;
+        }
+        return q.in("name", args.shouldFilter);
+      },
+      limit: args.maxRows,
+      cursor: args.cursor,
+    });
     const rows = await Promise.all(
       results.map(async (result) => {
         const row = await ctx.db.get(result.key);
@@ -134,26 +131,23 @@ export const searchPolygon = query({
     if (!args.polygon.exterior || args.polygon.exterior.length < 3) {
       throw new Error("Polygon must have at least 3 exterior points");
     }
-    const { results, nextCursor } = await geospatial.points.query(
-      ctx,
-      {
-        shape: {
-          type: "polygon",
-          polygon: args.polygon,
-        },
-        filter: (q) => {
-          for (const condition of args.mustFilter) {
-            q = q.eq("name", condition);
-          }
-          if (!args.shouldFilter.length) {
-            return q;
-          }
-          return q.in("name", args.shouldFilter);
-        },
-        limit: args.maxRows,
+    const { results, nextCursor } = await geospatial.points.query(ctx, {
+      shape: {
+        type: "polygon",
+        polygon: args.polygon,
       },
-      args.cursor,
-    );
+      filter: (q) => {
+        for (const condition of args.mustFilter) {
+          q = q.eq("name", condition);
+        }
+        if (!args.shouldFilter.length) {
+          return q;
+        }
+        return q.in("name", args.shouldFilter);
+      },
+      limit: args.maxRows,
+      cursor: args.cursor,
+    });
     const rows = await Promise.all(
       results.map(async (result) => {
         const row = await ctx.db.get(result.key);
@@ -197,27 +191,24 @@ export const searchPolyline = query({
     if (!Number.isFinite(args.bufferMeters) || args.bufferMeters < 0) {
       throw new Error("bufferMeters must be a finite non-negative number");
     }
-    const { results, nextCursor } = await geospatial.points.query(
-      ctx,
-      {
-        shape: {
-          type: "polyline",
-          polyline: args.polyline,
-          bufferMeters: args.bufferMeters,
-        },
-        filter: (q) => {
-          for (const condition of args.mustFilter) {
-            q = q.eq("name", condition);
-          }
-          if (!args.shouldFilter.length) {
-            return q;
-          }
-          return q.in("name", args.shouldFilter);
-        },
-        limit: args.maxRows,
+    const { results, nextCursor } = await geospatial.points.query(ctx, {
+      shape: {
+        type: "polyline",
+        polyline: args.polyline,
+        bufferMeters: args.bufferMeters,
       },
-      args.cursor,
-    );
+      filter: (q) => {
+        for (const condition of args.mustFilter) {
+          q = q.eq("name", condition);
+        }
+        if (!args.shouldFilter.length) {
+          return q;
+        }
+        return q.in("name", args.shouldFilter);
+      },
+      limit: args.maxRows,
+      cursor: args.cursor,
+    });
     const rows = await Promise.all(
       results.map(async (result) => {
         const row = await ctx.db.get(result.key);
@@ -269,7 +260,7 @@ export const geometriesNearPoint = query({
   args: {
     point,
     maxDistance: v.number(),
-    limit: v.optional(v.number())
+    limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     return await geospatial.polygons.nearest(ctx, {
