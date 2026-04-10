@@ -56,7 +56,7 @@ export const nearest = query({
   args: {
     point: point,
     maxDistance: v.optional(v.number()),
-    filtering: v.array(equalityCondition),
+    filtering: v.optional(v.array(equalityCondition)),
     limit: v.optional(v.number()),
     cursor: v.optional(v.string()),
   },
@@ -69,7 +69,7 @@ export const nearest = query({
     return implGeometriesNear(ctx, s2, {
       point: args.point,
       maxDistance: args.maxDistance,
-      filtering: args.filtering,
+      filtering: args.filtering ?? [],
       maxResults: args.limit ?? 100,
       type: "polyline",
       cursor: args.cursor,
