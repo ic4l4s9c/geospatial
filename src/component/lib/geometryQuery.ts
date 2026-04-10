@@ -10,6 +10,7 @@ import {
 import type { Point, Polygon, Rectangle, Primitive } from "../validators.js";
 import type { Id } from "../_generated/dataModel.js";
 import type { QueryCtx } from "../_generated/server.js";
+import type { Logger } from "./logging.js";
 import { decodeCursor, encodeCursor } from "./cursor.js";
 
 const MAX_CANDIDATES = 1000;
@@ -182,7 +183,10 @@ export async function gatherCandidates(
 
 type IntersectsArgs = {
   shape: QueryShape;
-  maxCoveringCells: number;
+  minLevel?: number;
+  maxLevel?: number;
+  levelMod?: number;
+  maxCells: number;
   filtering: FilterCondition[];
   limit: number;
   cursor?: string;
@@ -192,6 +196,7 @@ export async function implIntersects(
   ctx: QueryCtx,
   s2: Awaited<ReturnType<typeof S2Bindings.load>>,
   args: IntersectsArgs & { type: "polygon" },
+  logger?: Logger,
 ): Promise<{
   results: {
     key: string;
@@ -206,6 +211,7 @@ export async function implIntersects(
   ctx: QueryCtx,
   s2: Awaited<ReturnType<typeof S2Bindings.load>>,
   args: IntersectsArgs & { type: "polyline" },
+  logger?: Logger,
 ): Promise<{
   results: {
     key: string;
@@ -220,6 +226,7 @@ export async function implIntersects(
   ctx: QueryCtx,
   s2: Awaited<ReturnType<typeof S2Bindings.load>>,
   args: IntersectsArgs & { type?: "polygon" | "polyline" },
+  logger?: Logger,
 ): Promise<{
   results: {
     key: string;
@@ -234,6 +241,7 @@ export async function implIntersects(
   ctx: QueryCtx,
   s2: Awaited<ReturnType<typeof S2Bindings.load>>,
   args: IntersectsArgs & { type?: "polygon" | "polyline" },
+  logger?: Logger,
 ): Promise<{
   results: {
     key: string;
@@ -244,7 +252,16 @@ export async function implIntersects(
   }[];
   nextCursor?: string;
 }> {
-  const { shape, maxCoveringCells, filtering, limit, type } = args;
+  const {
+    shape,
+    minLevel,
+    maxLevel,
+    levelMod,
+    maxCells,
+    filtering,
+    limit,
+    type,
+  } = args;
   const mustFilters = filtering.filter((f) => f.occur === "must");
   const shouldFilters = filtering.filter((f) => f.occur === "should");
 
@@ -255,7 +272,10 @@ export async function implIntersects(
     return implIntersectsPolylineBuffer(ctx, s2, {
       queryPolyline: shape.polyline,
       bufferMeters: shape.bufferMeters,
-      maxCoveringCells,
+      minLevel,
+      maxLevel,
+      levelMod,
+      maxCells,
       filtering,
       limit,
       type,
@@ -297,10 +317,22 @@ export async function implIntersects(
     queryPolygonPoints = points;
   }
 
-  const queryCells = s2.coverPolygonForIndex(
-    queryPolygonPoints,
-    maxCoveringCells,
-  );
+  let queryCells = s2.coverPolygonForIndex(queryPolygonPoints, maxCells);
+
+  if (
+    minLevel !== undefined ||
+    maxLevel !== undefined ||
+    levelMod !== undefined
+  ) {
+    queryCells = queryCells.filter((cellId) => {
+      const level = s2.cellIDLevel(cellId);
+      if (minLevel !== undefined && level < minLevel) return false;
+      if (maxLevel !== undefined && level > maxLevel) return false;
+      if (levelMod !== undefined && (level - (minLevel ?? 0)) % levelMod !== 0)
+        return false;
+      return true;
+    });
+  }
 
   // Include ancestor cells so we match geometries indexed at coarser levels.
   const queryTokens = new Set<string>();
@@ -408,7 +440,10 @@ async function implIntersectsPolylineBuffer(
   args: {
     queryPolyline: Point[];
     bufferMeters: number;
-    maxCoveringCells: number;
+    minLevel?: number;
+    maxLevel?: number;
+    levelMod?: number;
+    maxCells: number;
     filtering: FilterCondition[];
     limit: number;
     type?: "polygon" | "polyline";
@@ -427,7 +462,10 @@ async function implIntersectsPolylineBuffer(
   const {
     queryPolyline,
     bufferMeters,
-    maxCoveringCells,
+    minLevel,
+    maxLevel,
+    levelMod,
+    maxCells,
     filtering,
     limit,
     type,
@@ -470,7 +508,22 @@ async function implIntersectsPolylineBuffer(
   };
 
   const searchPolygon = rectangleToPolygonPoints(searchBbox);
-  const searchCells = s2.coverPolygonForIndex(searchPolygon, maxCoveringCells);
+  let searchCells = s2.coverPolygonForIndex(searchPolygon, maxCells);
+
+  if (
+    minLevel !== undefined ||
+    maxLevel !== undefined ||
+    levelMod !== undefined
+  ) {
+    searchCells = searchCells.filter((cellId) => {
+      const level = s2.cellIDLevel(cellId);
+      if (minLevel !== undefined && level < minLevel) return false;
+      if (maxLevel !== undefined && level > maxLevel) return false;
+      if (levelMod !== undefined && (level - (minLevel ?? 0)) % levelMod !== 0)
+        return false;
+      return true;
+    });
+  }
 
   const searchTokens = new Set<string>();
   for (const cellId of searchCells) {
@@ -588,6 +641,10 @@ async function implIntersectsPolylineBuffer(
 
 type NearArgs = {
   point: Point;
+  minLevel?: number;
+  maxLevel?: number;
+  levelMod?: number;
+  maxCells?: number;
   maxDistance?: number;
   filtering: FilterCondition[];
   maxResults: number;
@@ -598,6 +655,7 @@ export async function implGeometriesNear(
   ctx: QueryCtx,
   s2: Awaited<ReturnType<typeof S2Bindings.load>>,
   args: NearArgs & { type: "polygon" },
+  logger?: Logger,
 ): Promise<{
   results: {
     key: string;
@@ -613,6 +671,7 @@ export async function implGeometriesNear(
   ctx: QueryCtx,
   s2: Awaited<ReturnType<typeof S2Bindings.load>>,
   args: NearArgs & { type: "polyline" },
+  logger?: Logger,
 ): Promise<{
   results: {
     key: string;
@@ -628,6 +687,7 @@ export async function implGeometriesNear(
   ctx: QueryCtx,
   s2: Awaited<ReturnType<typeof S2Bindings.load>>,
   args: NearArgs & { type?: "polygon" | "polyline" },
+  logger?: Logger,
 ): Promise<{
   results: {
     key: string;
@@ -643,6 +703,7 @@ export async function implGeometriesNear(
   ctx: QueryCtx,
   s2: Awaited<ReturnType<typeof S2Bindings.load>>,
   args: NearArgs & { type?: "polygon" | "polyline" },
+  logger?: Logger,
 ): Promise<{
   results: {
     key: string;
@@ -656,6 +717,10 @@ export async function implGeometriesNear(
 }> {
   const {
     point: queryPoint,
+    minLevel,
+    maxLevel,
+    levelMod,
+    maxCells,
     maxDistance,
     filtering,
     maxResults,
@@ -690,7 +755,26 @@ export async function implGeometriesNear(
     };
 
     const searchPolygon = rectangleToPolygonPoints(searchBbox);
-    const searchCells = s2.coverPolygonForIndex(searchPolygon, 50);
+    let searchCells = s2.coverPolygonForIndex(searchPolygon, maxCells);
+
+    if (
+      minLevel !== undefined ||
+      maxLevel !== undefined ||
+      levelMod !== undefined
+    ) {
+      searchCells = searchCells.filter((cellId) => {
+        const level = s2.cellIDLevel(cellId);
+        if (minLevel !== undefined && level < minLevel) return false;
+        if (maxLevel !== undefined && level > maxLevel) return false;
+        if (
+          levelMod !== undefined &&
+          (level - (minLevel ?? 0)) % levelMod !== 0
+        )
+          return false;
+        return true;
+      });
+    }
+
     for (const cellId of searchCells) {
       searchTokens.add(s2.cellIDToken(cellId));
       for (const ancestor of s2.cellAncestors(cellId)) {
@@ -698,7 +782,27 @@ export async function implGeometriesNear(
       }
     }
   } else {
-    for (const cellId of s2.initialCells(0)) {
+    let initialCells = s2.initialCells(0);
+
+    if (
+      minLevel !== undefined ||
+      maxLevel !== undefined ||
+      levelMod !== undefined
+    ) {
+      initialCells = initialCells.filter((cellId) => {
+        const level = s2.cellIDLevel(cellId);
+        if (minLevel !== undefined && level < minLevel) return false;
+        if (maxLevel !== undefined && level > maxLevel) return false;
+        if (
+          levelMod !== undefined &&
+          (level - (minLevel ?? 0)) % levelMod !== 0
+        )
+          return false;
+        return true;
+      });
+    }
+
+    for (const cellId of initialCells) {
       searchTokens.add(s2.cellIDToken(cellId));
     }
   }

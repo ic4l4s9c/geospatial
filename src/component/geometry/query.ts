@@ -8,6 +8,7 @@ import {
 } from "../lib/geometryQuery.js";
 import { point, queryShape, equalityCondition } from "../validators.js";
 import { S2Bindings } from "../lib/s2Bindings.js";
+import { createLogger, type Logger, logLevel } from "../lib/logging.js";
 
 /**
  * Find all geometries of any type that intersect a given shape.
@@ -19,7 +20,11 @@ import { S2Bindings } from "../lib/s2Bindings.js";
 export const intersects = query({
   args: {
     shape: queryShape,
-    maxCoveringCells: v.optional(v.number()),
+    minLevel: v.optional(v.number()),
+    maxLevel: v.optional(v.number()),
+    levelMod: v.optional(v.number()),
+    maxCells: v.optional(v.number()),
+    logLevel: v.optional(logLevel),
     filtering: v.optional(v.array(equalityCondition)),
     limit: v.optional(v.number()),
     cursor: v.optional(v.string()),
@@ -29,14 +34,26 @@ export const intersects = query({
     nextCursor: v.optional(v.string()),
   }),
   handler: async (ctx, args) => {
+    let logger: Logger | undefined;
+    if (args.logLevel) {
+      logger = createLogger(args.logLevel);
+    }
     const s2 = await S2Bindings.load();
-    return implIntersects(ctx, s2, {
-      shape: args.shape,
-      maxCoveringCells: args.maxCoveringCells ?? 30,
-      filtering: args.filtering ?? [],
-      limit: args.limit ?? 100,
-      cursor: args.cursor,
-    });
+    return implIntersects(
+      ctx,
+      s2,
+      {
+        shape: args.shape,
+        minLevel: args.minLevel,
+        maxLevel: args.maxLevel,
+        levelMod: args.levelMod,
+        maxCells: args.maxCells ?? 30,
+        filtering: args.filtering ?? [],
+        limit: args.limit ?? 100,
+        cursor: args.cursor,
+      },
+      logger,
+    );
   },
 });
 
@@ -50,7 +67,12 @@ export const intersects = query({
 export const nearest = query({
   args: {
     point: point,
+    minLevel: v.optional(v.number()),
+    maxLevel: v.optional(v.number()),
+    levelMod: v.optional(v.number()),
+    maxCells: v.optional(v.number()),
     maxDistance: v.optional(v.number()),
+    logLevel: v.optional(logLevel),
     filtering: v.array(equalityCondition),
     limit: v.optional(v.number()),
     cursor: v.optional(v.string()),
@@ -60,13 +82,26 @@ export const nearest = query({
     nextCursor: v.optional(v.string()),
   }),
   handler: async (ctx, args) => {
+    let logger: Logger | undefined;
+    if (args.logLevel) {
+      logger = createLogger(args.logLevel);
+    }
     const s2 = await S2Bindings.load();
-    return implGeometriesNear(ctx, s2, {
-      point: args.point,
-      maxDistance: args.maxDistance,
-      filtering: args.filtering,
-      maxResults: args.limit ?? 100,
-      cursor: args.cursor,
-    });
+    return implGeometriesNear(
+      ctx,
+      s2,
+      {
+        point: args.point,
+        minLevel: args.minLevel,
+        maxLevel: args.maxLevel,
+        levelMod: args.levelMod,
+        maxCells: args.maxCells,
+        maxDistance: args.maxDistance,
+        filtering: args.filtering,
+        maxResults: args.limit ?? 100,
+        cursor: args.cursor,
+      },
+      logger,
+    );
   },
 });

@@ -291,6 +291,7 @@ export const nearest = query({
     minLevel: v.number(),
     maxLevel: v.number(),
     levelMod: v.number(),
+    maxCells: v.number(),
     cursor: v.optional(v.string()),
     filtering: v.array(equalityCondition),
     sorting: v.object({

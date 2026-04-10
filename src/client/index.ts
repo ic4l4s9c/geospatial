@@ -103,6 +103,7 @@ export type NearestQueryOptions<
   point: Point;
   limit: number;
   maxDistance?: number;
+  maxCells?: number;
   filter?: NonNullable<
     GeospatialQuery<GeospatialGeometry<Type, Key, Filters>>["filter"]
   >;
@@ -308,21 +309,19 @@ export class PointsNamespace<
       options.filter(filterBuilder);
     }
 
-    const result = await ctx.runQuery(
-      this.core.component.point.query.nearest,
-      {
-        point: options.point,
-        maxDistance: options.maxDistance,
-        maxResults: options.limit,
-        minLevel: this.core.minLevel,
-        maxLevel: this.core.maxLevel,
-        levelMod: this.core.levelMod,
-        logLevel: this.core.logLevel,
-        filtering: filterBuilder.filterConditions,
-        sorting: { interval: filterBuilder.interval ?? {} },
-        cursor: options.cursor,
-      },
-    );
+    const result = await ctx.runQuery(this.core.component.point.query.nearest, {
+      point: options.point,
+      maxDistance: options.maxDistance,
+      maxResults: options.limit,
+      minLevel: this.core.minLevel,
+      maxLevel: this.core.maxLevel,
+      levelMod: this.core.levelMod,
+      maxCells: this.core.maxCells,
+      logLevel: this.core.logLevel,
+      filtering: filterBuilder.filterConditions,
+      sorting: { interval: filterBuilder.interval ?? {} },
+      cursor: options.cursor,
+    });
 
     return result as typeof result & {
       results: WithDistance<
@@ -364,6 +363,10 @@ export class PolygonsNamespace<
       coordinates: polygon,
       filterKeys,
       sortKey: sortKey ?? Math.random(),
+      minLevel: this.core.minLevel,
+      maxLevel: this.core.maxLevel,
+      levelMod: this.core.levelMod,
+      maxCells: this.core.maxCells,
     });
   }
 
@@ -409,6 +412,10 @@ export class PolygonsNamespace<
       coordinates: polygon,
       filterKeys,
       sortKey,
+      minLevel: this.core.minLevel,
+      maxLevel: this.core.maxLevel,
+      levelMod: this.core.levelMod,
+      maxCells: this.core.maxCells,
     });
   }
 
@@ -419,7 +426,13 @@ export class PolygonsNamespace<
    * @param key - The unique string key of the polygon to remove.
    */
   async remove(ctx: MutationCtx, key: PolygonKey): Promise<boolean> {
-    return await ctx.runMutation(this.core.component.geometry.remove, { key });
+    return await ctx.runMutation(this.core.component.geometry.remove, {
+      key,
+      minLevel: this.core.minLevel,
+      maxLevel: this.core.maxLevel,
+      levelMod: this.core.levelMod,
+      maxCells: this.core.maxCells,
+    });
   }
 
   /**
@@ -465,6 +478,10 @@ export class PolygonsNamespace<
       this.core.component.polygon.query.contains,
       {
         point,
+        minLevel: this.core.minLevel,
+        maxLevel: this.core.maxLevel,
+        levelMod: this.core.levelMod,
+        logLevel: this.core.logLevel,
         filtering: filterBuilder.filterConditions,
         limit: options?.limit,
         cursor: options?.cursor,
@@ -519,6 +536,11 @@ export class PolygonsNamespace<
       this.core.component.polygon.query.intersects,
       {
         shape,
+        minLevel: this.core.minLevel,
+        maxLevel: this.core.maxLevel,
+        levelMod: this.core.levelMod,
+        maxCells: this.core.maxCells,
+        logLevel: this.core.logLevel,
         filtering: filterBuilder.filterConditions,
         limit: options?.limit,
         cursor: options?.cursor,
@@ -567,7 +589,12 @@ export class PolygonsNamespace<
       this.core.component.polygon.query.nearest,
       {
         point: options.point,
+        minLevel: this.core.minLevel,
+        maxLevel: this.core.maxLevel,
+        levelMod: this.core.levelMod,
+        maxCells: this.core.maxCells,
         maxDistance: options.maxDistance,
+        logLevel: this.core.logLevel,
         limit: options.limit,
         filtering: filterBuilder.filterConditions,
         cursor: options.cursor,
@@ -649,6 +676,10 @@ export class PolylinesNamespace<
       coordinates: polyline,
       filterKeys,
       sortKey: sortKey ?? Math.random(),
+      minLevel: this.core.minLevel,
+      maxLevel: this.core.maxLevel,
+      levelMod: this.core.levelMod,
+      maxCells: this.core.maxCells,
     });
   }
 
@@ -697,6 +728,10 @@ export class PolylinesNamespace<
       coordinates: polyline,
       filterKeys,
       sortKey,
+      minLevel: this.core.minLevel,
+      maxLevel: this.core.maxLevel,
+      levelMod: this.core.levelMod,
+      maxCells: this.core.maxCells,
     });
   }
 
@@ -707,7 +742,13 @@ export class PolylinesNamespace<
    * @param key - The unique string key of the polyline to remove.
    */
   async remove(ctx: MutationCtx, key: PolylineKey): Promise<boolean> {
-    return await ctx.runMutation(this.core.component.geometry.remove, { key });
+    return await ctx.runMutation(this.core.component.geometry.remove, {
+      key,
+      minLevel: this.core.minLevel,
+      maxLevel: this.core.maxLevel,
+      levelMod: this.core.levelMod,
+      maxCells: this.core.maxCells,
+    });
   }
 
   /**
@@ -753,6 +794,11 @@ export class PolylinesNamespace<
       this.core.component.polyline.query.intersects,
       {
         shape,
+        minLevel: this.core.minLevel,
+        maxLevel: this.core.maxLevel,
+        levelMod: this.core.levelMod,
+        maxCells: this.core.maxCells,
+        logLevel: this.core.logLevel,
         filtering: filterBuilder.filterConditions,
         limit: options?.limit,
         cursor: options?.cursor,
@@ -801,7 +847,12 @@ export class PolylinesNamespace<
       this.core.component.polyline.query.nearest,
       {
         point: options.point,
+        minLevel: this.core.minLevel,
+        maxLevel: this.core.maxLevel,
+        levelMod: this.core.levelMod,
+        maxCells: this.core.maxCells,
         maxDistance: options.maxDistance,
+        logLevel: this.core.logLevel,
         limit: options.limit,
         filtering: filterBuilder.filterConditions,
         cursor: options.cursor,

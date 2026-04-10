@@ -99,6 +99,10 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             | Array<string | number | boolean | null | bigint>
           >;
           key: string;
+          levelMod?: number;
+          maxCells?: number;
+          maxLevel?: number;
+          minLevel?: number;
           sortKey: number;
           type: "polygon" | "polyline";
         },
@@ -116,8 +120,12 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               filterValue: string | number | boolean | null | bigint;
               occur: "should" | "must";
             }>;
+            levelMod?: number;
             limit?: number;
-            maxCoveringCells?: number;
+            logLevel?: "DEBUG" | "INFO" | "WARN" | "ERROR";
+            maxCells?: number;
+            maxLevel?: number;
+            minLevel?: number;
             shape:
               | {
                   rectangle: {
@@ -185,8 +193,13 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               filterValue: string | number | boolean | null | bigint;
               occur: "should" | "must";
             }>;
+            levelMod?: number;
             limit?: number;
+            logLevel?: "DEBUG" | "INFO" | "WARN" | "ERROR";
+            maxCells?: number;
             maxDistance?: number;
+            maxLevel?: number;
+            minLevel?: number;
             point: { latitude: number; longitude: number };
           },
           {
@@ -226,7 +239,13 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
       remove: FunctionReference<
         "mutation",
         "internal",
-        { key: string },
+        {
+          key: string;
+          levelMod?: number;
+          maxCells?: number;
+          maxLevel?: number;
+          minLevel?: number;
+        },
         boolean,
         Name
       >;
@@ -250,6 +269,10 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             | Array<string | number | boolean | null | bigint>
           >;
           key: string;
+          levelMod?: number;
+          maxCells?: number;
+          maxLevel?: number;
+          minLevel?: number;
           sortKey?: number;
         },
         boolean,
@@ -371,6 +394,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             }>;
             levelMod: number;
             logLevel: "DEBUG" | "INFO" | "WARN" | "ERROR";
+            maxCells: number;
             maxDistance?: number;
             maxLevel: number;
             maxResults: number;
@@ -479,7 +503,11 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               filterValue: string | number | boolean | null | bigint;
               occur: "should" | "must";
             }>;
+            levelMod?: number;
             limit?: number;
+            logLevel?: "DEBUG" | "INFO" | "WARN" | "ERROR";
+            maxLevel?: number;
+            minLevel?: number;
             point: { latitude: number; longitude: number };
           },
           {
@@ -520,8 +548,12 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               filterValue: string | number | boolean | null | bigint;
               occur: "should" | "must";
             }>;
+            levelMod?: number;
             limit?: number;
-            maxCoveringCells?: number;
+            logLevel?: "DEBUG" | "INFO" | "WARN" | "ERROR";
+            maxCells?: number;
+            maxLevel?: number;
+            minLevel?: number;
             shape:
               | {
                   rectangle: {
@@ -585,8 +617,13 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               filterValue: string | number | boolean | null | bigint;
               occur: "should" | "must";
             }>;
+            levelMod?: number;
             limit?: number;
+            logLevel?: "DEBUG" | "INFO" | "WARN" | "ERROR";
+            maxCells?: number;
             maxDistance?: number;
+            maxLevel?: number;
+            minLevel?: number;
             point: { latitude: number; longitude: number };
           },
           {
@@ -648,8 +685,12 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               filterValue: string | number | boolean | null | bigint;
               occur: "should" | "must";
             }>;
+            levelMod?: number;
             limit?: number;
-            maxCoveringCells?: number;
+            logLevel?: "DEBUG" | "INFO" | "WARN" | "ERROR";
+            maxCells?: number;
+            maxLevel?: number;
+            minLevel?: number;
             shape:
               | {
                   rectangle: {
@@ -710,8 +751,13 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               filterValue: string | number | boolean | null | bigint;
               occur: "should" | "must";
             }>;
+            levelMod?: number;
             limit?: number;
+            logLevel?: "DEBUG" | "INFO" | "WARN" | "ERROR";
+            maxCells?: number;
             maxDistance?: number;
+            maxLevel?: number;
+            minLevel?: number;
             point: { latitude: number; longitude: number };
           },
           {
