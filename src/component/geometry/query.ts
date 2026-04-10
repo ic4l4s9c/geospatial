@@ -49,12 +49,12 @@ export const intersects = query({
  * then computes the exact distance from each candidate geometry to the query
  * point. Results are returned sorted by distance ascending.
  */
-export const geometriesNear = query({
+export const nearest = query({
   args: {
     point: point,
     maxDistance: v.optional(v.number()),
     filtering: v.array(equalityCondition),
-    maxResults: v.optional(v.number()),
+    limit: v.optional(v.number()),
     cursor: v.optional(v.string()),
   },
   returns: v.object({
@@ -67,7 +67,7 @@ export const geometriesNear = query({
       point: args.point,
       maxDistance: args.maxDistance,
       filtering: args.filtering,
-      maxResults: args.maxResults ?? 100,
+      maxResults: args.limit ?? 100,
       cursor: args.cursor,
     });
   },

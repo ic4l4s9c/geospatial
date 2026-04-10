@@ -57,7 +57,7 @@ export const nearest = query({
     point: point,
     maxDistance: v.optional(v.number()),
     filtering: v.array(equalityCondition),
-    maxResults: v.optional(v.number()),
+    limit: v.optional(v.number()),
     cursor: v.optional(v.string()),
   },
   returns: v.object({
@@ -70,7 +70,7 @@ export const nearest = query({
       point: args.point,
       maxDistance: args.maxDistance,
       filtering: args.filtering,
-      maxResults: args.maxResults ?? 100,
+      maxResults: args.limit ?? 100,
       type: "polyline",
       cursor: args.cursor,
     });

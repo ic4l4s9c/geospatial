@@ -325,7 +325,7 @@ describe("Geometry Storage", () => {
     });
   });
 
-  describe("geometriesNear", () => {
+  describe("nearest", () => {
     test("finds polygons within distance", async () => {
       const t = convexTest(schema, modules);
 
@@ -339,10 +339,10 @@ describe("Geometry Storage", () => {
       // Point clearly outside Manhattan (in New Jersey, west of the Hudson)
       const nearPoint = { latitude: 40.75, longitude: -74.05 };
 
-      const result = await t.query(api.geometry.query.geometriesNear, {
+      const result = await t.query(api.geometry.query.nearest, {
         point: nearPoint,
         maxDistance: 5000,
-        maxResults: 100,
+        limit: 100,
         filtering: [],
       });
 
@@ -362,10 +362,10 @@ describe("Geometry Storage", () => {
         coordinates: MANHATTAN_POLYGON,
       });
 
-      const result = await t.query(api.geometry.query.geometriesNear, {
+      const result = await t.query(api.geometry.query.nearest, {
         point: POINT_INSIDE,
         maxDistance: 1000,
-        maxResults: 100,
+        limit: 100,
         filtering: [],
       });
 
@@ -401,10 +401,10 @@ describe("Geometry Storage", () => {
 
       // Query for geometries near the point - both polygons contain it
       const queryPoint = POINT_INSIDE; // { latitude: 40.758, longitude: -73.985 }
-      const result = await t.query(api.geometry.query.geometriesNear, {
+      const result = await t.query(api.geometry.query.nearest, {
         point: queryPoint,
         maxDistance: 5000,
-        maxResults: 100,
+        limit: 100,
         filtering: [],
       });
 
@@ -427,10 +427,10 @@ describe("Geometry Storage", () => {
         coordinates: MANHATTAN_ROUTE,
       });
 
-      const result = await t.query(api.geometry.query.geometriesNear, {
+      const result = await t.query(api.geometry.query.nearest, {
         point: { latitude: 40.75, longitude: -73.99 },
         maxDistance: 1000,
-        maxResults: 100,
+        limit: 100,
         filtering: [],
       });
 
@@ -466,10 +466,10 @@ describe("Geometry Storage", () => {
       });
 
       // Should only find manhattan with must filter
-      const result = await t.query(api.geometry.query.geometriesNear, {
+      const result = await t.query(api.geometry.query.nearest, {
         point: POINT_INSIDE,
         maxDistance: 5000,
-        maxResults: 100,
+        limit: 100,
         filtering: [
           { filterKey: "borough", filterValue: "manhattan", occur: "must" },
         ],
@@ -521,10 +521,10 @@ describe("Geometry Storage", () => {
       });
 
       // Should find manhattan and nyc with should filters (not other)
-      const result = await t.query(api.geometry.query.geometriesNear, {
+      const result = await t.query(api.geometry.query.nearest, {
         point: POINT_INSIDE,
         maxDistance: 5000,
-        maxResults: 100,
+        limit: 100,
         filtering: [
           { filterKey: "borough", filterValue: "manhattan", occur: "should" },
           { filterKey: "borough", filterValue: "nyc", occur: "should" },
@@ -536,7 +536,7 @@ describe("Geometry Storage", () => {
       expect(keys).toEqual(["manhattan", "nyc"]);
     });
 
-    test("respects maxResults limit", async () => {
+    test("respects limit limit", async () => {
       const t = convexTest(schema, modules);
 
       // Insert several polygons all containing POINT_INSIDE
@@ -556,10 +556,10 @@ describe("Geometry Storage", () => {
         });
       }
 
-      const result = await t.query(api.geometry.query.geometriesNear, {
+      const result = await t.query(api.geometry.query.nearest, {
         point: POINT_INSIDE,
         maxDistance: 5000,
-        maxResults: 3,
+        limit: 3,
         filtering: [],
       });
 

@@ -140,23 +140,23 @@ export class PointsNamespace<
   /**
    * Insert a new key-coordinate pair into the index.
    *
-   * @param ctx         - The Convex mutation context.
-   * @param key         - The unique string key to associate with the coordinate.
-   * @param coordinates - The geographic coordinate `{ latitude, longitude }`.
-   * @param filterKeys  - The filter keys to associate with the key.
-   * @param sortKey     - Sort key for ordering results, defaults to a random number.
+   * @param ctx        - The Convex mutation context.
+   * @param key        - The unique string key to associate with the coordinate.
+   * @param point      - The geographic coordinate `{ latitude, longitude }`.
+   * @param filterKeys - The filter keys to associate with the key.
+   * @param sortKey    - Sort key for ordering results, defaults to a random number.
    */
   async insert(
     ctx: MutationCtx,
     key: PointKey,
-    coordinates: Point,
+    point: Point,
     filterKeys?: PointFilters,
     sortKey?: number,
   ): Promise<void> {
     await ctx.runMutation(this.core.component.document.insert, {
       document: {
         key,
-        coordinates,
+        coordinates: point,
         filterKeys,
         sortKey: sortKey ?? Math.random(),
       },
@@ -191,27 +191,27 @@ export class PointsNamespace<
    * Only the fields provided will change; omitted fields keep their
    * existing values.
    *
-   * @param ctx         - The Convex mutation context.
-   * @param key         - The unique string key to update.
-   * @param coordinates - New geographic coordinate `{ latitude, longitude }`,
-   *                      keeps existing if omitted.
-   * @param filterKeys  - New filter keys to associate with the key, keeps
-   *                      existing if omitted. All filter keys must be provided
-   *                      together when updating — partial filter key updates
-   *                      are not supported.
-   * @param sortKey     - New sort key, keeps existing if omitted.
+   * @param ctx        - The Convex mutation context.
+   * @param key        - The unique string key to update.
+   * @param point      - New geographic coordinate `{ latitude, longitude }`,
+   *                     keeps existing if omitted.
+   * @param filterKeys - New filter keys to associate with the key, keeps
+   *                     existing if omitted. All filter keys must be provided
+   *                     together when updating — partial filter key updates
+   *                     are not supported.
+   * @param sortKey    - New sort key, keeps existing if omitted.
    * @returns `true` if the key existed and was updated, `false` otherwise.
    */
   async update(
     ctx: MutationCtx,
     key: PointKey,
-    coordinates?: Point,
+    point?: Point,
     filterKeys?: PointFilters,
     sortKey?: number,
   ): Promise<boolean> {
     return await ctx.runMutation(this.core.component.document.update, {
       key,
-      coordinates,
+      coordinates: point,
       filterKeys,
       sortKey,
       minLevel: this.core.minLevel,
@@ -365,22 +365,22 @@ export class PolygonsNamespace<
   /**
    * Update a polygon's coordinates or metadata.
    *
-   * @param ctx         - The Convex mutation context.
-   * @param key         - The unique string key of the polygon to update.
-   * @param coordinates - New coordinates, triggers re-indexing when provided.
-   * @param filterKeys  - New filter keys.
-   * @param sortKey     - New sort key.
+   * @param ctx     - The Convex mutation context.
+   * @param key     - The unique string key of the polygon to update.
+   * @param polygon - New polygon geometry, triggers re-indexing when provided.
+   * @param filterKeys - New filter keys.
+   * @param sortKey   - New sort key.
    */
   async update(
     ctx: MutationCtx,
     key: PolygonKey,
-    coordinates?: Polygon,
+    polygon?: Polygon,
     filterKeys?: PolygonFilters,
     sortKey?: number,
   ): Promise<boolean> {
     return await ctx.runMutation(this.core.component.geometry.update, {
       key,
-      coordinates,
+      coordinates: polygon,
       filterKeys,
       sortKey,
     });
@@ -527,7 +527,7 @@ export class PolygonsNamespace<
       {
         point: options.point,
         maxDistance: options.maxDistance,
-        maxResults: options.limit,
+        limit: options.limit,
         filtering: filterBuilder.filterConditions,
         cursor: options.cursor,
       },
@@ -624,22 +624,22 @@ export class PolylinesNamespace<
   /**
    * Update a polyline's coordinates or metadata.
    *
-   * @param ctx         - The Convex mutation context.
-   * @param key         - The unique string key of the polyline to update.
-   * @param coordinates - New coordinates, triggers re-indexing when provided.
-   * @param filterKeys  - New filter keys.
-   * @param sortKey     - New sort key.
+   * @param ctx     - The Convex mutation context.
+   * @param key     - The unique string key of the polyline to update.
+   * @param polyline - New polyline geometry, triggers re-indexing when provided.
+   * @param filterKeys - New filter keys.
+   * @param sortKey   - New sort key.
    */
   async update(
     ctx: MutationCtx,
     key: PolylineKey,
-    coordinates?: Polyline,
+    polyline?: Polyline,
     filterKeys?: PolylineFilters,
     sortKey?: number,
   ): Promise<boolean> {
     return await ctx.runMutation(this.core.component.geometry.update, {
       key,
-      coordinates,
+      coordinates: polyline,
       filterKeys,
       sortKey,
     });
@@ -748,7 +748,7 @@ export class PolylinesNamespace<
       {
         point: options.point,
         maxDistance: options.maxDistance,
-        maxResults: options.limit,
+        limit: options.limit,
         filtering: filterBuilder.filterConditions,
         cursor: options.cursor,
       },
