@@ -1,33 +1,26 @@
 import { v, type Infer } from "convex/values";
 import {
+  equalityCondition,
   type Point,
   point,
-  primitive,
   queryShape,
-  rectangle,
-} from "./validators.js";
-import { query } from "./_generated/server.js";
-import type { PointSet, Stats } from "./streams/zigzag.js";
-import { Intersection } from "./streams/intersection.js";
-import { Union } from "./streams/union.js";
-import { FilterKeyRange } from "./streams/filterKeyRange.js";
-import { CellRange } from "./streams/cellRange.js";
-import { interval } from "./lib/interval.js";
-import { decodeCursor, type Cursor } from "./lib/cursor.js";
+} from "../validators.js";
+import { query } from "../_generated/server.js";
+import type { PointSet, Stats } from "../streams/zigzag.js";
+import { Intersection } from "../streams/intersection.js";
+import { Union } from "../streams/union.js";
+import { FilterKeyRange } from "../streams/filterKeyRange.js";
+import { CellRange } from "../streams/cellRange.js";
+import { interval } from "../lib/interval.js";
+import { decodeCursor, type Cursor } from "../lib/cursor.js";
 import { Channel, ChannelClosedError } from "async-channel";
-import type { Doc, Id } from "./_generated/dataModel.js";
-import { createLogger, logLevel } from "./lib/logging.js";
-import { S2Bindings } from "./lib/s2Bindings.js";
-import { ClosestPointQuery } from "./lib/pointQuery.js";
-import { PREFETCH_SIZE } from "./streams/constants.js";
+import type { Doc, Id } from "../_generated/dataModel.js";
+import { createLogger, logLevel } from "../lib/logging.js";
+import { S2Bindings } from "../lib/s2Bindings.js";
+import { PREFETCH_SIZE } from "../streams/constants.js";
+import { ClosestPointQuery } from "../lib/pointQuery.js";
 
-export { PREFETCH_SIZE } from "./streams/constants.js";
-
-export const equalityCondition = v.object({
-  occur: v.union(v.literal("should"), v.literal("must")),
-  filterKey: v.string(),
-  filterValue: primitive,
-});
+export { PREFETCH_SIZE } from "../streams/constants.js";
 
 const geospatialQuery = v.object({
   shape: queryShape,
@@ -41,44 +34,6 @@ const geospatialQuery = v.object({
 const queryResult = v.object({
   key: v.string(),
   coordinates: point,
-});
-
-const queryResultWithDistance = v.object({
-  key: v.string(),
-  coordinates: point,
-  distance: v.number(),
-});
-
-export const debugCells = query({
-  args: {
-    rectangle,
-    minLevel: v.number(),
-    maxLevel: v.number(),
-    levelMod: v.number(),
-    maxCells: v.number(),
-  },
-  returns: v.array(
-    v.object({
-      token: v.string(),
-      vertices: v.array(point),
-    }),
-  ),
-  handler: async (ctx, args) => {
-    const s2 = await S2Bindings.load();
-    const cells = s2.coverRectangle(
-      args.rectangle,
-      args.minLevel,
-      args.maxLevel,
-      args.levelMod,
-      args.maxCells,
-    );
-    const result = cells.map((cell) => {
-      const token = s2.cellIDToken(cell);
-      const vertices = s2.cellVertexes(cell);
-      return { token, vertices };
-    });
-    return result;
-  },
 });
 
 const executeResult = v.object({
@@ -104,7 +59,6 @@ export const execute = query({
     const s2 = await S2Bindings.load();
 
     logger.time("execute");
-    // First, validate the query.
     const { sorting } = args.query;
     if (
       sorting.interval.startInclusive !== undefined &&
@@ -120,7 +74,6 @@ export const execute = query({
     }
     const { shape } = args.query;
 
-    // Get covering cells and containment function based on shape type
     let cellIDs: bigint[];
     let containsPoint: (p: Point) => boolean;
 
@@ -134,7 +87,6 @@ export const execute = query({
       );
       containsPoint = (p) => s2.rectangleContains(shape.rectangle, p);
     } else if (shape.type === "polygon") {
-      // Reject polygons with holes
       const poly = shape.polygon as typeof shape.polygon & {
         holes?: unknown;
         interiors?: unknown;
@@ -161,11 +113,9 @@ export const execute = query({
       );
       containsPoint = (p) => s2.polygonContainsPoint(exterior, p);
     } else {
-      // shape.type === "polyline"
       const polylinePoints = shape.polyline;
       const bufferMeters = shape.bufferMeters;
 
-      // Validate polyline inputs
       if (polylinePoints.length < 2) {
         throw new Error("Polyline must have at least 2 points");
       }
@@ -173,7 +123,7 @@ export const execute = query({
         throw new Error("bufferMeters must be non-negative");
       }
 
-      const maxLevelDiff = 4; // Internal default - controls accuracy vs cell count
+      const maxLevelDiff = 4;
       cellIDs = s2.coverPolylineBuffered(
         polylinePoints,
         bufferMeters,
@@ -213,7 +163,6 @@ export const execute = query({
     );
     const cellStream = new Union(cellRanges);
 
-    // Third, build up the streams for filter keys.
     const mustRanges: FilterKeyRange[] = [];
     const shouldRanges: FilterKeyRange[] = [];
     for (const filter of args.query.filtering) {
@@ -232,7 +181,6 @@ export const execute = query({
       );
     }
 
-    // Fourth, build up the final query stream.
     const intersectionStreams: PointSet[] = [cellStream];
     if (shouldRanges.length > 0) {
       intersectionStreams.push(new Union(shouldRanges));
@@ -247,14 +195,12 @@ export const execute = query({
       stream = intersectionStreams[0];
     }
 
-    // Finally, consume the stream and fetch the resulting IDs.
     const channel = new Channel<{
       tupleKey: Cursor;
       docPromise: Promise<Doc<"points"> | null>;
     }>(8);
     const producer = async () => {
       try {
-        // eslint-disable-next-line no-constant-condition
         while (true) {
           const tupleKey = await stream.current();
           if (tupleKey === null) {
@@ -277,8 +223,6 @@ export const execute = query({
         }
       } finally {
         if (!channel.closed) {
-          // Don't clear the channel since we want the consumer to
-          // still be able to process buffered elements we emitted.
           channel.close(false);
         }
       }
@@ -323,8 +267,6 @@ export const execute = query({
         return;
       } finally {
         if (!channel.closed) {
-          // Discard all buffered items when the consumer closes the channel,
-          // which will wake up the producer.
           channel.close(true);
         }
       }
@@ -337,7 +279,11 @@ export const execute = query({
   },
 });
 
-export const nearestPoints = query({
+const queryResultWithDistance = queryResult.extend({
+  distance: v.number(),
+});
+
+export const nearest = query({
   args: {
     point,
     maxDistance: v.optional(v.number()),

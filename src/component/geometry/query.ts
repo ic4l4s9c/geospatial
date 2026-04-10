@@ -6,9 +6,8 @@ import {
   implGeometriesNear,
   implIntersects,
 } from "../lib/geometryQuery.js";
-import { point, queryShape } from "../validators.js";
+import { point, queryShape, equalityCondition } from "../validators.js";
 import { S2Bindings } from "../lib/s2Bindings.js";
-import { equalityCondition } from "../query.js";
 
 /**
  * Find all geometries of any type that intersect a given shape.

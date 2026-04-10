@@ -84,7 +84,7 @@ export const containsPoint = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const { results, nextCursor } = await geospatial.polygons.containsPoint(
+    const { results, nextCursor } = await geospatial.polygons.contains(
       ctx,
       args.coordinates,
       args.type

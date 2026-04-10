@@ -1,5 +1,6 @@
 import { v, type Infer } from "convex/values";
 import { primitive } from "./lib/primitive.js";
+import { interval } from "./lib/interval.js";
 
 export type { Primitive } from "./lib/primitive.js";
 export { primitive } from "./lib/primitive.js";
@@ -54,6 +55,12 @@ export type QueryShape = Infer<typeof queryShape>;
 export const filterKeys = v.optional(
   v.record(v.string(), v.union(primitive, v.array(primitive))),
 );
+
+export const equalityCondition = v.object({
+  occur: v.union(v.literal("should"), v.literal("must")),
+  filterKey: v.string(),
+  filterValue: primitive,
+});
 
 export type Meters = number;
 export type ChordAngle = number;

@@ -8,7 +8,6 @@ import {
   primitive,
 } from "./validators.js";
 
-
 export default defineSchema({
   points: defineTable({
     key: v.string(),

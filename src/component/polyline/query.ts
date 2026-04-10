@@ -2,8 +2,14 @@ import { implGeometriesNear, implIntersects } from "../lib/geometryQuery.js";
 import { query } from "../_generated/server.js";
 import { v } from "convex/values";
 import { S2Bindings } from "../lib/s2Bindings.js";
-import { point, polyline, queryShape, rectangle, filterKeys } from "../validators.js";
-import { equalityCondition } from "../query.js";
+import {
+  point,
+  polyline,
+  queryShape,
+  rectangle,
+  filterKeys,
+  equalityCondition,
+} from "../validators.js";
 
 const polylineResult = v.object({
   key: v.string(),

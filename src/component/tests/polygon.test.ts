@@ -7,7 +7,7 @@ import { S2Bindings } from "../lib/s2Bindings.js";
 import { test as fcTest, fc } from "@fast-check/vitest";
 import type { FunctionReturnType } from "convex/server";
 
-type ExecuteResult = FunctionReturnType<typeof api.query.execute>;
+type ExecuteResult = FunctionReturnType<typeof api.point.query.execute>;
 
 const opts = {
   minLevel: 4,
@@ -59,14 +59,14 @@ test("polygon query - triangle", async () => {
 
   // Insert all points
   for (const point of points) {
-    await t.mutation(api.document.insert, {
+    await t.mutation(api.point.insert, {
       document: point,
       ...opts,
     });
   }
 
   // Query with triangle polygon
-  const result = await t.query(api.query.execute, {
+  const result = await t.query(api.point.query.execute, {
     query: {
       shape: { type: "polygon", polygon: trianglePolygon },
       filtering: [],
@@ -118,13 +118,13 @@ test("polygon query - square region", async () => {
   ];
 
   for (const point of points) {
-    await t.mutation(api.document.insert, {
+    await t.mutation(api.point.insert, {
       document: point,
       ...opts,
     });
   }
 
-  const result = await t.query(api.query.execute, {
+  const result = await t.query(api.point.query.execute, {
     query: {
       shape: { type: "polygon", polygon: squarePolygon },
       filtering: [],
@@ -173,14 +173,14 @@ test("polygon query - with filtering", async () => {
   ];
 
   for (const point of points) {
-    await t.mutation(api.document.insert, {
+    await t.mutation(api.point.insert, {
       document: point,
       ...opts,
     });
   }
 
   // Query with category filter
-  const result = await t.query(api.query.execute, {
+  const result = await t.query(api.point.query.execute, {
     query: {
       shape: { type: "polygon", polygon },
       filtering: [
@@ -313,13 +313,13 @@ test("polygon query - concave L-shape", async () => {
   ];
 
   for (const point of points) {
-    await t.mutation(api.document.insert, {
+    await t.mutation(api.point.insert, {
       document: point,
       ...opts,
     });
   }
 
-  const result = await t.query(api.query.execute, {
+  const result = await t.query(api.point.query.execute, {
     query: {
       shape: { type: "polygon", polygon: lShapePolygon },
       filtering: [],
@@ -351,7 +351,7 @@ test("polygon query - pagination with cursor", async () => {
   // Insert many points inside the polygon
   const numPoints = 10;
   for (let i = 0; i < numPoints; i++) {
-    await t.mutation(api.document.insert, {
+    await t.mutation(api.point.insert, {
       document: {
         key: `point_${i}`,
         coordinates: {
@@ -372,7 +372,7 @@ test("polygon query - pagination with cursor", async () => {
 
   // Paginate through results
   for (let page = 0; page < 5; page++) {
-    const result: ExecuteResult = await t.query(api.query.execute, {
+    const result: ExecuteResult = await t.query(api.point.query.execute, {
       query: {
         shape: { type: "polygon" as const, polygon: squarePolygon },
         filtering: [] as {
@@ -445,13 +445,13 @@ test("polygon query - large polygon with many vertices", async () => {
   ];
 
   for (const point of points) {
-    await t.mutation(api.document.insert, {
+    await t.mutation(api.point.insert, {
       document: point,
       ...opts,
     });
   }
 
-  const result = await t.query(api.query.execute, {
+  const result = await t.query(api.point.query.execute, {
     query: {
       shape: { type: "polygon", polygon: circlePolygon },
       filtering: [],

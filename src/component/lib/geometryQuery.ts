@@ -1,4 +1,4 @@
-import { type Infer, v } from "convex/values";
+import { v } from "convex/values";
 import { S2Bindings } from "./s2Bindings.js";
 import {
   polygon,
@@ -10,7 +10,6 @@ import {
 import type { Point, Polygon, Rectangle, Primitive } from "../validators.js";
 import type { Id } from "../_generated/dataModel.js";
 import type { QueryCtx } from "../_generated/server.js";
-import type { equalityCondition } from "../query.js";
 import { decodeCursor, encodeCursor } from "./cursor.js";
 
 const MAX_CANDIDATES = 1000;

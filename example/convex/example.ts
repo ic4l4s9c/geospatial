@@ -240,7 +240,7 @@ export const geometryContainsPoint = query({
     point,
   },
   handler: async (ctx, args) => {
-    return await geospatial.polygons.containsPoint(ctx, args.point);
+    return await geospatial.polygons.contains(ctx, args.point);
   },
 });
 

@@ -158,7 +158,7 @@ export class PointsNamespace<
     filterKeys?: PointFilters,
     sortKey?: number,
   ): Promise<void> {
-    await ctx.runMutation(this.core.component.document.insert, {
+    await ctx.runMutation(this.core.component.point.insert, {
       document: {
         key,
         coordinates: point,
@@ -183,7 +183,7 @@ export class PointsNamespace<
     ctx: QueryCtx,
     key: PointKey,
   ): Promise<GeospatialGeometry<"point", PointKey, PointFilters> | null> {
-    const result = await ctx.runQuery(this.core.component.document.get, {
+    const result = await ctx.runQuery(this.core.component.point.get, {
       key,
     });
     return result as
@@ -214,7 +214,7 @@ export class PointsNamespace<
     filterKeys?: PointFilters,
     sortKey?: number,
   ): Promise<boolean> {
-    return await ctx.runMutation(this.core.component.document.update, {
+    return await ctx.runMutation(this.core.component.point.update, {
       key,
       coordinates: point,
       filterKeys,
@@ -234,7 +234,7 @@ export class PointsNamespace<
    * @returns `true` if the key was found and removed, `false` otherwise.
    */
   async remove(ctx: MutationCtx, key: PointKey): Promise<boolean> {
-    return await ctx.runMutation(this.core.component.document.remove, {
+    return await ctx.runMutation(this.core.component.point.remove, {
       key,
       minLevel: this.core.minLevel,
       maxLevel: this.core.maxLevel,
@@ -263,7 +263,7 @@ export class PointsNamespace<
     if (query.filter) {
       query.filter(filterBuilder);
     }
-    const result = await ctx.runQuery(this.core.component.query.execute, {
+    const result = await ctx.runQuery(this.core.component.point.query.execute, {
       query: {
         shape: query.shape,
         filtering: filterBuilder.filterConditions,
@@ -308,18 +308,21 @@ export class PointsNamespace<
       options.filter(filterBuilder);
     }
 
-    const result = await ctx.runQuery(this.core.component.query.nearestPoints, {
-      point: options.point,
-      maxDistance: options.maxDistance,
-      maxResults: options.limit,
-      minLevel: this.core.minLevel,
-      maxLevel: this.core.maxLevel,
-      levelMod: this.core.levelMod,
-      logLevel: this.core.logLevel,
-      filtering: filterBuilder.filterConditions,
-      sorting: { interval: filterBuilder.interval ?? {} },
-      cursor: options.cursor,
-    });
+    const result = await ctx.runQuery(
+      this.core.component.point.query.nearest,
+      {
+        point: options.point,
+        maxDistance: options.maxDistance,
+        maxResults: options.limit,
+        minLevel: this.core.minLevel,
+        maxLevel: this.core.maxLevel,
+        levelMod: this.core.levelMod,
+        logLevel: this.core.logLevel,
+        filtering: filterBuilder.filterConditions,
+        sorting: { interval: filterBuilder.interval ?? {} },
+        cursor: options.cursor,
+      },
+    );
 
     return result as typeof result & {
       results: WithDistance<
@@ -365,13 +368,24 @@ export class PolygonsNamespace<
   }
 
   /**
-   * Remove a polygon from the spatial index.
+   * Get a polygon by key.
    *
-   * @param ctx - The Convex mutation context.
-   * @param key - The unique string key of the polygon to remove.
+   * @param ctx - The Convex query context.
+   * @param key - The unique string key to retrieve.
+   * @returns The stored polygon or `null` if not found.
    */
-  async remove(ctx: MutationCtx, key: PolygonKey): Promise<boolean> {
-    return await ctx.runMutation(this.core.component.geometry.remove, { key });
+  async get(
+    ctx: QueryCtx,
+    key: PolygonKey,
+  ): Promise<GeospatialGeometry<"polygon", PolygonKey, PolygonFilters> | null> {
+    const result = await ctx.runQuery(this.core.component.geometry.get, {
+      key,
+    });
+
+    return result as
+      | (typeof result &
+          GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>)
+      | null;
   }
 
   /**
@@ -399,24 +413,13 @@ export class PolygonsNamespace<
   }
 
   /**
-   * Get a polygon by key.
+   * Remove a polygon from the spatial index.
    *
-   * @param ctx - The Convex query context.
-   * @param key - The unique string key to retrieve.
-   * @returns The stored polygon or `null` if not found.
+   * @param ctx - The Convex mutation context.
+   * @param key - The unique string key of the polygon to remove.
    */
-  async get(
-    ctx: QueryCtx,
-    key: PolygonKey,
-  ): Promise<GeospatialGeometry<"polygon", PolygonKey, PolygonFilters> | null> {
-    const result = await ctx.runQuery(this.core.component.geometry.get, {
-      key,
-    });
-
-    return result as
-      | (typeof result &
-          GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>)
-      | null;
+  async remove(ctx: MutationCtx, key: PolygonKey): Promise<boolean> {
+    return await ctx.runMutation(this.core.component.geometry.remove, { key });
   }
 
   /**
@@ -428,12 +431,12 @@ export class PolygonsNamespace<
    * @returns Results array and an optional continuation cursor.
    *
    * @example
-   * const { results, nextCursor } = await geo.polygons.containsPoint(ctx,
+   * const { results, nextCursor } = await geo.polygons.contains(ctx,
    *   { latitude: 40.7128, longitude: -74.0060 },
    *   { filter: (q) => q.eq("type", "delivery-zone"), limit: 10 }
    * );
    */
-  async containsPoint(
+  async contains(
     ctx: QueryCtx,
     point: Point,
     options?: {
@@ -459,7 +462,7 @@ export class PolygonsNamespace<
     }
 
     const result = await ctx.runQuery(
-      this.core.component.polygon.query.containsPoint,
+      this.core.component.polygon.query.contains,
       {
         point,
         filtering: filterBuilder.filterConditions,
@@ -650,13 +653,27 @@ export class PolylinesNamespace<
   }
 
   /**
-   * Remove a polyline from the spatial index.
+   * Get a polyline by key.
    *
-   * @param ctx - The Convex mutation context.
-   * @param key - The unique string key of the polyline to remove.
+   * @param ctx - The Convex query context.
+   * @param key - The unique string key to retrieve.
+   * @returns The stored polyline or `null` if not found.
    */
-  async remove(ctx: MutationCtx, key: PolylineKey): Promise<boolean> {
-    return await ctx.runMutation(this.core.component.geometry.remove, { key });
+  async get(
+    ctx: QueryCtx,
+    key: PolylineKey,
+  ): Promise<GeospatialGeometry<
+    "polyline",
+    PolylineKey,
+    PolylineFilters
+  > | null> {
+    const result = await ctx.runQuery(this.core.component.geometry.get, {
+      key,
+    });
+    return result as
+      | (typeof result &
+          GeospatialGeometry<"polyline", PolylineKey, PolylineFilters>)
+      | null;
   }
 
   /**
@@ -684,27 +701,13 @@ export class PolylinesNamespace<
   }
 
   /**
-   * Get a polyline by key.
+   * Remove a polyline from the spatial index.
    *
-   * @param ctx - The Convex query context.
-   * @param key - The unique string key to retrieve.
-   * @returns The stored polyline or `null` if not found.
+   * @param ctx - The Convex mutation context.
+   * @param key - The unique string key of the polyline to remove.
    */
-  async get(
-    ctx: QueryCtx,
-    key: PolylineKey,
-  ): Promise<GeospatialGeometry<
-    "polyline",
-    PolylineKey,
-    PolylineFilters
-  > | null> {
-    const result = await ctx.runQuery(this.core.component.geometry.get, {
-      key,
-    });
-    return result as
-      | (typeof result &
-          GeospatialGeometry<"polyline", PolylineKey, PolylineFilters>)
-      | null;
+  async remove(ctx: MutationCtx, key: PolylineKey): Promise<boolean> {
+    return await ctx.runMutation(this.core.component.geometry.remove, { key });
   }
 
   /**
@@ -928,7 +931,7 @@ export class GeospatialIndex<
     rectangle: Rectangle,
     maxResolution?: number,
   ): Promise<{ token: string; vertices: Point[] }[]> {
-    return await ctx.runQuery(this.component.query.debugCells, {
+    return await ctx.runQuery(this.component.debug.cells, {
       rectangle,
       minLevel: this.minLevel,
       maxLevel: maxResolution ?? this.maxLevel,

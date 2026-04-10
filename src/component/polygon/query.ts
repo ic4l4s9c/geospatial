@@ -9,6 +9,7 @@ import {
   queryShape,
   type Rectangle,
   rectangle,
+  equalityCondition,
 } from "../validators.js";
 import { S2Bindings } from "../lib/s2Bindings.js";
 import {
@@ -18,7 +19,6 @@ import {
   implIntersects,
   matchesFilterConditions,
 } from "../lib/geometryQuery.js";
-import { equalityCondition } from "../query.js";
 import { decodeCursor, encodeCursor } from "../lib/cursor.js";
 
 const polygonResult = v.object({
@@ -69,7 +69,7 @@ export const intersects = query({
  * Uses S2 cell indexing to gather candidates, then applies an exact
  * point-in-polygon test against each candidate's exterior ring.
  */
-export const containsPoint = query({
+export const contains = query({
   args: {
     point: point,
     filtering: v.optional(v.array(equalityCondition)),

@@ -8,7 +8,7 @@
  * @module
  */
 
-import type * as document from "../document.js";
+import type * as debug from "../debug.js";
 import type * as geometry from "../geometry.js";
 import type * as geometry_query from "../geometry/query.js";
 import type * as lib_approximateCounter from "../lib/approximateCounter.js";
@@ -23,11 +23,12 @@ import type * as lib_primitive from "../lib/primitive.js";
 import type * as lib_s2Bindings from "../lib/s2Bindings.js";
 import type * as lib_s2wasm from "../lib/s2wasm.js";
 import type * as lib_xxhash from "../lib/xxhash.js";
+import type * as point from "../point.js";
+import type * as point_query from "../point/query.js";
 import type * as polygon_measure from "../polygon/measure.js";
 import type * as polygon_query from "../polygon/query.js";
 import type * as polyline_measure from "../polyline/measure.js";
 import type * as polyline_query from "../polyline/query.js";
-import type * as query from "../query.js";
 import type * as streams_cellRange from "../streams/cellRange.js";
 import type * as streams_constants from "../streams/constants.js";
 import type * as streams_databaseRange from "../streams/databaseRange.js";
@@ -45,7 +46,7 @@ import type {
 import { anyApi, componentsGeneric } from "convex/server";
 
 const fullApi: ApiFromModules<{
-  document: typeof document;
+  debug: typeof debug;
   geometry: typeof geometry;
   "geometry/query": typeof geometry_query;
   "lib/approximateCounter": typeof lib_approximateCounter;
@@ -60,11 +61,12 @@ const fullApi: ApiFromModules<{
   "lib/s2Bindings": typeof lib_s2Bindings;
   "lib/s2wasm": typeof lib_s2wasm;
   "lib/xxhash": typeof lib_xxhash;
+  point: typeof point;
+  "point/query": typeof point_query;
   "polygon/measure": typeof polygon_measure;
   "polygon/query": typeof polygon_query;
   "polyline/measure": typeof polyline_measure;
   "polyline/query": typeof polyline_query;
-  query: typeof query;
   "streams/cellRange": typeof streams_cellRange;
   "streams/constants": typeof streams_constants;
   "streams/databaseRange": typeof streams_databaseRange;

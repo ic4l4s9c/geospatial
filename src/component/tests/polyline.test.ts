@@ -7,7 +7,7 @@ import { S2Bindings } from "../lib/s2Bindings.js";
 import { test as fcTest, fc } from "@fast-check/vitest";
 import type { FunctionReturnType } from "convex/server";
 
-type ExecuteResult = FunctionReturnType<typeof api.query.execute>;
+type ExecuteResult = FunctionReturnType<typeof api.point.query.execute>;
 
 const opts = {
   minLevel: 4,
@@ -56,13 +56,13 @@ test("polyline query - points within buffer distance are returned", async () => 
   ];
 
   for (const point of points) {
-    await t.mutation(api.document.insert, {
+    await t.mutation(api.point.insert, {
       document: point,
       ...opts,
     });
   }
 
-  const result = await t.query(api.query.execute, {
+  const result = await t.query(api.point.query.execute, {
     query: {
       shape: { type: "polyline", polyline, bufferMeters },
       filtering: [],
@@ -112,13 +112,13 @@ test("polyline query - single segment (2 points)", async () => {
   ];
 
   for (const point of points) {
-    await t.mutation(api.document.insert, {
+    await t.mutation(api.point.insert, {
       document: point,
       ...opts,
     });
   }
 
-  const result = await t.query(api.query.execute, {
+  const result = await t.query(api.point.query.execute, {
     query: {
       shape: { type: "polyline", polyline, bufferMeters },
       filtering: [],
@@ -175,13 +175,13 @@ test("polyline query - multi-segment polyline", async () => {
   ];
 
   for (const point of points) {
-    await t.mutation(api.document.insert, {
+    await t.mutation(api.point.insert, {
       document: point,
       ...opts,
     });
   }
 
-  const result = await t.query(api.query.execute, {
+  const result = await t.query(api.point.query.execute, {
     query: {
       shape: { type: "polyline", polyline, bufferMeters },
       filtering: [],
@@ -231,14 +231,14 @@ test("polyline query - with filters", async () => {
   ];
 
   for (const point of points) {
-    await t.mutation(api.document.insert, {
+    await t.mutation(api.point.insert, {
       document: point,
       ...opts,
     });
   }
 
   // Query with category filter
-  const result = await t.query(api.query.execute, {
+  const result = await t.query(api.point.query.execute, {
     query: {
       shape: { type: "polyline", polyline, bufferMeters },
       filtering: [{ occur: "must", filterKey: "category", filterValue: "gas" }],
@@ -266,7 +266,7 @@ test("polyline query - pagination with cursor", async () => {
   // Insert many points along the line
   const numPoints = 10;
   for (let i = 0; i < numPoints; i++) {
-    await t.mutation(api.document.insert, {
+    await t.mutation(api.point.insert, {
       document: {
         key: `point_${i}`,
         coordinates: { latitude: 0, longitude: i * 0.2 },
@@ -283,7 +283,7 @@ test("polyline query - pagination with cursor", async () => {
   let nextCursor: string | undefined = undefined;
 
   for (let page = 0; page < 5; page++) {
-    const result: ExecuteResult = await t.query(api.query.execute, {
+    const result: ExecuteResult = await t.query(api.point.query.execute, {
       query: {
         shape: { type: "polyline" as const, polyline, bufferMeters },
         filtering: [] as {

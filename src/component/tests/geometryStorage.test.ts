@@ -146,7 +146,7 @@ describe("Geometry Storage", () => {
         coordinates: MANHATTAN_POLYGON,
       });
 
-      const result = await t.query(api.polygon.query.containsPoint, {
+      const result = await t.query(api.polygon.query.contains, {
         point: POINT_INSIDE,
       });
 
@@ -165,7 +165,7 @@ describe("Geometry Storage", () => {
         coordinates: MANHATTAN_POLYGON,
       });
 
-      const result = await t.query(api.polygon.query.containsPoint, {
+      const result = await t.query(api.polygon.query.contains, {
         point: POINT_OUTSIDE,
       });
 
@@ -184,7 +184,7 @@ describe("Geometry Storage", () => {
       });
 
       // Should find with matching filter
-      const results1 = await t.query(api.polygon.query.containsPoint, {
+      const results1 = await t.query(api.polygon.query.contains, {
         point: POINT_INSIDE,
         filtering: [
           { occur: "must", filterKey: "borough", filterValue: "manhattan" },
@@ -193,7 +193,7 @@ describe("Geometry Storage", () => {
       expect(results1.results.length).toBe(1);
 
       // Should not find with non-matching filter
-      const results2 = await t.query(api.polygon.query.containsPoint, {
+      const results2 = await t.query(api.polygon.query.contains, {
         point: POINT_INSIDE,
         filtering: [
           { occur: "must", filterKey: "borough", filterValue: "brooklyn" },
@@ -234,7 +234,7 @@ describe("Geometry Storage", () => {
         },
       });
 
-      const result = await t.query(api.polygon.query.containsPoint, {
+      const result = await t.query(api.polygon.query.contains, {
         point: { latitude: 40.8, longitude: -74.0 },
       });
 
@@ -618,10 +618,10 @@ describe("Geometry Storage", () => {
       const texasPoint = { latitude: 31.0, longitude: -100.0 };
       const buildingPoint = { latitude: 40.7585, longitude: -73.985 };
 
-      const texasContains = await t.query(api.polygon.query.containsPoint, {
+      const texasContains = await t.query(api.polygon.query.contains, {
         point: texasPoint,
       });
-      const buildingContains = await t.query(api.polygon.query.containsPoint, {
+      const buildingContains = await t.query(api.polygon.query.contains, {
         point: buildingPoint,
       });
 

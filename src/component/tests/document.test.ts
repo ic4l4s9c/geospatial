@@ -21,11 +21,11 @@ test("CRUD operations", async () => {
     sortKey: 1,
     filterKeys: {},
   };
-  await t.mutation(api.document.insert, {
+  await t.mutation(api.point.insert, {
     document,
     ...opts,
   });
-  const result = await t.query(api.document.get, { key: "test" });
+  const result = await t.query(api.point.get, { key: "test" });
   expect(result).toEqual(document);
 
   const newDocument = {
@@ -34,18 +34,18 @@ test("CRUD operations", async () => {
     sortKey: 2,
     filterKeys: {},
   };
-  await t.mutation(api.document.insert, {
+  await t.mutation(api.point.insert, {
     document: newDocument,
     ...opts,
   });
-  const result2 = await t.query(api.document.get, { key: "test" });
+  const result2 = await t.query(api.point.get, { key: "test" });
   expect(result2).toEqual(newDocument);
 
-  await t.mutation(api.document.remove, {
+  await t.mutation(api.point.remove, {
     key: "test",
     ...opts,
   });
-  const result3 = await t.query(api.document.get, { key: "test" });
+  const result3 = await t.query(api.point.get, { key: "test" });
   expect(result3).toEqual(null);
 
   await t.run(async (ctx) => {
@@ -65,24 +65,24 @@ fcTest.prop({ documents: arbitraryDocuments })(
     const documentsByKey = new Map<string, any>();
 
     for (const document of documents) {
-      await t.mutation(api.document.insert, {
+      await t.mutation(api.point.insert, {
         document,
         ...opts,
       });
-      const result = await t.query(api.document.get, { key: document.key });
+      const result = await t.query(api.point.get, { key: document.key });
       expect(result).toEqual(document);
       documentsByKey.set(document.key, document);
     }
 
     for (const [key, document] of documentsByKey) {
-      const result = await t.query(api.document.get, { key });
+      const result = await t.query(api.point.get, { key });
       expect(result).toEqual(document);
 
-      await t.mutation(api.document.remove, {
+      await t.mutation(api.point.remove, {
         key,
         ...opts,
       });
-      const result2 = await t.query(api.document.get, { key });
+      const result2 = await t.query(api.point.get, { key });
       expect(result2).toEqual(null);
     }
   },
