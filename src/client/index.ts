@@ -295,9 +295,12 @@ export class PointsNamespace<
   async nearest(
     ctx: QueryCtx,
     options: NearestQueryOptions<"point", PointKey, PointFilters>,
-  ): Promise<
-    WithDistance<GeospatialGeometry<"point", PointKey, PointFilters>>[]
-  > {
+  ): Promise<{
+    results: WithDistance<
+      GeospatialGeometry<"point", PointKey, PointFilters>
+    >[];
+    nextCursor?: string;
+  }> {
     const filterBuilder = new FilterBuilderImpl<
       GeospatialGeometry<"point", PointKey, PointFilters>
     >();
@@ -318,8 +321,12 @@ export class PointsNamespace<
       cursor: options.cursor,
     });
 
-    return result as typeof result &
-      WithDistance<GeospatialGeometry<"point", PointKey, PointFilters>>[];
+    return result as typeof result & {
+      results: WithDistance<
+        GeospatialGeometry<"point", PointKey, PointFilters>
+      >[];
+      nextCursor?: string;
+    };
   }
 }
 

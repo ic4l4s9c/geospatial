@@ -10,7 +10,7 @@ import { Union } from "../streams/union.js";
 import { Intersection } from "../streams/intersection.js";
 import type { PointSet, Stats } from "../streams/zigzag.js";
 import { PREFETCH_SIZE } from "../streams/constants.js";
-import { decodeCursor } from "./cursor.js";
+import { decodeCursor, encodeCursor } from "./cursor.js";
 import type { Logger } from "./logging.js";
 import type { Interval } from "./interval.js";
 
@@ -185,7 +185,16 @@ export class ClosestPointQuery {
       });
     }
     this.cellStreams.clear();
-    return results;
+
+    const nextCursor =
+      results.length >= this.maxResults && entries.length > results.length
+        ? encodeCursor({
+            sortKey: results[results.length - 1].distance,
+            secondary: results[results.length - 1].key,
+          })
+        : undefined;
+
+    return { results, nextCursor };
   }
 
   private shouldStopProcessingCell(candidateDistance: ChordAngle): boolean {

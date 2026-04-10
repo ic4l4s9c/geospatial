@@ -100,7 +100,7 @@ export const nearest = query({
   handler: async (ctx, args) => {
     const { coordinates, limit, maxDistanceMeters, category } = args;
 
-    const results = await geospatial.points.nearest(ctx, {
+    const { results } = await geospatial.points.nearest(ctx, {
       point: coordinates,
       limit,
       maxDistance: maxDistanceMeters,

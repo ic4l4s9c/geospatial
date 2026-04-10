@@ -729,11 +729,14 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             interval: { endExclusive?: number; startInclusive?: number };
           };
         },
-        Array<{
-          coordinates: { latitude: number; longitude: number };
-          distance: number;
-          key: string;
-        }>,
+        {
+          nextCursor?: string;
+          results: Array<{
+            coordinates: { latitude: number; longitude: number };
+            distance: number;
+            key: string;
+          }>;
+        },
         Name
       >;
     };

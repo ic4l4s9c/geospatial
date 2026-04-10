@@ -32,7 +32,7 @@ export const nearestPoints = query({
     maxDistance: v.optional(v.number()),
   },
   handler: async (ctx, { point, maxRows, maxDistance }) => {
-    const results = await geospatial.points.nearest(ctx, {
+    const { results, nextCursor } = await geospatial.points.nearest(ctx, {
       point,
       limit: maxRows,
       maxDistance,
@@ -263,11 +263,12 @@ export const geometriesNearPoint = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    return await geospatial.polygons.nearest(ctx, {
+    const { results, nextCursor } = await geospatial.polygons.nearest(ctx, {
       point: args.point,
       maxDistance: args.maxDistance,
       limit: args.limit ?? 100,
     });
+    return { results, nextCursor };
   },
 });
 

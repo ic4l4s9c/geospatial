@@ -64,9 +64,9 @@ test("closest point query - basic functionality", async () => {
       opts.levelMod,
     );
     const result1 = await query1.execute(ctx);
-    expect(result1.length).toBe(1);
-    expect(result1[0].key).toBe("point1");
-    expect(result1[0].distance).toBeLessThan(1); // Should be very close to 0
+    expect(result1.results.length).toBe(1);
+    expect(result1.results[0].key).toBe("point1");
+    expect(result1.results[0].distance).toBeLessThan(1); // Should be very close to 0
 
     // Test finding closest points to (1,1)
     const query2 = new ClosestPointQuery(
@@ -80,10 +80,12 @@ test("closest point query - basic functionality", async () => {
       opts.levelMod,
     );
     const result2 = await query2.execute(ctx);
-    expect(result2.length).toBe(2);
-    expect(result2[0].key).toBe("point2");
-    expect(result2[1].key).toBe("point1");
-    expect(result2[0].distance).toBeLessThan(result2[1].distance);
+    expect(result2.results.length).toBe(2);
+    expect(result2.results[0].key).toBe("point2");
+    expect(result2.results[1].key).toBe("point1");
+    expect(result2.results[0].distance).toBeLessThan(
+      result2.results[1].distance,
+    );
 
     // Test maxDistance constraint
     const query3 = new ClosestPointQuery(
@@ -97,8 +99,8 @@ test("closest point query - basic functionality", async () => {
       opts.levelMod,
     );
     const result3 = await query3.execute(ctx);
-    expect(result3.length).toBe(1);
-    expect(result3[0].key).toBe("point1");
+    expect(result3.results.length).toBe(1);
+    expect(result3.results[0].key).toBe("point1");
 
     // Test must filter
     const query4 = new ClosestPointQuery(
@@ -119,8 +121,11 @@ test("closest point query - basic functionality", async () => {
       ],
     );
     const result4 = await query4.execute(ctx);
-    expect(result4.length).toBe(2);
-    expect(result4.map((r) => r.key).sort()).toEqual(["point1", "point3"]);
+    expect(result4.results.length).toBe(2);
+    expect(result4.results.map((r) => r.key).sort()).toEqual([
+      "point1",
+      "point3",
+    ]);
 
     // Test should filter (must match at least one)
     const query5 = new ClosestPointQuery(
@@ -141,8 +146,8 @@ test("closest point query - basic functionality", async () => {
       ],
     );
     const result5 = await query5.execute(ctx);
-    expect(result5.length).toBe(1);
-    expect(result5[0].key).toBe("point2");
+    expect(result5.results.length).toBe(1);
+    expect(result5.results[0].key).toBe("point2");
 
     // Test sort key interval
     const query6 = new ClosestPointQuery(
@@ -158,8 +163,8 @@ test("closest point query - basic functionality", async () => {
       { startInclusive: 3 },
     );
     const result6 = await query6.execute(ctx);
-    expect(result6.length).toBe(1);
-    expect(result6[0].key).toBe("point3");
+    expect(result6.results.length).toBe(1);
+    expect(result6.results[0].key).toBe("point3");
 
     // Test multiple should filters
     const query7 = new ClosestPointQuery(
@@ -185,8 +190,8 @@ test("closest point query - basic functionality", async () => {
       ],
     );
     const result7 = await query7.execute(ctx);
-    expect(result7.length).toBe(3);
-    expect(new Set(result7.map((r) => r.key))).toEqual(
+    expect(result7.results.length).toBe(3);
+    expect(new Set(result7.results.map((r) => r.key))).toEqual(
       new Set(["point1", "point2", "point3"]),
     );
   });
@@ -222,14 +227,14 @@ fcTest.prop({ documents: arbitraryDocuments })(
       const results = await query.execute(ctx);
 
       // Verify results are ordered by distance
-      for (let i = 1; i < results.length; i++) {
-        expect(results[i - 1].distance).toBeLessThanOrEqual(
-          results[i].distance,
+      for (let i = 1; i < results.results.length; i++) {
+        expect(results.results[i - 1].distance).toBeLessThanOrEqual(
+          results.results[i].distance,
         );
       }
 
       // Verify all distances are within maxDistance
-      for (const result of results) {
+      for (const result of results.results) {
         expect(result.distance).toBeLessThanOrEqual(1000);
       }
     });

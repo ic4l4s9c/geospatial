@@ -352,12 +352,15 @@ export const nearestPoints = query({
     }),
     logLevel,
   },
-  returns: v.array(queryResultWithDistance),
+  returns: v.object({
+    results: v.array(queryResultWithDistance),
+    nextCursor: v.optional(v.string()),
+  }),
   handler: async (ctx, args) => {
     const logger = createLogger(args.logLevel);
     const s2 = await S2Bindings.load();
     if (args.maxResults === 0) {
-      return [];
+      return { results: [], nextCursor: undefined };
     }
     const query = new ClosestPointQuery(
       s2,
@@ -372,7 +375,7 @@ export const nearestPoints = query({
       args.sorting.interval,
       args.cursor,
     );
-    const results = await query.execute(ctx);
-    return results;
+    const result = await query.execute(ctx);
+    return result;
   },
 });
