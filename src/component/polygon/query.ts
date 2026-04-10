@@ -16,7 +16,7 @@ import {
   gatherCandidates,
   implGeometriesNear,
   implIntersects,
-  matchesFilterKeys,
+  matchesFilterConditions,
 } from "../lib/geometryQuery.js";
 import { equalityCondition } from "../query.js";
 import { decodeCursor, encodeCursor } from "../lib/cursor.js";
@@ -42,9 +42,7 @@ export const intersects = query({
   args: {
     shape: queryShape,
     maxCoveringCells: v.optional(v.number()),
-    filterKeys: v.optional(
-      v.record(v.string(), v.union(primitive, v.array(primitive))),
-    ),
+    filtering: v.optional(v.array(equalityCondition)),
     limit: v.optional(v.number()),
     cursor: v.optional(v.string()),
   },
@@ -57,7 +55,7 @@ export const intersects = query({
     return implIntersects(ctx, s2, {
       shape: args.shape,
       maxCoveringCells: args.maxCoveringCells ?? 30,
-      filterKeys: args.filterKeys,
+      filtering: args.filtering ?? [],
       limit: args.limit ?? 100,
       type: "polygon",
       cursor: args.cursor,
@@ -74,9 +72,7 @@ export const intersects = query({
 export const containsPoint = query({
   args: {
     point: point,
-    filterKeys: v.optional(
-      v.record(v.string(), v.union(primitive, v.array(primitive))),
-    ),
+    filtering: v.optional(v.array(equalityCondition)),
     limit: v.optional(v.number()),
     cursor: v.optional(v.string()),
   },
@@ -86,13 +82,12 @@ export const containsPoint = query({
   }),
   handler: async (ctx, args) => {
     const s2 = await S2Bindings.load();
-    const { point: queryPoint, filterKeys, limit = 100, cursor } = args;
+    const { point: queryPoint, filtering = [], limit = 100, cursor } = args;
 
     const cursorData = cursor ? decodeCursor(cursor) : undefined;
+    const mustFilters = filtering.filter((f) => f.occur === "must");
+    const shouldFilters = filtering.filter((f) => f.occur === "should");
 
-    // Get all S2 cells at every level that contain this point, then look up
-    // which stored geometries index those cells. Any polygon containing the
-    // point must index at least one of these cells.
     const pointCells = s2.pointCellsAllLevels(queryPoint);
     const pointTokens = pointCells.map((cellId) => s2.cellIDToken(cellId));
 
@@ -119,7 +114,7 @@ export const containsPoint = query({
       if (geometry.type !== "polygon") {
         continue;
       }
-      if (!matchesFilterKeys(geometry, filterKeys)) {
+      if (!matchesFilterConditions(geometry, mustFilters, shouldFilters)) {
         continue;
       }
 
@@ -134,7 +129,6 @@ export const containsPoint = query({
         }
       }
 
-      // Cheap bounding box rejection before the exact S2 test.
       const bbox = {
         south: geometry.south,
         north: geometry.north,

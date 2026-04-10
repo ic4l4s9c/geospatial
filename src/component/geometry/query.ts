@@ -6,10 +6,9 @@ import {
   implGeometriesNear,
   implIntersects,
 } from "../lib/geometryQuery.js";
-import { point, primitive, queryShape } from "../validators.js";
+import { point, queryShape } from "../validators.js";
 import { S2Bindings } from "../lib/s2Bindings.js";
 import { equalityCondition } from "../query.js";
-import { filterKeys } from "../schema.js";
 
 /**
  * Find all geometries of any type that intersect a given shape.
@@ -22,7 +21,7 @@ export const intersects = query({
   args: {
     shape: queryShape,
     maxCoveringCells: v.optional(v.number()),
-    filterKeys: filterKeys,
+    filtering: v.optional(v.array(equalityCondition)),
     limit: v.optional(v.number()),
     cursor: v.optional(v.string()),
   },
@@ -35,7 +34,7 @@ export const intersects = query({
     return implIntersects(ctx, s2, {
       shape: args.shape,
       maxCoveringCells: args.maxCoveringCells ?? 30,
-      filterKeys: args.filterKeys,
+      filtering: args.filtering ?? [],
       limit: args.limit ?? 100,
       cursor: args.cursor,
     });

@@ -12,9 +12,7 @@ export interface GeospatialQuery<Doc extends GeospatialGeometry> {
   /**
    * An optional filter expression to apply to the query.
    */
-  filter?: Doc extends GeospatialGeometry<"point">
-    ? (q: PointFilterBuilder<Doc>) => GeospatialFilterExpression<Doc>
-    : (q: GeospatialFilterBuilder<Doc>) => GeospatialFilterExpression<Doc>;
+  filter?: (q: GeospatialFilterBuilder<Doc>) => GeospatialFilterExpression<Doc>;
   /**
    * An optional limit on the number of results to return (default: 64).
    */
@@ -25,7 +23,7 @@ export interface GeospatialQuery<Doc extends GeospatialGeometry> {
   cursor?: string;
 }
 
-interface GeospatialFilterBuilder<Doc extends GeospatialGeometry> {
+export interface GeospatialFilterBuilder<Doc extends GeospatialGeometry> {
   /**
    * Require that a match's field equal a particular value. All conditions are ANDed together, so call
    * `.eq()` multiple times to further filter the set of matching documents.
@@ -49,9 +47,27 @@ interface GeospatialFilterBuilder<Doc extends GeospatialGeometry> {
     field: FieldName,
     values: FilterValue<Doc, FieldName>[],
   ): GeospatialFilterBuilderAfterIn<Doc>;
+
+  /**
+   * Require that a match's sort key be greater than or equal to the provided value.
+   *
+   * @param field Must be `"sortKey"`.
+   * @param value The inclusive lower bound on the sort key.
+   */
+  gte(field: "sortKey", value: number): GeospatialFilterBuilder<Doc>;
+
+  /**
+   * Require that a match's sort key be less than the provided value.
+   *
+   * @param field Must be `"sortKey"`.
+   * @param value The exclusive upper bound on the sort key.
+   */
+  lt(field: "sortKey", value: number): GeospatialFilterBuilder<Doc>;
 }
 
-interface GeospatialFilterBuilderAfterIn<Doc extends GeospatialGeometry> {
+export interface GeospatialFilterBuilderAfterIn<
+  Doc extends GeospatialGeometry,
+> {
   /**
    * Require that a match's field equal a particular value. All conditions are ANDed together, so call
    * `.eq()` multiple times to further filter the set of matching documents.
@@ -63,34 +79,6 @@ interface GeospatialFilterBuilderAfterIn<Doc extends GeospatialGeometry> {
     field: FieldName,
     value: FilterValue<Doc, FieldName>,
   ): GeospatialFilterBuilderAfterIn<Doc>;
-}
-
-interface PointFilterBuilder<
-  Doc extends GeospatialGeometry<"point">,
-> extends GeospatialFilterBuilder<Doc> {
-  /**
-   * Require that a match's field equal a particular value. All conditions are ANDed together, so call
-   * `.eq()` multiple times to further filter the set of matching documents.
-   *
-   * @param field The filter field.
-   * @param value The value to match against.
-   */
-  eq<FieldName extends keyof Doc["filterKeys"] & string>(
-    field: FieldName,
-    value: FilterValue<Doc, FieldName>,
-  ): PointFilterBuilder<Doc>;
-
-  /**
-   * Require that a match's field equal any of the provided values. This OR condition applies in addition
-   * to other calls to `.eq()`. There can be at most one `.in()` call in a filter expression.
-   *
-   * @param field The filter field.
-   * @param values The values to match against.
-   */
-  in<FieldName extends keyof Doc["filterKeys"] & string>(
-    field: FieldName,
-    values: FilterValue<Doc, FieldName>[],
-  ): PointFilterBuilderAfterIn<Doc>;
 
   /**
    * Require that a match's sort key be greater than or equal to the provided value.
@@ -98,7 +86,7 @@ interface PointFilterBuilder<
    * @param field Must be `"sortKey"`.
    * @param value The inclusive lower bound on the sort key.
    */
-  gte(field: "sortKey", value: number): PointFilterBuilder<Doc>;
+  gte(field: "sortKey", value: number): GeospatialFilterBuilderAfterIn<Doc>;
 
   /**
    * Require that a match's sort key be less than the provided value.
@@ -106,42 +94,10 @@ interface PointFilterBuilder<
    * @param field Must be `"sortKey"`.
    * @param value The exclusive upper bound on the sort key.
    */
-  lt(field: "sortKey", value: number): PointFilterBuilder<Doc>;
+  lt(field: "sortKey", value: number): GeospatialFilterBuilderAfterIn<Doc>;
 }
 
-interface PointFilterBuilderAfterIn<
-  Doc extends GeospatialGeometry<"point">,
-> extends GeospatialFilterBuilderAfterIn<Doc> {
-  /**
-   * Require that a match's field equal a particular value. All conditions are ANDed together, so call
-   * `.eq()` multiple times to further filter the set of matching documents.
-   *
-   * @param field The filter field.
-   * @param value The value to match against.
-   */
-  eq<FieldName extends keyof Doc["filterKeys"] & string>(
-    field: FieldName,
-    value: FilterValue<Doc, FieldName>,
-  ): PointFilterBuilderAfterIn<Doc>;
-
-  /**
-   * Require that a match's sort key be greater than or equal to the provided value.
-   *
-   * @param field Must be `"sortKey"`.
-   * @param value The inclusive lower bound on the sort key.
-   */
-  gte(field: "sortKey", value: number): PointFilterBuilderAfterIn<Doc>;
-
-  /**
-   * Require that a match's sort key be less than the provided value.
-   *
-   * @param field Must be `"sortKey"`.
-   * @param value The exclusive upper bound on the sort key.
-   */
-  lt(field: "sortKey", value: number): PointFilterBuilderAfterIn<Doc>;
-}
-
-type GeospatialFilterExpression<Doc extends GeospatialGeometry> =
+export type GeospatialFilterExpression<Doc extends GeospatialGeometry> =
   | GeospatialFilterBuilder<Doc>
   | GeospatialFilterBuilderAfterIn<Doc>;
 

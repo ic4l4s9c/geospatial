@@ -88,7 +88,7 @@ export const containsPoint = query({
       ctx,
       args.coordinates,
       args.type
-        ? { filterKeys: { type: args.type, tags: [] }, limit: args.limit }
+        ? { filter: (q) => q.eq("type", args.type!), limit: args.limit }
         : undefined,
     );
 
@@ -114,7 +114,7 @@ export const intersects = query({
       ctx,
       args.shape,
       args.type
-        ? { filterKeys: { type: args.type, tags: [] }, limit: args.limit }
+        ? { filter: (q) => q.eq("type", args.type!), limit: args.limit }
         : undefined,
     );
 

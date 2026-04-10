@@ -90,7 +90,7 @@ export const intersects = query({
       ctx,
       args.shape,
       args.mode
-        ? { filterKeys: { mode: args.mode, tags: [] }, limit: args.limit }
+        ? { filter: (q) => q.eq("mode", args.mode!), limit: args.limit }
         : undefined,
     );
 

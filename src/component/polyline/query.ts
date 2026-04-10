@@ -28,7 +28,7 @@ export const intersects = query({
   args: {
     shape: queryShape,
     maxCoveringCells: v.optional(v.number()),
-    filterKeys: filterKeys,
+    filtering: v.optional(v.array(equalityCondition)),
     limit: v.optional(v.number()),
     cursor: v.optional(v.string()),
   },
@@ -41,7 +41,7 @@ export const intersects = query({
     return implIntersects(ctx, s2, {
       shape: args.shape,
       maxCoveringCells: args.maxCoveringCells ?? 30,
-      filterKeys: args.filterKeys,
+      filtering: args.filtering ?? [],
       limit: args.limit ?? 100,
       type: "polyline",
       cursor: args.cursor,

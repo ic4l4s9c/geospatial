@@ -30,7 +30,11 @@ export const geometryWithDistance = geometryResult.extend({
   distance: v.number(),
 });
 
-export type FilterCondition = Infer<typeof equalityCondition>;
+export type FilterCondition = {
+  occur: "must" | "should";
+  filterKey: string;
+  filterValue: Primitive;
+};
 
 function boundingBoxesIntersect(a: Rectangle, b: Rectangle): boolean {
   return !(
@@ -180,7 +184,7 @@ export async function gatherCandidates(
 type IntersectsArgs = {
   shape: QueryShape;
   maxCoveringCells: number;
-  filterKeys?: Record<string, Primitive | Primitive[]>;
+  filtering: FilterCondition[];
   limit: number;
   cursor?: string;
 };
@@ -241,7 +245,9 @@ export async function implIntersects(
   }[];
   nextCursor?: string;
 }> {
-  const { shape, maxCoveringCells, filterKeys, limit, type } = args;
+  const { shape, maxCoveringCells, filtering, limit, type } = args;
+  const mustFilters = filtering.filter((f) => f.occur === "must");
+  const shouldFilters = filtering.filter((f) => f.occur === "should");
 
   // For polyline-buffer shapes we take a different path: build a bounding box
   // that covers the entire corridor, gather candidates from it, then do an
@@ -251,7 +257,7 @@ export async function implIntersects(
       queryPolyline: shape.polyline,
       bufferMeters: shape.bufferMeters,
       maxCoveringCells,
-      filterKeys,
+      filtering,
       limit,
       type,
       cursor: args.cursor,
@@ -332,7 +338,7 @@ export async function implIntersects(
     if (type && geometry.type !== type) {
       continue;
     }
-    if (!matchesFilterKeys(geometry, filterKeys)) {
+    if (!matchesFilterConditions(geometry, mustFilters, shouldFilters)) {
       continue;
     }
 
@@ -404,7 +410,7 @@ async function implIntersectsPolylineBuffer(
     queryPolyline: Point[];
     bufferMeters: number;
     maxCoveringCells: number;
-    filterKeys?: Record<string, Primitive | Primitive[]>;
+    filtering: FilterCondition[];
     limit: number;
     type?: "polygon" | "polyline";
     cursor?: string;
@@ -423,11 +429,14 @@ async function implIntersectsPolylineBuffer(
     queryPolyline,
     bufferMeters,
     maxCoveringCells,
-    filterKeys,
+    filtering,
     limit,
     type,
     cursor,
   } = args;
+
+  const mustFilters = filtering.filter((f) => f.occur === "must");
+  const shouldFilters = filtering.filter((f) => f.occur === "should");
 
   if (queryPolyline.length === 0) {
     return { results: [], nextCursor: undefined };
@@ -497,7 +506,7 @@ async function implIntersectsPolylineBuffer(
     if (type && geometry.type !== type) {
       continue;
     }
-    if (!matchesFilterKeys(geometry, filterKeys)) {
+    if (!matchesFilterConditions(geometry, mustFilters, shouldFilters)) {
       continue;
     }
 

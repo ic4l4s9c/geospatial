@@ -173,15 +173,11 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           "internal",
           {
             cursor?: string;
-            filterKeys?: Record<
-              string,
-              | string
-              | number
-              | boolean
-              | null
-              | bigint
-              | Array<string | number | boolean | null | bigint>
-            >;
+            filtering?: Array<{
+              filterKey: string;
+              filterValue: string | number | boolean | null | bigint;
+              occur: "should" | "must";
+            }>;
             limit?: number;
             maxCoveringCells?: number;
             shape:
@@ -367,15 +363,11 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           "internal",
           {
             cursor?: string;
-            filterKeys?: Record<
-              string,
-              | string
-              | number
-              | boolean
-              | null
-              | bigint
-              | Array<string | number | boolean | null | bigint>
-            >;
+            filtering?: Array<{
+              filterKey: string;
+              filterValue: string | number | boolean | null | bigint;
+              occur: "should" | "must";
+            }>;
             limit?: number;
             point: { latitude: number; longitude: number };
           },
@@ -412,15 +404,11 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           "internal",
           {
             cursor?: string;
-            filterKeys?: Record<
-              string,
-              | string
-              | number
-              | boolean
-              | null
-              | bigint
-              | Array<string | number | boolean | null | bigint>
-            >;
+            filtering?: Array<{
+              filterKey: string;
+              filterValue: string | number | boolean | null | bigint;
+              occur: "should" | "must";
+            }>;
             limit?: number;
             maxCoveringCells?: number;
             shape:
@@ -544,15 +532,11 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           "internal",
           {
             cursor?: string;
-            filterKeys?: Record<
-              string,
-              | string
-              | number
-              | boolean
-              | null
-              | bigint
-              | Array<string | number | boolean | null | bigint>
-            >;
+            filtering?: Array<{
+              filterKey: string;
+              filterValue: string | number | boolean | null | bigint;
+              occur: "should" | "must";
+            }>;
             limit?: number;
             maxCoveringCells?: number;
             shape:

@@ -12,7 +12,12 @@ import type {
   Rectangle,
 } from "../component/validators.js";
 import { LOG_LEVELS, type LogLevel } from "../component/lib/logging.js";
-import { FilterBuilderImpl, type GeospatialQuery } from "./query.js";
+import {
+  FilterBuilderImpl,
+  type GeospatialQuery,
+  type GeospatialFilterBuilder,
+  type GeospatialFilterExpression,
+} from "./query.js";
 import type { ComponentApi } from "../component/_generated/component.js";
 
 export type { Point, Polygon, Polyline, Primitive, GeospatialQuery, Rectangle };
@@ -418,14 +423,20 @@ export class PolygonsNamespace<
    * @example
    * const { results, nextCursor } = await geo.polygons.containsPoint(ctx,
    *   { latitude: 40.7128, longitude: -74.0060 },
-   *   { filterKeys: { type: "delivery-zone" }, limit: 10 }
+   *   { filter: (q) => q.eq("type", "delivery-zone"), limit: 10 }
    * );
    */
   async containsPoint(
     ctx: QueryCtx,
     point: Point,
     options?: {
-      filterKeys?: PolygonFilters;
+      filter?: (
+        q: GeospatialFilterBuilder<
+          GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>
+        >,
+      ) => GeospatialFilterExpression<
+        GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>
+      >;
       limit?: number;
       cursor?: string;
     },
@@ -433,11 +444,18 @@ export class PolygonsNamespace<
     results: GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>[];
     nextCursor?: string;
   }> {
+    const filterBuilder = new FilterBuilderImpl<
+      GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>
+    >();
+    if (options?.filter) {
+      options.filter(filterBuilder);
+    }
+
     const result = await ctx.runQuery(
       this.core.component.polygon.query.containsPoint,
       {
         point,
-        filterKeys: options?.filterKeys,
+        filtering: filterBuilder.filterConditions,
         limit: options?.limit,
         cursor: options?.cursor,
       },
@@ -453,7 +471,7 @@ export class PolygonsNamespace<
    *
    * @param ctx    - The Convex query context.
    * @param shape  - The query shape (rectangle or polygon, no holes).
-   * @param options - Optional query options: filterKeys, limit, cursor.
+   * @param options - Optional query options: filter, limit, cursor.
    * @returns Results array and an optional continuation cursor.
    *
    * @example
@@ -466,7 +484,13 @@ export class PolygonsNamespace<
     ctx: QueryCtx,
     shape: QueryShape,
     options?: {
-      filterKeys?: PolygonFilters;
+      filter?: (
+        q: GeospatialFilterBuilder<
+          GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>
+        >,
+      ) => GeospatialFilterExpression<
+        GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>
+      >;
       limit?: number;
       cursor?: string;
     },
@@ -474,11 +498,18 @@ export class PolygonsNamespace<
     results: GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>[];
     nextCursor?: string;
   }> {
+    const filterBuilder = new FilterBuilderImpl<
+      GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>
+    >();
+    if (options?.filter) {
+      options.filter(filterBuilder);
+    }
+
     const result = await ctx.runQuery(
       this.core.component.polygon.query.intersects,
       {
         shape,
-        filterKeys: options?.filterKeys,
+        filtering: filterBuilder.filterConditions,
         limit: options?.limit,
         cursor: options?.cursor,
       },
@@ -674,7 +705,7 @@ export class PolylinesNamespace<
    *
    * @param ctx    - The Convex query context.
    * @param shape  - The query shape (rectangle or polygon, no holes).
-   * @param options - Optional query options: filterKeys, limit, cursor.
+   * @param options - Optional query options: filter, limit, cursor.
    * @returns Results array and an optional continuation cursor.
    *
    * @example
@@ -687,7 +718,13 @@ export class PolylinesNamespace<
     ctx: QueryCtx,
     shape: QueryShape,
     options?: {
-      filterKeys?: PolylineFilters;
+      filter?: (
+        q: GeospatialFilterBuilder<
+          GeospatialGeometry<"polyline", PolylineKey, PolylineFilters>
+        >,
+      ) => GeospatialFilterExpression<
+        GeospatialGeometry<"polyline", PolylineKey, PolylineFilters>
+      >;
       limit?: number;
       cursor?: string;
     },
@@ -695,11 +732,18 @@ export class PolylinesNamespace<
     results: GeospatialGeometry<"polyline", PolylineKey, PolylineFilters>[];
     nextCursor?: string;
   }> {
+    const filterBuilder = new FilterBuilderImpl<
+      GeospatialGeometry<"polyline", PolylineKey, PolylineFilters>
+    >();
+    if (options?.filter) {
+      options.filter(filterBuilder);
+    }
+
     const result = await ctx.runQuery(
       this.core.component.polyline.query.intersects,
       {
         shape,
-        filterKeys: options?.filterKeys,
+        filtering: filterBuilder.filterConditions,
         limit: options?.limit,
         cursor: options?.cursor,
       },

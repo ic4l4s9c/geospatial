@@ -186,14 +186,18 @@ describe("Geometry Storage", () => {
       // Should find with matching filter
       const results1 = await t.query(api.polygon.query.containsPoint, {
         point: POINT_INSIDE,
-        filterKeys: { borough: "manhattan" },
+        filtering: [
+          { occur: "must", filterKey: "borough", filterValue: "manhattan" },
+        ],
       });
       expect(results1.results.length).toBe(1);
 
       // Should not find with non-matching filter
       const results2 = await t.query(api.polygon.query.containsPoint, {
         point: POINT_INSIDE,
-        filterKeys: { borough: "brooklyn" },
+        filtering: [
+          { occur: "must", filterKey: "borough", filterValue: "brooklyn" },
+        ],
       });
       expect(results2.results.length).toBe(0);
     });
