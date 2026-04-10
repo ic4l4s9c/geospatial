@@ -404,7 +404,7 @@ const example = query({
   handler: async (ctx) => {
     const { results } = await geospatial.containsPoint(
       ctx,
-      { latitude: 40.7580, longitude: -73.9855 }, // Times Square
+      { latitude: 40.758, longitude: -73.9855 }, // Times Square
       { type: "delivery-zone" }, // Optional filter
     );
     return results; // All delivery zones containing this point
@@ -433,7 +433,7 @@ const example = query({
   handler: async (ctx) => {
     const { results } = await geospatial.geometriesNear(
       ctx,
-      { latitude: 40.7580, longitude: -73.9855 },
+      { latitude: 40.758, longitude: -73.9855 },
       5000, // 5km radius
     );
     // Results include distance in meters, sorted by proximity

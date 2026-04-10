@@ -86,13 +86,11 @@ export const intersects = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const { results, nextCursor } = await geospatial.polylines.intersects(
-      ctx,
-      args.shape,
-      args.mode
-        ? { filter: (q) => q.eq("mode", args.mode!), limit: args.limit }
-        : undefined,
-    );
+    const { results, nextCursor } = await geospatial.polylines.intersects(ctx, {
+      shape: args.shape,
+      filter: args.mode ? (q) => q.eq("mode", args.mode!) : undefined,
+      limit: args.limit,
+    });
 
     const hydrated = await Promise.all(
       results.map(async (g) => {

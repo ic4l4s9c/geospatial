@@ -104,7 +104,7 @@ export const insert = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const s2 = await S2Bindings.load();
-    const maxCells = args.maxCells ?? 30;
+    const maxCells = args.maxCells;
     const minLevel = args.minLevel;
     const maxLevel = args.maxLevel;
     const levelMod = args.levelMod;
@@ -128,20 +128,12 @@ export const insert = mutation({
       coveringCells = s2.coverPolylineForIndex(points, maxCells);
     }
 
-    if (
-      minLevel !== undefined ||
-      maxLevel !== undefined ||
-      levelMod !== undefined
-    ) {
-      coveringCells = coveringCells.filter((cellId) => {
-        const level = s2.cellIDLevel(cellId);
-        if (minLevel !== undefined && level < minLevel) return false;
-        if (maxLevel !== undefined && level > maxLevel) return false;
-        if (levelMod !== undefined && (level - minLevel!) % levelMod !== 0)
-          return false;
-        return true;
-      });
-    }
+    coveringCells = s2.filterCellsByLevel(
+      coveringCells,
+      minLevel,
+      maxLevel,
+      levelMod,
+    );
 
     const geometryId = await ctx.db.insert("geometries", {
       key: args.key,
@@ -215,7 +207,7 @@ export const update = mutation({
   returns: v.boolean(),
   handler: async (ctx, args) => {
     const s2 = await S2Bindings.load();
-    const maxCells = args.maxCells ?? 30;
+    const maxCells = args.maxCells;
     const minLevel = args.minLevel;
     const maxLevel = args.maxLevel;
     const levelMod = args.levelMod;
@@ -241,30 +233,14 @@ export const update = mutation({
       validatePointBounds(points);
       const bbox = computeBoundingBox(points);
 
-      let coveringCells: bigint[];
-      if (existing.type === "polygon") {
-        coveringCells = s2.coverPolygonForIndex(points, maxCells);
-      } else {
-        coveringCells = s2.coverPolylineForIndex(points, maxCells);
-      }
-
-      if (
-        minLevel !== undefined ||
-        maxLevel !== undefined ||
-        levelMod !== undefined
-      ) {
-        coveringCells = coveringCells.filter((cellId) => {
-          const level = s2.cellIDLevel(cellId);
-          if (minLevel !== undefined && level < minLevel) return false;
-          if (maxLevel !== undefined && level > maxLevel) return false;
-          if (
-            levelMod !== undefined &&
-            (level - (minLevel ?? 0)) % levelMod !== 0
-          )
-            return false;
-          return true;
-        });
-      }
+      const coveringCells = s2.filterCellsByLevel(
+        existing.type === "polygon"
+          ? s2.coverPolygonForIndex(points, maxCells)
+          : s2.coverPolylineForIndex(points, maxCells),
+        minLevel,
+        maxLevel,
+        levelMod,
+      );
 
       for (const cellId of coveringCells) {
         const token = s2.cellIDToken(cellId);

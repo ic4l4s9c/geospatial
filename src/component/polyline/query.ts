@@ -1,4 +1,3 @@
-import { implGeometriesNear, implIntersects } from "../lib/geometryQuery.js";
 import { query } from "../_generated/server.js";
 import { v } from "convex/values";
 import { S2Bindings } from "../lib/s2Bindings.js";
@@ -10,7 +9,9 @@ import {
   filterKeys,
   equalityCondition,
 } from "../validators.js";
-import { createLogger, type Logger, logLevel } from "../lib/logging.js";
+import { createLogger, logLevel } from "../lib/logging.js";
+import { queryNearest } from "../lib/geometry/queryNearest.js";
+import { queryIntersecting } from "../lib/geometry/queryIntersecting.js";
 
 const polylineResult = v.object({
   key: v.string(),
@@ -18,6 +19,7 @@ const polylineResult = v.object({
   coordinates: polyline,
   boundingBox: rectangle,
   filterKeys: filterKeys,
+  sortKey: v.number(),
 });
 
 const polylineWithDistance = polylineResult.extend({
@@ -34,7 +36,7 @@ export const intersects = query({
     maxLevel: v.optional(v.number()),
     levelMod: v.optional(v.number()),
     maxCells: v.optional(v.number()),
-    logLevel: v.optional(logLevel),
+    logLevel,
     filtering: v.optional(v.array(equalityCondition)),
     limit: v.optional(v.number()),
     cursor: v.optional(v.string()),
@@ -44,12 +46,9 @@ export const intersects = query({
     nextCursor: v.optional(v.string()),
   }),
   handler: async (ctx, args) => {
-    let logger: Logger | undefined;
-    if (args.logLevel) {
-      logger = createLogger(args.logLevel);
-    }
+    const logger = createLogger(args.logLevel);
     const s2 = await S2Bindings.load();
-    return implIntersects(
+    return queryIntersecting<"polyline">(
       ctx,
       s2,
       {
@@ -79,7 +78,7 @@ export const nearest = query({
     levelMod: v.optional(v.number()),
     maxCells: v.optional(v.number()),
     maxDistance: v.optional(v.number()),
-    logLevel: v.optional(logLevel),
+    logLevel,
     filtering: v.optional(v.array(equalityCondition)),
     limit: v.optional(v.number()),
     cursor: v.optional(v.string()),
@@ -89,12 +88,9 @@ export const nearest = query({
     nextCursor: v.optional(v.string()),
   }),
   handler: async (ctx, args) => {
-    let logger: Logger | undefined;
-    if (args.logLevel) {
-      logger = createLogger(args.logLevel);
-    }
+    const logger = createLogger(args.logLevel);
     const s2 = await S2Bindings.load();
-    return implGeometriesNear(
+    return queryNearest<"polyline">(
       ctx,
       s2,
       {

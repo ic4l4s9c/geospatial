@@ -11,16 +11,14 @@ import {
   rectangle,
   equalityCondition,
 } from "../validators.js";
-import { createLogger, type Logger, logLevel } from "../lib/logging.js";
+import { createLogger, logLevel } from "../lib/logging.js";
 import { S2Bindings } from "../lib/s2Bindings.js";
-import {
-  boundingBoxContainsPoint,
-  gatherCandidates,
-  implGeometriesNear,
-  implIntersects,
-  matchesFilterConditions,
-} from "../lib/geometryQuery.js";
 import { decodeCursor, encodeCursor } from "../lib/cursor.js";
+import { queryNearest } from "../lib/geometry/queryNearest.js";
+import { queryIntersecting } from "../lib/geometry/queryIntersecting.js";
+import { gatherCandidates } from "../lib/geometry/candidates.js";
+import { matchesFilterConditions } from "../lib/geometry/filterConditions.js";
+import { boundingBoxContainsPoint } from "../lib/geometry/bbox.js";
 
 const polygonResult = v.object({
   key: v.string(),
@@ -46,7 +44,7 @@ export const intersects = query({
     maxLevel: v.optional(v.number()),
     levelMod: v.optional(v.number()),
     maxCells: v.optional(v.number()),
-    logLevel: v.optional(logLevel),
+    logLevel,
     filtering: v.optional(v.array(equalityCondition)),
     limit: v.optional(v.number()),
     cursor: v.optional(v.string()),
@@ -56,12 +54,9 @@ export const intersects = query({
     nextCursor: v.optional(v.string()),
   }),
   handler: async (ctx, args) => {
-    let logger: Logger | undefined;
-    if (args.logLevel) {
-      logger = createLogger(args.logLevel);
-    }
+    const logger = createLogger(args.logLevel);
     const s2 = await S2Bindings.load();
-    return implIntersects(
+    return queryIntersecting<"polygon">(
       ctx,
       s2,
       {
@@ -88,11 +83,12 @@ export const intersects = query({
  */
 export const contains = query({
   args: {
-    point: point,
+    shape: v.union(point, polygon),
     minLevel: v.optional(v.number()),
     maxLevel: v.optional(v.number()),
     levelMod: v.optional(v.number()),
-    logLevel: v.optional(logLevel),
+    maxCells: v.optional(v.number()),
+    logLevel,
     filtering: v.optional(v.array(equalityCondition)),
     limit: v.optional(v.number()),
     cursor: v.optional(v.string()),
@@ -102,48 +98,45 @@ export const contains = query({
     nextCursor: v.optional(v.string()),
   }),
   handler: async (ctx, args) => {
-    let logger: Logger | undefined;
-    if (args.logLevel) {
-      logger = createLogger(args.logLevel);
-    }
+    const logger = createLogger(args.logLevel);
     const s2 = await S2Bindings.load();
     const {
-      point: queryPoint,
+      shape,
       minLevel,
       maxLevel,
       levelMod,
+      maxCells,
       filtering = [],
       limit = 100,
       cursor,
     } = args;
 
-    const cursorData = cursor ? decodeCursor(cursor) : undefined;
     const mustFilters = filtering.filter((f) => f.occur === "must");
     const shouldFilters = filtering.filter((f) => f.occur === "should");
 
-    let pointCells = s2.pointCellsAllLevels(queryPoint);
-
-    if (
-      minLevel !== undefined ||
-      maxLevel !== undefined ||
-      levelMod !== undefined
-    ) {
-      pointCells = pointCells.filter((cellId) => {
-        const level = s2.cellIDLevel(cellId);
-        if (minLevel !== undefined && level < minLevel) return false;
-        if (maxLevel !== undefined && level > maxLevel) return false;
-        if (
-          levelMod !== undefined &&
-          (level - (minLevel ?? 0)) % levelMod !== 0
-        )
-          return false;
-        return true;
-      });
+    const isPolygon = "exterior" in shape;
+    let pointCells: bigint[];
+    if (isPolygon) {
+      pointCells = s2.filterCellsByLevel(
+        s2.coverPolygonForIndex(shape.exterior, maxCells),
+        minLevel,
+        maxLevel,
+        levelMod,
+      );
+    } else {
+      pointCells = s2.filterCellsByLevel(
+        s2.pointCellsAllLevels(shape),
+        minLevel,
+        maxLevel,
+        levelMod,
+      );
     }
 
     const pointTokens = pointCells.map((cellId) => s2.cellIDToken(cellId));
+    logger.debug("Contains query cell tokens", pointTokens);
 
     const { candidateIds } = await gatherCandidates(ctx, pointTokens);
+    logger.debug(`Gathered ${candidateIds.size} candidates`);
 
     const results: {
       key: string;
@@ -170,6 +163,7 @@ export const contains = query({
         continue;
       }
 
+      const cursorData = cursor ? decodeCursor(cursor) : undefined;
       if (cursorData) {
         const geoSortKey = geometry.sortKey;
         const geoKey = geometry.key;
@@ -187,12 +181,18 @@ export const contains = query({
         west: geometry.west,
         east: geometry.east,
       };
-      if (!boundingBoxContainsPoint(bbox, queryPoint)) {
+      if (!isPolygon && !boundingBoxContainsPoint(bbox, shape)) {
         continue;
       }
 
       const poly = geometry.coordinates as Polygon;
-      if (s2.polygonContainsPoint(poly.exterior, queryPoint)) {
+      let contains = false;
+      if (isPolygon) {
+        contains = s2.polygonContainsPolygon(poly.exterior, shape.exterior);
+      } else {
+        contains = s2.polygonContainsPoint(poly.exterior, shape);
+      }
+      if (contains) {
         results.push({
           key: geometry.key,
           type: "polygon",
@@ -203,6 +203,8 @@ export const contains = query({
         });
       }
     }
+
+    logger.info(`Contains query found ${results.length} results`);
 
     const nextCursor =
       results.length === limit
@@ -227,7 +229,7 @@ export const nearest = query({
     levelMod: v.optional(v.number()),
     maxCells: v.optional(v.number()),
     maxDistance: v.optional(v.number()),
-    logLevel: v.optional(logLevel),
+    logLevel,
     filtering: v.optional(v.array(equalityCondition)),
     limit: v.optional(v.number()),
     cursor: v.optional(v.string()),
@@ -237,12 +239,9 @@ export const nearest = query({
     nextCursor: v.optional(v.string()),
   }),
   handler: async (ctx, args) => {
-    let logger: Logger | undefined;
-    if (args.logLevel) {
-      logger = createLogger(args.logLevel);
-    }
+    const logger = createLogger(args.logLevel);
     const s2 = await S2Bindings.load();
-    return implGeometriesNear(
+    return queryNearest<"polygon">(
       ctx,
       s2,
       {

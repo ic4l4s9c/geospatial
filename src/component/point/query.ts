@@ -1,4 +1,4 @@
-import { v, type Infer } from "convex/values";
+import { v } from "convex/values";
 import {
   equalityCondition,
   type Point,
@@ -18,7 +18,7 @@ import type { Doc, Id } from "../_generated/dataModel.js";
 import { createLogger, logLevel } from "../lib/logging.js";
 import { S2Bindings } from "../lib/s2Bindings.js";
 import { PREFETCH_SIZE } from "../streams/constants.js";
-import { ClosestPointQuery } from "../lib/pointQuery.js";
+import { ClosestPointQuery } from "../lib/closestPointQuery.js";
 
 export { PREFETCH_SIZE } from "../streams/constants.js";
 
@@ -40,7 +40,6 @@ const executeResult = v.object({
   results: v.array(queryResult),
   nextCursor: v.optional(v.string()),
 });
-type ExecuteResult = Infer<typeof executeResult>;
 
 export const execute = query({
   args: {
@@ -69,7 +68,7 @@ export const execute = query({
       }
       if (sorting.interval.startInclusive === sorting.interval.endExclusive) {
         logger.debug("Interval is empty, returning no results");
-        return { results: [] } as ExecuteResult;
+        return { results: [] };
       }
     }
     const { shape } = args.query;

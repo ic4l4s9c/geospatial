@@ -122,7 +122,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             }>;
             levelMod?: number;
             limit?: number;
-            logLevel?: "DEBUG" | "INFO" | "WARN" | "ERROR";
+            logLevel: "DEBUG" | "INFO" | "WARN" | "ERROR";
             maxCells?: number;
             maxLevel?: number;
             minLevel?: number;
@@ -195,7 +195,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             }>;
             levelMod?: number;
             limit?: number;
-            logLevel?: "DEBUG" | "INFO" | "WARN" | "ERROR";
+            logLevel: "DEBUG" | "INFO" | "WARN" | "ERROR";
             maxCells?: number;
             maxDistance?: number;
             maxLevel?: number;
@@ -505,10 +505,16 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             }>;
             levelMod?: number;
             limit?: number;
-            logLevel?: "DEBUG" | "INFO" | "WARN" | "ERROR";
+            logLevel: "DEBUG" | "INFO" | "WARN" | "ERROR";
+            maxCells?: number;
             maxLevel?: number;
             minLevel?: number;
-            point: { latitude: number; longitude: number };
+            shape:
+              | { latitude: number; longitude: number }
+              | {
+                  exterior: Array<{ latitude: number; longitude: number }>;
+                  holes?: Array<Array<{ latitude: number; longitude: number }>>;
+                };
           },
           {
             nextCursor?: string;
@@ -550,7 +556,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             }>;
             levelMod?: number;
             limit?: number;
-            logLevel?: "DEBUG" | "INFO" | "WARN" | "ERROR";
+            logLevel: "DEBUG" | "INFO" | "WARN" | "ERROR";
             maxCells?: number;
             maxLevel?: number;
             minLevel?: number;
@@ -619,7 +625,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             }>;
             levelMod?: number;
             limit?: number;
-            logLevel?: "DEBUG" | "INFO" | "WARN" | "ERROR";
+            logLevel: "DEBUG" | "INFO" | "WARN" | "ERROR";
             maxCells?: number;
             maxDistance?: number;
             maxLevel?: number;
@@ -687,7 +693,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             }>;
             levelMod?: number;
             limit?: number;
-            logLevel?: "DEBUG" | "INFO" | "WARN" | "ERROR";
+            logLevel: "DEBUG" | "INFO" | "WARN" | "ERROR";
             maxCells?: number;
             maxLevel?: number;
             minLevel?: number;
@@ -736,6 +742,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                 | Array<string | number | boolean | null | bigint>
               >;
               key: string;
+              sortKey: number;
               type: "polyline";
             }>;
           },
@@ -753,7 +760,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             }>;
             levelMod?: number;
             limit?: number;
-            logLevel?: "DEBUG" | "INFO" | "WARN" | "ERROR";
+            logLevel: "DEBUG" | "INFO" | "WARN" | "ERROR";
             maxCells?: number;
             maxDistance?: number;
             maxLevel?: number;
@@ -781,6 +788,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                 | Array<string | number | boolean | null | bigint>
               >;
               key: string;
+              sortKey: number;
               type: "polyline";
             }>;
           },

@@ -1,6 +1,5 @@
 import { v, type Infer } from "convex/values";
 import { primitive } from "./lib/primitive.js";
-import { interval } from "./lib/interval.js";
 
 export type { Primitive } from "./lib/primitive.js";
 export { primitive } from "./lib/primitive.js";

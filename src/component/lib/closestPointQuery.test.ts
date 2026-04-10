@@ -1,12 +1,12 @@
 import { convexTest } from "convex-test";
 import { expect, test } from "vitest";
 import { test as fcTest } from "@fast-check/vitest";
-import { arbitraryDocuments } from "./arbitrary.helpers.js";
+import { arbitraryDocuments } from "./fc.helpers.js";
 import schema from "../schema.js";
 import { modules } from "../test.setup.js";
-import { S2Bindings } from "../lib/s2Bindings.js";
-import { ClosestPointQuery } from "../lib/pointQuery.js";
-import { createLogger } from "../lib/logging.js";
+import { S2Bindings } from "./s2Bindings.js";
+import { ClosestPointQuery } from "./closestPointQuery.js";
+import { createLogger } from "./logging.js";
 import { api } from "../_generated/api.js";
 
 const opts = {
@@ -21,7 +21,6 @@ test("closest point query - basic functionality", async () => {
   const s2 = await S2Bindings.load();
   const logger = createLogger("INFO");
 
-  // Insert some test points
   const points = [
     {
       key: "point1",
@@ -43,7 +42,6 @@ test("closest point query - basic functionality", async () => {
     },
   ];
 
-  // Insert all points
   for (const point of points) {
     await t.mutation(api.point.insert, {
       document: point,
@@ -52,13 +50,12 @@ test("closest point query - basic functionality", async () => {
   }
 
   await t.run(async (ctx) => {
-    // Test finding closest point to origin
     const query1 = new ClosestPointQuery(
       s2,
       logger,
       { latitude: 0, longitude: 0 },
-      1000, // maxDistance in meters
-      1, // maxResults
+      1000,
+      1,
       opts.minLevel,
       opts.maxLevel,
       opts.levelMod,
@@ -66,9 +63,8 @@ test("closest point query - basic functionality", async () => {
     const result1 = await query1.execute(ctx);
     expect(result1.results.length).toBe(1);
     expect(result1.results[0].key).toBe("point1");
-    expect(result1.results[0].distance).toBeLessThan(1); // Should be very close to 0
+    expect(result1.results[0].distance).toBeLessThan(1);
 
-    // Test finding closest points to (1,1)
     const query2 = new ClosestPointQuery(
       s2,
       logger,
@@ -87,12 +83,11 @@ test("closest point query - basic functionality", async () => {
       result2.results[1].distance,
     );
 
-    // Test maxDistance constraint
     const query3 = new ClosestPointQuery(
       s2,
       logger,
       { latitude: 0, longitude: 0 },
-      50, // Small radius in meters
+      50,
       10,
       opts.minLevel,
       opts.maxLevel,
@@ -102,7 +97,6 @@ test("closest point query - basic functionality", async () => {
     expect(result3.results.length).toBe(1);
     expect(result3.results[0].key).toBe("point1");
 
-    // Test must filter
     const query4 = new ClosestPointQuery(
       s2,
       logger,
@@ -127,7 +121,6 @@ test("closest point query - basic functionality", async () => {
       "point3",
     ]);
 
-    // Test should filter (must match at least one)
     const query5 = new ClosestPointQuery(
       s2,
       logger,
@@ -149,7 +142,6 @@ test("closest point query - basic functionality", async () => {
     expect(result5.results.length).toBe(1);
     expect(result5.results[0].key).toBe("point2");
 
-    // Test sort key interval
     const query6 = new ClosestPointQuery(
       s2,
       logger,
@@ -166,7 +158,6 @@ test("closest point query - basic functionality", async () => {
     expect(result6.results.length).toBe(1);
     expect(result6.results[0].key).toBe("point3");
 
-    // Test multiple should filters
     const query7 = new ClosestPointQuery(
       s2,
       logger,
@@ -204,7 +195,6 @@ fcTest.prop({ documents: arbitraryDocuments })(
     const s2 = await S2Bindings.load();
     const logger = createLogger("INFO");
 
-    // Insert all documents
     for (const document of documents) {
       await t.mutation(api.point.insert, {
         document,
@@ -226,14 +216,12 @@ fcTest.prop({ documents: arbitraryDocuments })(
       );
       const results = await query.execute(ctx);
 
-      // Verify results are ordered by distance
       for (let i = 1; i < results.results.length; i++) {
         expect(results.results[i - 1].distance).toBeLessThanOrEqual(
           results.results[i].distance,
         );
       }
 
-      // Verify all distances are within maxDistance
       for (const result of results.results) {
         expect(result.distance).toBeLessThanOrEqual(1000);
       }

@@ -8,15 +8,13 @@ import type {
   Polygon,
   Polyline,
   Primitive,
-  QueryShape,
   Rectangle,
 } from "../component/validators.js";
 import { LOG_LEVELS, type LogLevel } from "../component/lib/logging.js";
 import {
   FilterBuilderImpl,
   type GeospatialQuery,
-  type GeospatialFilterBuilder,
-  type GeospatialFilterExpression,
+  type ContainsQuery,
 } from "./query.js";
 import type { ComponentApi } from "../component/_generated/component.js";
 
@@ -187,9 +185,7 @@ export class PointsNamespace<
     const result = await ctx.runQuery(this.core.component.point.get, {
       key,
     });
-    return result as
-      | (typeof result & GeospatialGeometry<"point", PointKey, PointFilters>)
-      | null;
+    return result as GeospatialGeometry<"point", PointKey, PointFilters> | null;
   }
 
   /**
@@ -279,7 +275,7 @@ export class PointsNamespace<
       logLevel: this.core.logLevel,
     });
 
-    return result as typeof result & {
+    return result as {
       results: { key: PointKey; coordinates: Point }[];
       nextCursor?: string;
     };
@@ -323,7 +319,7 @@ export class PointsNamespace<
       cursor: options.cursor,
     });
 
-    return result as typeof result & {
+    return result as {
       results: WithDistance<
         GeospatialGeometry<"point", PointKey, PointFilters>
       >[];
@@ -385,20 +381,24 @@ export class PolygonsNamespace<
       key,
     });
 
-    return result as
-      | (typeof result &
-          GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>)
-      | null;
+    return result as GeospatialGeometry<
+      "polygon",
+      PolygonKey,
+      PolygonFilters
+    > | null;
   }
 
   /**
    * Update a polygon's coordinates or metadata.
    *
-   * @param ctx     - The Convex mutation context.
-   * @param key     - The unique string key of the polygon to update.
-   * @param polygon - New polygon geometry, triggers re-indexing when provided.
-   * @param filterKeys - New filter keys.
-   * @param sortKey   - New sort key.
+   * @param ctx        - The Convex mutation context.
+   * @param key        - The unique string key of the polygon to update.
+   * @param polygon    - New polygon geometry, triggers re-indexing when provided.
+   * @param filterKeys - New filter keys. All filter keys must be provided
+   *                     together when updating — partial filter key updates
+   *                     are not supported.
+   * @param sortKey    - New sort key.
+   * @returns `true` if the key existed and was updated, `false` otherwise.
    */
   async update(
     ctx: MutationCtx,
@@ -424,6 +424,7 @@ export class PolygonsNamespace<
    *
    * @param ctx - The Convex mutation context.
    * @param key - The unique string key of the polygon to remove.
+   * @returns `true` if the key was found and removed, `false` otherwise.
    */
   async remove(ctx: MutationCtx, key: PolygonKey): Promise<boolean> {
     return await ctx.runMutation(this.core.component.geometry.remove, {
@@ -436,33 +437,24 @@ export class PolygonsNamespace<
   }
 
   /**
-   * Find all polygons that contain a given point.
+   * Find all polygons that contain a given point or polygon.
    *
-   * @param ctx    - The Convex query context.
-   * @param point  - The geographic point to check.
-   * @param options - Optional query options: filterKeys, limit, cursor.
+   * @param ctx   - The Convex query context.
+   * @param query - The query, including shape, optional filter, limit, and cursor.
    * @returns Results array and an optional continuation cursor.
    *
    * @example
-   * const { results, nextCursor } = await geo.polygons.contains(ctx,
-   *   { latitude: 40.7128, longitude: -74.0060 },
-   *   { filter: (q) => q.eq("type", "delivery-zone"), limit: 10 }
-   * );
+   * const { results, nextCursor } = await geo.polygons.contains(ctx, {
+   *   shape: { latitude: 40.7128, longitude: -74.0060 },
+   *   filter: (q) => q.eq("type", "delivery-zone"),
+   *   limit: 10,
+   * });
    */
   async contains(
     ctx: QueryCtx,
-    point: Point,
-    options?: {
-      filter?: (
-        q: GeospatialFilterBuilder<
-          GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>
-        >,
-      ) => GeospatialFilterExpression<
-        GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>
-      >;
-      limit?: number;
-      cursor?: string;
-    },
+    query: ContainsQuery<
+      GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>
+    >,
   ): Promise<{
     results: GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>[];
     nextCursor?: string;
@@ -470,24 +462,25 @@ export class PolygonsNamespace<
     const filterBuilder = new FilterBuilderImpl<
       GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>
     >();
-    if (options?.filter) {
-      options.filter(filterBuilder);
+    if (query.filter) {
+      query.filter(filterBuilder);
     }
 
     const result = await ctx.runQuery(
       this.core.component.polygon.query.contains,
       {
-        point,
+        shape: query.shape,
         minLevel: this.core.minLevel,
         maxLevel: this.core.maxLevel,
         levelMod: this.core.levelMod,
+        maxCells: this.core.maxCells,
         logLevel: this.core.logLevel,
         filtering: filterBuilder.filterConditions,
-        limit: options?.limit,
-        cursor: options?.cursor,
+        limit: query.limit,
+        cursor: query.cursor,
       },
     );
-    return result as typeof result & {
+    return result as {
       results: GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>[];
       nextCursor?: string;
     };
@@ -496,31 +489,21 @@ export class PolygonsNamespace<
   /**
    * Find all polygons that intersect a given shape.
    *
-   * @param ctx    - The Convex query context.
-   * @param shape  - The query shape (rectangle or polygon, no holes).
-   * @param options - Optional query options: filter, limit, cursor.
+   * @param ctx   - The Convex query context.
+   * @param query - The query, including shape, optional filter, limit, and cursor.
    * @returns Results array and an optional continuation cursor.
    *
    * @example
-   * const { results, nextCursor } = await geo.polygons.intersects(ctx,
-   *   { type: "rectangle", rectangle: { south: 40, north: 41, west: -75, east: -74 } },
-   *   { limit: 10 }
-   * );
+   * const { results, nextCursor } = await geo.polygons.intersects(ctx, {
+   *   shape: { type: "rectangle", rectangle: { south: 40, north: 41, west: -75, east: -74 } },
+   *   limit: 10,
+   * });
    */
   async intersects(
     ctx: QueryCtx,
-    shape: QueryShape,
-    options?: {
-      filter?: (
-        q: GeospatialFilterBuilder<
-          GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>
-        >,
-      ) => GeospatialFilterExpression<
-        GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>
-      >;
-      limit?: number;
-      cursor?: string;
-    },
+    query: GeospatialQuery<
+      GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>
+    >,
   ): Promise<{
     results: GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>[];
     nextCursor?: string;
@@ -528,25 +511,25 @@ export class PolygonsNamespace<
     const filterBuilder = new FilterBuilderImpl<
       GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>
     >();
-    if (options?.filter) {
-      options.filter(filterBuilder);
+    if (query.filter) {
+      query.filter(filterBuilder);
     }
 
     const result = await ctx.runQuery(
       this.core.component.polygon.query.intersects,
       {
-        shape,
+        shape: query.shape,
         minLevel: this.core.minLevel,
         maxLevel: this.core.maxLevel,
         levelMod: this.core.levelMod,
         maxCells: this.core.maxCells,
         logLevel: this.core.logLevel,
         filtering: filterBuilder.filterConditions,
-        limit: options?.limit,
-        cursor: options?.cursor,
+        limit: query.limit,
+        cursor: query.cursor,
       },
     );
-    return result as typeof result & {
+    return result as {
       results: GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>[];
       nextCursor?: string;
     };
@@ -559,7 +542,8 @@ export class PolygonsNamespace<
    *       longitude compression. Use smaller `maxDistance` values in these areas.
    *
    * @param ctx     - The Convex query context.
-   * @param options - Query parameters including point, limit, maxDistance, filter, and cursor.
+   * @param options - Query parameters including point, limit, and optional maxDistance,
+   *                  filter, and cursor.
    * @returns Results sorted by distance ascending and an optional continuation cursor.
    *
    * @example
@@ -600,7 +584,7 @@ export class PolygonsNamespace<
         cursor: options.cursor,
       },
     );
-    return result as typeof result & {
+    return result as {
       results: WithDistance<
         GeospatialGeometry<"polygon", PolygonKey, PolygonFilters>
       >[];
@@ -701,20 +685,24 @@ export class PolylinesNamespace<
     const result = await ctx.runQuery(this.core.component.geometry.get, {
       key,
     });
-    return result as
-      | (typeof result &
-          GeospatialGeometry<"polyline", PolylineKey, PolylineFilters>)
-      | null;
+    return result as GeospatialGeometry<
+      "polyline",
+      PolylineKey,
+      PolylineFilters
+    > | null;
   }
 
   /**
    * Update a polyline's coordinates or metadata.
    *
-   * @param ctx     - The Convex mutation context.
-   * @param key     - The unique string key of the polyline to update.
-   * @param polyline - New polyline geometry, triggers re-indexing when provided.
-   * @param filterKeys - New filter keys.
-   * @param sortKey   - New sort key.
+   * @param ctx        - The Convex mutation context.
+   * @param key        - The unique string key of the polyline to update.
+   * @param polyline   - New polyline geometry, triggers re-indexing when provided.
+   * @param filterKeys - New filter keys. All filter keys must be provided
+   *                     together when updating — partial filter key updates
+   *                     are not supported.
+   * @param sortKey    - New sort key.
+   * @returns `true` if the key existed and was updated, `false` otherwise.
    */
   async update(
     ctx: MutationCtx,
@@ -740,6 +728,7 @@ export class PolylinesNamespace<
    *
    * @param ctx - The Convex mutation context.
    * @param key - The unique string key of the polyline to remove.
+   * @returns `true` if the key was found and removed, `false` otherwise.
    */
   async remove(ctx: MutationCtx, key: PolylineKey): Promise<boolean> {
     return await ctx.runMutation(this.core.component.geometry.remove, {
@@ -754,31 +743,21 @@ export class PolylinesNamespace<
   /**
    * Find all polylines that intersect a given shape.
    *
-   * @param ctx    - The Convex query context.
-   * @param shape  - The query shape (rectangle or polygon, no holes).
-   * @param options - Optional query options: filter, limit, cursor.
+   * @param ctx   - The Convex query context.
+   * @param query - The query, including shape, optional filter, limit, and cursor.
    * @returns Results array and an optional continuation cursor.
    *
    * @example
-   * const { results, nextCursor } = await geo.polylines.intersects(ctx,
-   *   { type: "rectangle", rectangle: { south: 40, north: 41, west: -75, east: -74 } },
-   *   { limit: 10 }
-   * );
+   * const { results, nextCursor } = await geo.polylines.intersects(ctx, {
+   *   shape: { type: "rectangle", rectangle: { south: 40, north: 41, west: -75, east: -74 } },
+   *   limit: 10,
+   * });
    */
   async intersects(
     ctx: QueryCtx,
-    shape: QueryShape,
-    options?: {
-      filter?: (
-        q: GeospatialFilterBuilder<
-          GeospatialGeometry<"polyline", PolylineKey, PolylineFilters>
-        >,
-      ) => GeospatialFilterExpression<
-        GeospatialGeometry<"polyline", PolylineKey, PolylineFilters>
-      >;
-      limit?: number;
-      cursor?: string;
-    },
+    query: GeospatialQuery<
+      GeospatialGeometry<"polyline", PolylineKey, PolylineFilters>
+    >,
   ): Promise<{
     results: GeospatialGeometry<"polyline", PolylineKey, PolylineFilters>[];
     nextCursor?: string;
@@ -786,25 +765,25 @@ export class PolylinesNamespace<
     const filterBuilder = new FilterBuilderImpl<
       GeospatialGeometry<"polyline", PolylineKey, PolylineFilters>
     >();
-    if (options?.filter) {
-      options.filter(filterBuilder);
+    if (query.filter) {
+      query.filter(filterBuilder);
     }
 
     const result = await ctx.runQuery(
       this.core.component.polyline.query.intersects,
       {
-        shape,
+        shape: query.shape,
         minLevel: this.core.minLevel,
         maxLevel: this.core.maxLevel,
         levelMod: this.core.levelMod,
         maxCells: this.core.maxCells,
         logLevel: this.core.logLevel,
         filtering: filterBuilder.filterConditions,
-        limit: options?.limit,
-        cursor: options?.cursor,
+        limit: query.limit,
+        cursor: query.cursor,
       },
     );
-    return result as typeof result & {
+    return result as {
       results: GeospatialGeometry<"polyline", PolylineKey, PolylineFilters>[];
       nextCursor?: string;
     };
@@ -817,7 +796,8 @@ export class PolylinesNamespace<
    *       longitude compression. Use smaller `maxDistance` values in these areas.
    *
    * @param ctx     - The Convex query context.
-   * @param options - Query parameters including point, limit, maxDistance, filter, and cursor.
+   * @param options - Query parameters including point, limit, and optional maxDistance,
+   *                  filter, and cursor.
    * @returns Results sorted by distance ascending and an optional continuation cursor.
    *
    * @example
@@ -858,7 +838,7 @@ export class PolylinesNamespace<
         cursor: options.cursor,
       },
     );
-    return result as typeof result & {
+    return result as {
       results: WithDistance<
         GeospatialGeometry<"polyline", PolylineKey, PolylineFilters>
       >[];
@@ -937,11 +917,7 @@ export class GeospatialIndex<
   ) {
     let DEFAULT_LOG_LEVEL: LogLevel = "INFO";
     if (process.env.GEOSPATIAL_LOG_LEVEL) {
-      if (
-        (LOG_LEVELS as readonly string[]).includes(
-          process.env.GEOSPATIAL_LOG_LEVEL,
-        )
-      ) {
+      if (LOG_LEVELS.includes(process.env.GEOSPATIAL_LOG_LEVEL)) {
         DEFAULT_LOG_LEVEL = process.env.GEOSPATIAL_LOG_LEVEL as LogLevel;
       } else {
         console.warn(
@@ -955,14 +931,14 @@ export class GeospatialIndex<
     this.levelMod = options?.levelMod ?? DEFAULT_LEVEL_MOD;
     this.maxCells = options?.maxCells ?? DEFAULT_MAX_CELLS;
 
-    const core: GeospatialIndexCore = {
+    const core = {
       component: this.component,
       minLevel: this.minLevel,
       maxLevel: this.maxLevel,
       levelMod: this.levelMod,
       maxCells: this.maxCells,
       logLevel: this.logLevel,
-    };
+    } satisfies GeospatialIndexCore;
 
     this.points = new PointsNamespace<PointKey, PointFilters>(core);
     this.polygons = new PolygonsNamespace<PolygonKey, PolygonFilters>(core);
@@ -1011,14 +987,14 @@ type MutationCtx = {
 export type FilterValue<
   Doc extends GeospatialGeometry,
   FieldName extends keyof NonNullable<Doc["filterKeys"]> & string,
-> = ExtractArray<NonNullable<Doc["filterKeys"]>[FieldName]>;
+> = ElementType<NonNullable<Doc["filterKeys"]>[FieldName]>;
 
 export type FilterObject<Doc extends GeospatialGeometry> = {
   [K in keyof NonNullable<Doc["filterKeys"]> & string]: {
     filterKey: K;
-    filterValue: ExtractArray<NonNullable<Doc["filterKeys"]>[K]>;
+    filterValue: ElementType<NonNullable<Doc["filterKeys"]>[K]>;
     occur: "should" | "must";
   };
 }[keyof NonNullable<Doc["filterKeys"]> & string];
 
-type ExtractArray<T> = T extends (infer U)[] ? U : T;
+type ElementType<T> = T extends (infer U)[] ? U : T;

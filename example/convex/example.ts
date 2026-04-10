@@ -240,7 +240,7 @@ export const geometryContainsPoint = query({
     point,
   },
   handler: async (ctx, args) => {
-    return await geospatial.polygons.contains(ctx, args.point);
+    return await geospatial.polygons.contains(ctx, { shape: args.point });
   },
 });
 
@@ -250,8 +250,10 @@ export const geometryIntersects = query({
   },
   handler: async (ctx, args) => {
     return await geospatial.polygons.intersects(ctx, {
-      type: "rectangle",
-      rectangle: args.rectangle,
+      shape: {
+        type: "rectangle",
+        rectangle: args.rectangle,
+      },
     });
   },
 });

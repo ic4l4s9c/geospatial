@@ -60,6 +60,33 @@ export class S2Bindings {
     return this.exports.cellIDLevel(cellID);
   }
 
+  filterCellsByLevel(
+    cells: CellID[],
+    minLevel?: number,
+    maxLevel?: number,
+    levelMod?: number,
+  ): CellID[] {
+    if (
+      minLevel === undefined &&
+      maxLevel === undefined &&
+      levelMod === undefined
+    ) {
+      return cells;
+    }
+    return cells.filter((cellId) => {
+      const level = this.cellIDLevel(cellId);
+      if (minLevel !== undefined && level < minLevel) {
+        return false;
+      }
+      if (maxLevel !== undefined && level > maxLevel) {
+        return false;
+      }
+      return !(
+        levelMod !== undefined && (level - (minLevel ?? 0)) % levelMod !== 0
+      );
+    });
+  }
+
   coverRectangle(
     rectangle: Rectangle,
     minLevel: number,

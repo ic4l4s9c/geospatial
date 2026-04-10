@@ -1,4 +1,4 @@
-import type { QueryShape } from "../component/validators.js";
+import type { Point, Polygon, QueryShape } from "../component/validators.js";
 import type { GeospatialGeometry, FilterValue, FilterObject } from "./index.js";
 
 /**
@@ -20,6 +20,16 @@ export interface GeospatialQuery<Doc extends GeospatialGeometry> {
   /**
    * Continuation cursor for paginating through results.
    */
+  cursor?: string;
+}
+
+/**
+ * A query for polygons that contain a given point or polygon.
+ */
+export interface ContainsQuery<Doc extends GeospatialGeometry> {
+  shape: Point | Polygon;
+  filter?: (q: GeospatialFilterBuilder<Doc>) => GeospatialFilterExpression<Doc>;
+  limit?: number;
   cursor?: string;
 }
 
@@ -114,7 +124,7 @@ export class FilterBuilderImpl<Doc extends GeospatialGeometry> {
       filterKey: field,
       filterValue: value,
       occur: "must",
-    } as FilterObject<Doc>);
+    });
     return this;
   }
 
@@ -131,7 +141,7 @@ export class FilterBuilderImpl<Doc extends GeospatialGeometry> {
         filterKey: field,
         filterValue: value,
         occur: "should",
-      } as FilterObject<Doc>);
+      });
     }
     return this;
   }

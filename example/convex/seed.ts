@@ -84,7 +84,7 @@ export const seedStatePolygons = mutation({
           ctx,
           `state:${stateKey}`,
           { exterior: stateData.exterior },
-          { name: stateData.name, type: "state" }
+          { name: stateData.name, type: "state" },
         );
         inserted.push(stateData.name);
       } catch (e) {

@@ -30,12 +30,15 @@ import { useGeoQuery } from "./useGeoQuery.js";
 import { useNearestQuery } from "./useNearestQuery.js";
 import { usePolygonQuery } from "./usePolygonQuery.js";
 import { usePolylineQuery } from "./usePolylineQuery.js";
-import {
-  useContainsPointQuery,
-} from "./useGeometriesQuery.js";
+import { useContainsPointQuery } from "./useGeometriesQuery.js";
 import { FunctionReturnType } from "convex/server";
 
-type SearchMode = "viewport" | "nearest" | "polygon" | "polyline" | "geometries";
+type SearchMode =
+  | "viewport"
+  | "nearest"
+  | "polygon"
+  | "polyline"
+  | "geometries";
 
 type Rows = FunctionReturnType<typeof api.example.search>["rows"];
 
@@ -311,14 +314,16 @@ function LocationSearch(props: {
     if (props.polylinePoints.length < 2) return null;
     try {
       // Convert to GeoJSON LineString (note: GeoJSON uses [lng, lat] order)
-      const coords = props.polylinePoints.map((p) => [p.longitude, p.latitude] as [number, number]);
+      const coords = props.polylinePoints.map(
+        (p) => [p.longitude, p.latitude] as [number, number],
+      );
       const line = lineString(coords);
       // Create buffer polygon (distance in meters)
       const buffered = buffer(line, props.bufferMeters, { units: "meters" });
       if (!buffered || buffered.geometry.type !== "Polygon") return null;
       // Convert back to Leaflet format [lat, lng]
       return buffered.geometry.coordinates[0].map(
-        (coord) => [coord[1], coord[0]] as LatLngTuple
+        (coord) => [coord[1], coord[0]] as LatLngTuple,
       );
     } catch {
       console.warn("Failed to generate polyline buffer polygon");
@@ -393,7 +398,9 @@ function LocationSearch(props: {
       {/* Show the polyline being drawn */}
       {props.searchMode === "polyline" && props.polylinePoints.length >= 2 && (
         <Polyline
-          positions={props.polylinePoints.map((p) => [p.latitude, p.longitude] as LatLngTuple)}
+          positions={props.polylinePoints.map(
+            (p) => [p.latitude, p.longitude] as LatLngTuple,
+          )}
           pathOptions={{ color: "#f59e0b", weight: 4 }}
         />
       )}
@@ -423,7 +430,7 @@ function LocationSearch(props: {
           ]);
           // Check if this geometry is in the contains results (highlighted)
           const isHighlighted = props.containsResults.some(
-            (r) => r.key === geom.key
+            (r) => r.key === geom.key,
           );
           const isSelected = props.selectedGeometryKey === geom.key;
           return (
@@ -431,17 +438,23 @@ function LocationSearch(props: {
               key={geom.key}
               positions={positions}
               pathOptions={{
-                color: isSelected ? "#ec4899" : isHighlighted ? "#22c55e" : "#6366f1",
-                fillColor: isSelected ? "#ec4899" : isHighlighted ? "#22c55e" : "#6366f1",
+                color: isSelected
+                  ? "#ec4899"
+                  : isHighlighted
+                    ? "#22c55e"
+                    : "#6366f1",
+                fillColor: isSelected
+                  ? "#ec4899"
+                  : isHighlighted
+                    ? "#22c55e"
+                    : "#6366f1",
                 fillOpacity: isSelected ? 0.5 : isHighlighted ? 0.4 : 0.2,
                 weight: isSelected ? 4 : isHighlighted ? 3 : 2,
               }}
               eventHandlers={{
                 click: (e) => {
                   e.originalEvent.stopPropagation();
-                  props.setSelectedGeometryKey(
-                    isSelected ? null : geom.key
-                  );
+                  props.setSelectedGeometryKey(isSelected ? null : geom.key);
                 },
               }}
             />
@@ -543,12 +556,13 @@ function App() {
 
   // Geometries mode state
   const [geometryQueryPoint, setGeometryQueryPoint] = useState<Point | null>(
-    null
+    null,
   );
   const [selectedGeometryKey, setSelectedGeometryKey] = useState<string | null>(
-    null
+    null,
   );
-  const { results: containsResults } = useContainsPointQuery(geometryQueryPoint);
+  const { results: containsResults } =
+    useContainsPointQuery(geometryQueryPoint);
 
   const commonButtonStyle = {
     backgroundColor: "var(--accent-primary)",
@@ -660,7 +674,9 @@ function App() {
             ...commonButtonStyle,
             marginLeft: 0,
             backgroundColor:
-              searchMode === "polygon" ? "var(--success-primary)" : "var(--bg-secondary)",
+              searchMode === "polygon"
+                ? "var(--success-primary)"
+                : "var(--bg-secondary)",
             color: searchMode === "polygon" ? "white" : "var(--text-primary)",
             border: "1px solid var(--border-color)",
           }}
@@ -677,7 +693,9 @@ function App() {
             ...commonButtonStyle,
             marginLeft: 0,
             backgroundColor:
-              searchMode === "polyline" ? "var(--polyline-primary)" : "var(--bg-secondary)",
+              searchMode === "polyline"
+                ? "var(--polyline-primary)"
+                : "var(--bg-secondary)",
             color: searchMode === "polyline" ? "white" : "var(--text-primary)",
             border: "1px solid var(--border-color)",
           }}
@@ -696,9 +714,7 @@ function App() {
             ...commonButtonStyle,
             marginLeft: 0,
             backgroundColor:
-              searchMode === "geometries"
-                ? "#6366f1"
-                : "var(--bg-secondary)",
+              searchMode === "geometries" ? "#6366f1" : "var(--bg-secondary)",
             color:
               searchMode === "geometries" ? "white" : "var(--text-primary)",
             border: "1px solid var(--border-color)",
@@ -973,7 +989,8 @@ function App() {
             <div
               style={{
                 fontSize: "14px",
-                backgroundColor: containsResults.length > 0 ? "#dcfce7" : "#fef3c7",
+                backgroundColor:
+                  containsResults.length > 0 ? "#dcfce7" : "#fef3c7",
                 padding: "8px 16px",
                 borderRadius: "6px",
                 border: `1px solid ${containsResults.length > 0 ? "#22c55e" : "#f59e0b"}`,
@@ -984,7 +1001,11 @@ function App() {
               {geometryQueryPoint.longitude.toFixed(4)}) is in:{" "}
               {containsResults.length > 0
                 ? containsResults
-                    .map((r) => (r.filterKeys as StateFilterKeys | undefined)?.name || r.key)
+                    .map(
+                      (r) =>
+                        (r.filterKeys as StateFilterKeys | undefined)?.name ||
+                        r.key,
+                    )
                     .join(", ")
                 : "No polygons"}
             </div>

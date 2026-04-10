@@ -84,13 +84,11 @@ export const containsPoint = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const { results, nextCursor } = await geospatial.polygons.contains(
-      ctx,
-      args.coordinates,
-      args.type
-        ? { filter: (q) => q.eq("type", args.type!), limit: args.limit }
-        : undefined,
-    );
+    const { results, nextCursor } = await geospatial.polygons.contains(ctx, {
+      shape: args.coordinates,
+      filter: args.type ? (q) => q.eq("type", args.type!) : undefined,
+      limit: args.limit,
+    });
 
     const hydrated = await Promise.all(
       results.map(async (g) => {
@@ -110,13 +108,11 @@ export const intersects = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const { results, nextCursor } = await geospatial.polygons.intersects(
-      ctx,
-      args.shape,
-      args.type
-        ? { filter: (q) => q.eq("type", args.type!), limit: args.limit }
-        : undefined,
-    );
+    const { results, nextCursor } = await geospatial.polygons.intersects(ctx, {
+      shape: args.shape,
+      filter: args.type ? (q) => q.eq("type", args.type!) : undefined,
+      limit: args.limit,
+    });
 
     const hydrated = await Promise.all(
       results.map(async (g) => {

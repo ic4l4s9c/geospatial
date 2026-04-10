@@ -144,7 +144,8 @@ export const remove = mutation({
   returns: v.boolean(),
   handler: async (ctx, args) => {
     const s2 = await S2Bindings.load();
-    return await removePointByKey(ctx, s2, args.key, args);
+    const { key, ...opts } = args;
+    return await removePointByKey(ctx, s2, key, opts);
   },
 });
 
