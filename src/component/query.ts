@@ -1,4 +1,4 @@
-import { v, type Infer } from "convex/values";
+import { v } from "convex/values";
 import { type Point, point, primitive, rectangle } from "./types.js";
 import { query } from "./_generated/server.js";
 import type { PointSet, Stats } from "./streams/zigzag.js";
@@ -81,7 +81,6 @@ const executeResult = v.object({
   results: v.array(queryResult),
   nextCursor: v.optional(v.string()),
 });
-type ExecuteResult = Infer<typeof executeResult>;
 
 export const execute = query({
   args: {
@@ -111,7 +110,7 @@ export const execute = query({
       }
       if (sorting.interval.startInclusive === sorting.interval.endExclusive) {
         logger.debug("Interval is empty, returning no results");
-        return { results: [] } as ExecuteResult;
+        return { results: [] };
       }
     }
     const { rectangle } = args.query;
