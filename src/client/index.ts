@@ -46,13 +46,6 @@ export type NearestQueryOptions<
   filter?: NonNullable<GeospatialQuery<Doc>["filter"]>;
 };
 
-/**
- * @deprecated Use `NearestQueryOptions` with `nearest` instead.
- */
-export type QueryNearestOptions<
-  Doc extends GeospatialDocument = GeospatialDocument,
-> = Pick<NearestQueryOptions<Doc>, "maxDistance" | "filter">;
-
 export interface GeospatialIndexOptions {
   /**
    * The minimum S2 cell level to use when querying. Defaults to 4.
@@ -199,7 +192,7 @@ export class GeospatialIndex<
     if (query.filter) {
       query.filter(filterBuilder);
     }
-    const resp = await ctx.runQuery(this.component.query.execute, {
+    const result = await ctx.runQuery(this.component.query.execute, {
       query: {
         rectangle: query.shape.rectangle,
         filtering: filterBuilder.filterConditions,
@@ -213,7 +206,7 @@ export class GeospatialIndex<
       maxCells: this.maxCells,
       logLevel: this.logLevel,
     });
-    return resp as {
+    return result as {
       results: { key: Key; coordinates: Point }[];
       nextCursor?: string;
     };
@@ -242,7 +235,7 @@ export class GeospatialIndex<
       filter(filterBuilder);
     }
 
-    const resp = await ctx.runQuery(this.component.query.nearestPoints, {
+    const result = await ctx.runQuery(this.component.query.nearestPoints, {
       point,
       maxDistance,
       maxResults: limit,
@@ -253,25 +246,7 @@ export class GeospatialIndex<
       filtering: filterBuilder.filterConditions,
       sorting: { interval: filterBuilder.interval ?? {} },
     });
-    return resp as { key: Key; coordinates: Point; distance: number }[];
-  }
-
-  /**
-   * Query for the nearest points to a given point.
-   *
-   * @deprecated Use `nearest(ctx, { point, limit, maxDistance, filter })` instead.
-   */
-  async queryNearest(
-    ctx: QueryCtx,
-    point: Point,
-    maxResults: number,
-    maxDistance?: number,
-  ) {
-    return this.nearest(ctx, {
-      point,
-      limit: maxResults,
-      maxDistance,
-    });
+    return result as { key: Key; coordinates: Point; distance: number }[];
   }
 
   /**
@@ -287,14 +262,13 @@ export class GeospatialIndex<
     rectangle: Rectangle,
     maxResolution?: number,
   ): Promise<{ token: string; vertices: Point[] }[]> {
-    const resp = await ctx.runQuery(this.component.query.debugCells, {
+    return await ctx.runQuery(this.component.query.debugCells, {
       rectangle,
       minLevel: this.minLevel,
       maxLevel: maxResolution ?? this.maxLevel,
       levelMod: this.levelMod,
       maxCells: this.maxCells,
     });
-    return resp;
   }
 }
 
