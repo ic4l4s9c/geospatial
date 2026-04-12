@@ -37,6 +37,14 @@ export type GeospatialDocument<
   sortKey: number;
 };
 
+type Narrow<T, Overrides extends Partial<T>> = Omit<T, keyof Overrides> &
+  Overrides;
+
+type Paginated<T> = {
+  results: T[];
+  nextCursor?: string;
+};
+
 export type NearestQueryOptions<
   Doc extends GeospatialDocument = GeospatialDocument,
 > = {
@@ -123,7 +131,7 @@ export class GeospatialIndex<
     coordinates: Point,
     filterKeys: Filters,
     sortKey?: number,
-  ) {
+  ): Promise<void> {
     await ctx.runMutation(this.component.document.insert, {
       document: {
         key,
@@ -150,7 +158,10 @@ export class GeospatialIndex<
     key: Key,
   ): Promise<GeospatialDocument<Key, Filters> | null> {
     const result = await ctx.runQuery(this.component.document.get, { key });
-    return result as GeospatialDocument<Key, Filters> | null;
+    return result as Narrow<
+      NonNullable<typeof result>,
+      { key: Key; filterKeys: Filters }
+    > | null;
   }
 
   /**
@@ -181,7 +192,7 @@ export class GeospatialIndex<
   async query(
     ctx: QueryCtx,
     query: GeospatialQuery<GeospatialDocument<Key, Filters>>,
-    cursor: string | undefined = undefined,
+    cursor?: string,
   ) {
     const filterBuilder = new FilterBuilderImpl<
       GeospatialDocument<Key, Filters>
@@ -203,10 +214,9 @@ export class GeospatialIndex<
       maxCells: this.maxCells,
       logLevel: this.logLevel,
     });
-    return result as {
-      results: { key: Key; coordinates: Point }[];
-      nextCursor?: string;
-    };
+    return result as Paginated<
+      Narrow<(typeof result.results)[number], { key: Key }>
+    >;
   }
 
   /**
@@ -243,7 +253,7 @@ export class GeospatialIndex<
       filtering: filterBuilder.filterConditions,
       sorting: { interval: filterBuilder.interval ?? {} },
     });
-    return result as { key: Key; coordinates: Point; distance: number }[];
+    return result as Narrow<(typeof result)[number], { key: Key }>[];
   }
 
   /**
