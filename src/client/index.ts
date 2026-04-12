@@ -118,7 +118,7 @@ export class GeospatialIndex<
    * @param key - The unique string key to associate with the coordinate.
    * @param coordinates - The geographic coordinate `{ latitude, longitude }` to associate with the key.
    * @param filterKeys - The filter keys to associate with the key.
-   * @param sortKey - The sort key to associate with the key, defaults to a randomly generated number.
+   * @param sortKey - The sort key to associate with the key, defaults to `Date.now()`.
    */
   async insert(
     ctx: MutationCtx,
@@ -132,7 +132,7 @@ export class GeospatialIndex<
         key,
         coordinates,
         filterKeys,
-        sortKey: sortKey ?? Math.random(),
+        sortKey: sortKey ?? Date.now(),
       },
       minLevel: this.minLevel,
       maxLevel: this.maxLevel,
