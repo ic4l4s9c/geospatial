@@ -12,7 +12,7 @@ import { Channel, ChannelClosedError } from "async-channel";
 import type { Doc } from "./_generated/dataModel.js";
 import { createLogger, logLevel } from "./lib/logging.js";
 import { S2Bindings } from "./lib/s2Bindings.js";
-import { ClosestPointQuery } from "./lib/pointQuery.js";
+import { ClosestPointQuery } from "./lib/closestPointQuery.js";
 import { PREFETCH_SIZE } from "./streams/constants.js";
 
 export { PREFETCH_SIZE } from "./streams/constants.js";

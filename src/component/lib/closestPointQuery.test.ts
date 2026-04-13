@@ -1,12 +1,12 @@
 import { convexTest } from "convex-test";
 import { expect, test } from "vitest";
 import { test as fcTest } from "@fast-check/vitest";
-import { arbitraryDocuments } from "./arbitrary.helpers.js";
+import { arbitraryDocuments } from "../tests/arbitrary.helpers.js";
 import schema from "../schema.js";
 import { modules } from "../test.setup.js";
-import { S2Bindings } from "../lib/s2Bindings.js";
-import { ClosestPointQuery } from "../lib/pointQuery.js";
-import { createLogger } from "../lib/logging.js";
+import { S2Bindings } from "./s2Bindings.js";
+import { ClosestPointQuery } from "./closestPointQuery.js";
+import { createLogger } from "./logging.js";
 import { api } from "../_generated/api.js";
 
 const opts = {

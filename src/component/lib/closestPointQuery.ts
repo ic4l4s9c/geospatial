@@ -28,9 +28,9 @@ export class ClosestPointQuery {
   results: Heap<Result>;
 
   maxDistanceChordAngle?: ChordAngle;
-  private mustFilters: FilterCondition[];
-  private shouldFilters: FilterCondition[];
-  private sortInterval: Interval;
+  private readonly mustFilters: FilterCondition[];
+  private readonly shouldFilters: FilterCondition[];
+  private readonly sortInterval: Interval;
   private readonly checkFilters: boolean;
   private static readonly FILTER_SUBDIVIDE_THRESHOLD = 8;
   private cellStreams = new Map<string, CellStreamState>();
@@ -137,13 +137,19 @@ export class ClosestPointQuery {
         }
       }
     }
-    const entries = this.results
-      .toArray()
-      .sort((a, b) => a.distance - b.distance);
-    const points = await Promise.all(entries.map((r) => ctx.db.get(r.pointID)));
+
+    const points = await Promise.all(
+      this.results
+        .toArray()
+        .sort((a, b) => a.distance - b.distance)
+        .map(async ({ pointID, distance }) => {
+          const point = await ctx.db.get(pointID);
+          return { point, distance };
+        }),
+    );
+
     const results = [];
-    for (let i = 0; i < entries.length; i++) {
-      const point = points[i];
+    for (const { point, distance } of points) {
       if (!point) {
         throw new Error("Point not found");
       }
@@ -153,7 +159,7 @@ export class ClosestPointQuery {
       results.push({
         key: point.key,
         coordinates: point.coordinates,
-        distance: this.s2.chordAngleToMeters(entries[i].distance),
+        distance: this.s2.chordAngleToMeters(distance),
       });
     }
     this.cellStreams.clear();
@@ -178,13 +184,10 @@ export class ClosestPointQuery {
     ) {
       return false;
     }
-    if (
+    return !(
       this.sortInterval.endExclusive !== undefined &&
       sortKey >= this.sortInterval.endExclusive
-    ) {
-      return false;
-    }
-    return true;
+    );
   }
 
   private getOrCreateStreamForCell(
@@ -297,7 +300,7 @@ export class ClosestPointQuery {
     return value === filter.filterValue;
   }
 
-  addCandidate(cellID: bigint, level: number, distance: ChordAngle) {
+  private addCandidate(cellID: bigint, level: number, distance: ChordAngle) {
     if (this.maxDistanceChordAngle && distance > this.maxDistanceChordAngle) {
       return;
     }
@@ -308,7 +311,7 @@ export class ClosestPointQuery {
     this.toProcess.push({ cellID, level, distance });
   }
 
-  popCandidate(): CellCandidate | null {
+  private popCandidate(): CellCandidate | null {
     const threshold = this.distanceThreshold();
     while (true) {
       const candidate = this.toProcess.pop();
@@ -322,7 +325,7 @@ export class ClosestPointQuery {
     return null;
   }
 
-  addResult(pointID: Id<"points">, point: Point) {
+  private addResult(pointID: Id<"points">, point: Point) {
     const distance = this.s2.pointDistance(this.point, point);
     const threshold = this.distanceThreshold();
     if (this.maxDistanceChordAngle && distance > this.maxDistanceChordAngle) {
@@ -337,7 +340,7 @@ export class ClosestPointQuery {
     this.results.push({ pointID, distance });
   }
 
-  distanceThreshold(): ChordAngle | undefined {
+  private distanceThreshold(): ChordAngle | undefined {
     const worstEntry = this.results.peek();
     if (worstEntry && this.results.size() >= this.maxResults) {
       if (
