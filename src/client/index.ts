@@ -1,7 +1,7 @@
 import type {
-  FunctionReference,
-  FunctionReturnType,
-  OptionalRestArgs,
+  GenericDataModel,
+  GenericMutationCtx,
+  GenericQueryCtx,
 } from "convex/server";
 import type { Point, Primitive, Rectangle } from "../component/validators.js";
 import { LOG_LEVELS, type LogLevel } from "../component/lib/logging.js";
@@ -282,21 +282,11 @@ export type FilterValue<
   FieldName extends keyof Doc["filterKeys"],
 > = ExtractArray<Doc["filterKeys"][FieldName]>;
 
-type QueryCtx = {
-  runQuery: <Query extends FunctionReference<"query", "public" | "internal">>(
-    query: Query,
-    ...args: OptionalRestArgs<Query>
-  ) => Promise<FunctionReturnType<Query>>;
-};
-
-type MutationCtx = {
-  runMutation: <
-    Mutation extends FunctionReference<"mutation", "public" | "internal">,
-  >(
-    mutation: Mutation,
-    ...args: OptionalRestArgs<Mutation>
-  ) => Promise<FunctionReturnType<Mutation>>;
-} & QueryCtx;
+type QueryCtx = Pick<GenericQueryCtx<GenericDataModel>, "runQuery">;
+type MutationCtx = Pick<
+  GenericMutationCtx<GenericDataModel>,
+  "runQuery" | "runMutation"
+>;
 
 export type FilterObject<Doc extends GeospatialDocument> = {
   [K in keyof Doc["filterKeys"] & string]: {
