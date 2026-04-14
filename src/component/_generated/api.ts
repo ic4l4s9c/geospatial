@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as debug from "../debug.js";
 import type * as document from "../document.js";
 import type * as lib_approximateCounter from "../lib/approximateCounter.js";
 import type * as lib_d64 from "../lib/d64.js";
@@ -38,6 +39,7 @@ import type {
 import { anyApi, componentsGeneric } from "convex/server";
 
 const fullApi: ApiFromModules<{
+  debug: typeof debug;
   document: typeof document;
   "lib/approximateCounter": typeof lib_approximateCounter;
   "lib/d64": typeof lib_d64;

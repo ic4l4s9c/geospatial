@@ -269,7 +269,7 @@ export class GeospatialIndex<
     rectangle: Rectangle,
     maxResolution?: number,
   ): Promise<{ token: string; vertices: Point[] }[]> {
-    return await ctx.runQuery(this.component.query.debugCells, {
+    return await ctx.runQuery(this.component.debug.cells, {
       rectangle,
       minLevel: this.minLevel,
       maxLevel: maxResolution ?? this.maxLevel,

@@ -45,38 +45,6 @@ const queryResultWithDistance = v.object({
   distance: v.number(),
 });
 
-export const debugCells = query({
-  args: {
-    rectangle,
-    minLevel: v.number(),
-    maxLevel: v.number(),
-    levelMod: v.number(),
-    maxCells: v.number(),
-  },
-  returns: v.array(
-    v.object({
-      token: v.string(),
-      vertices: v.array(point),
-    }),
-  ),
-  handler: async (ctx, args) => {
-    const s2 = await S2Bindings.load();
-    const cells = s2.coverRectangle(
-      args.rectangle,
-      args.minLevel,
-      args.maxLevel,
-      args.levelMod,
-      args.maxCells,
-    );
-    const result = cells.map((cell) => {
-      const token = s2.cellIDToken(cell);
-      const vertices = s2.cellVertexes(cell);
-      return { token, vertices };
-    });
-    return result;
-  },
-});
-
 const executeResult = v.object({
   results: v.array(queryResult),
   nextCursor: v.optional(v.string()),

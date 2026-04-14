@@ -23,6 +23,29 @@ import type { FunctionReference } from "convex/server";
  */
 export type ComponentApi<Name extends string | undefined = string | undefined> =
   {
+    debug: {
+      cells: FunctionReference<
+        "query",
+        "internal",
+        {
+          levelMod: number;
+          maxCells: number;
+          maxLevel: number;
+          minLevel: number;
+          rectangle: {
+            east: number;
+            north: number;
+            south: number;
+            west: number;
+          };
+        },
+        Array<{
+          token: string;
+          vertices: Array<{ latitude: number; longitude: number }>;
+        }>,
+        Name
+      >;
+    };
     document: {
       get: FunctionReference<
         "query",
@@ -85,27 +108,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
       >;
     };
     query: {
-      debugCells: FunctionReference<
-        "query",
-        "internal",
-        {
-          levelMod: number;
-          maxCells: number;
-          maxLevel: number;
-          minLevel: number;
-          rectangle: {
-            east: number;
-            north: number;
-            south: number;
-            west: number;
-          };
-        },
-        Array<{
-          token: string;
-          vertices: Array<{ latitude: number; longitude: number }>;
-        }>,
-        Name
-      >;
       execute: FunctionReference<
         "query",
         "internal",
