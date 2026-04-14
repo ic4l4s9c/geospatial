@@ -9,22 +9,21 @@ export const addBatch = internalMutation({
   handler: async (ctx, { count }) => {
     for (let i = 0; i < count; i++) {
       const name = FOOD_EMOJIS[Math.floor(Math.random() * FOOD_EMOJIS.length)];
-      const id = await ctx.db.insert("locations", {
-        name,
+      const id = await ctx.db.insert("locations", { name });
+      const latitude = randomInRange(10, 60);
+      const longitude = randomInRange(-100, -10);
+      await geospatial.insert(ctx, {
+        key: id,
+        coordinates: { latitude, longitude },
+        filterKeys: { name },
       });
-      const latitudeRange = [10, 60];
-      const longitudeRange = [-100, -10];
-      const latitude =
-        Math.random() * (latitudeRange[1] - latitudeRange[0]) +
-        latitudeRange[0];
-      const longitude =
-        Math.random() * (longitudeRange[1] - longitudeRange[0]) +
-        longitudeRange[0];
-      const point = { latitude, longitude };
-      await geospatial.insert(ctx, id, point, { name });
     }
   },
 });
+
+function randomInRange(min: number, max: number) {
+  return Math.random() * (max - min) + min;
+}
 
 export const addMany = action({
   args: { count: v.number(), batchSize: v.number(), parallelism: v.number() },

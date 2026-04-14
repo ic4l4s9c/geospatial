@@ -13,10 +13,12 @@ export const geospatial = new GeospatialIndex<
 export const addPoint = mutation({
   args: { point, name: v.string() },
   handler: async (ctx, { point, name }) => {
-    const id = await ctx.db.insert("locations", {
-      name,
+    const id = await ctx.db.insert("locations", { name });
+    await geospatial.insert(ctx, {
+      key: id,
+      coordinates: point,
+      filterKeys: { name },
     });
-    await geospatial.insert(ctx, id, point, { name });
   },
 });
 
