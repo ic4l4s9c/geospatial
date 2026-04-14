@@ -19,10 +19,12 @@ if (typeof Convex === "undefined") {
   );
 }
 
-export const DEFAULT_MIN_LEVEL = 4;
-export const DEFAULT_MAX_LEVEL = 16;
-export const DEFAULT_MAX_CELLS = 8;
-export const DEFAULT_LEVEL_MOD = 2;
+export const GEOSPATIAL_DEFAULTS = {
+  minLevel: 4,
+  maxLevel: 16,
+  maxCells: 8,
+  levelMod: 2,
+} satisfies Required<Omit<GeospatialIndexOptions, "logLevel">>;
 
 export type GeospatialFilters = Record<string, Primitive | Primitive[]>;
 export type GeospatialDocument<
@@ -85,12 +87,7 @@ export class GeospatialIndex<
   Key extends string = string,
   Filters extends GeospatialFilters = GeospatialFilters,
 > {
-  logLevel: LogLevel;
-
-  minLevel: number;
-  maxLevel: number;
-  levelMod: number;
-  maxCells: number;
+  readonly #config: Required<GeospatialIndexOptions>;
 
   /**
    * Create a new geospatial index, powered by S2 and Convex. This index maps unique string keys to geographic coordinates
@@ -113,11 +110,13 @@ export class GeospatialIndex<
         );
       }
     }
-    this.logLevel = options?.logLevel ?? DEFAULT_LOG_LEVEL;
-    this.minLevel = options?.minLevel ?? DEFAULT_MIN_LEVEL;
-    this.maxLevel = options?.maxLevel ?? DEFAULT_MAX_LEVEL;
-    this.levelMod = options?.levelMod ?? DEFAULT_LEVEL_MOD;
-    this.maxCells = options?.maxCells ?? DEFAULT_MAX_CELLS;
+    this.#config = {
+      logLevel: options?.logLevel ?? DEFAULT_LOG_LEVEL,
+      minLevel: options?.minLevel ?? GEOSPATIAL_DEFAULTS.minLevel,
+      maxLevel: options?.maxLevel ?? GEOSPATIAL_DEFAULTS.maxLevel,
+      levelMod: options?.levelMod ?? GEOSPATIAL_DEFAULTS.levelMod,
+      maxCells: options?.maxCells ?? GEOSPATIAL_DEFAULTS.maxCells,
+    };
   }
 
   /**
@@ -140,10 +139,10 @@ export class GeospatialIndex<
         filterKeys,
         sortKey: sortKey ?? Date.now(),
       },
-      minLevel: this.minLevel,
-      maxLevel: this.maxLevel,
-      levelMod: this.levelMod,
-      maxCells: this.maxCells,
+      minLevel: this.#config.minLevel,
+      maxLevel: this.#config.maxLevel,
+      levelMod: this.#config.levelMod,
+      maxCells: this.#config.maxCells,
     });
   }
 
@@ -175,10 +174,10 @@ export class GeospatialIndex<
   async delete(ctx: MutationCtx, key: Key): Promise<boolean> {
     return await ctx.runMutation(this.component.document.remove, {
       key,
-      minLevel: this.minLevel,
-      maxLevel: this.maxLevel,
-      levelMod: this.levelMod,
-      maxCells: this.maxCells,
+      minLevel: this.#config.minLevel,
+      maxLevel: this.#config.maxLevel,
+      levelMod: this.#config.levelMod,
+      maxCells: this.#config.maxCells,
     });
   }
 
@@ -209,11 +208,11 @@ export class GeospatialIndex<
         maxResults: query.limit ?? 64,
       },
       cursor,
-      minLevel: this.minLevel,
-      maxLevel: this.maxLevel,
-      levelMod: this.levelMod,
-      maxCells: this.maxCells,
-      logLevel: this.logLevel,
+      minLevel: this.#config.minLevel,
+      maxLevel: this.#config.maxLevel,
+      levelMod: this.#config.levelMod,
+      maxCells: this.#config.maxCells,
+      logLevel: this.#config.logLevel,
     });
     return result as Paginated<
       Narrow<(typeof result.results)[number], { key: Key }>
@@ -247,10 +246,10 @@ export class GeospatialIndex<
       point,
       maxDistance,
       maxResults: limit,
-      minLevel: this.minLevel,
-      maxLevel: this.maxLevel,
-      levelMod: this.levelMod,
-      logLevel: this.logLevel,
+      minLevel: this.#config.minLevel,
+      maxLevel: this.#config.maxLevel,
+      levelMod: this.#config.levelMod,
+      logLevel: this.#config.logLevel,
       filtering: filterBuilder.filterConditions,
       sorting: { interval: filterBuilder.interval ?? {} },
     });
@@ -272,10 +271,10 @@ export class GeospatialIndex<
   ): Promise<{ token: string; vertices: Point[] }[]> {
     return await ctx.runQuery(this.component.debug.cells, {
       rectangle,
-      minLevel: this.minLevel,
-      maxLevel: maxResolution ?? this.maxLevel,
-      levelMod: this.levelMod,
-      maxCells: this.maxCells,
+      minLevel: this.#config.minLevel,
+      maxLevel: maxResolution ?? this.#config.maxLevel,
+      levelMod: this.#config.levelMod,
+      maxCells: this.#config.maxCells,
     });
   }
 }
