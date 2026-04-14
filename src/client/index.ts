@@ -2,6 +2,7 @@ import type {
   GenericDataModel,
   GenericMutationCtx,
   GenericQueryCtx,
+  PaginationResult,
 } from "convex/server";
 import type { Point, Primitive, Rectangle } from "../component/validators.js";
 import { LOG_LEVELS, type LogLevel } from "../component/lib/logging.js";
@@ -39,11 +40,6 @@ export type GeospatialDocument<
 
 type Narrow<T, Overrides extends Partial<T>> = Omit<T, keyof Overrides> &
   Overrides;
-
-type Paginated<T> = {
-  results: T[];
-  nextCursor?: string;
-};
 
 export type InsertOptions<
   Key extends string = string,
@@ -214,8 +210,8 @@ export class GeospatialIndex<
       maxCells: this.#config.maxCells,
       logLevel: this.#config.logLevel,
     });
-    return result as Paginated<
-      Narrow<(typeof result.results)[number], { key: Key }>
+    return result as PaginationResult<
+      Narrow<(typeof result.page)[number], { key: Key }>
     >;
   }
 

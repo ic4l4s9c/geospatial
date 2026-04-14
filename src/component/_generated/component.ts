@@ -137,11 +137,14 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           };
         },
         {
-          nextCursor?: string;
-          results: Array<{
+          continueCursor: string;
+          isDone: boolean;
+          page: Array<{
             coordinates: { latitude: number; longitude: number };
             key: string;
           }>;
+          pageStatus?: "SplitRecommended" | "SplitRequired" | null;
+          splitCursor?: string | null;
         },
         Name
       >;

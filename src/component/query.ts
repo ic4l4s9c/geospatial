@@ -14,6 +14,7 @@ import { createLogger, logLevel } from "./lib/logging.js";
 import { S2Bindings } from "./lib/s2Bindings.js";
 import { ClosestPointQuery } from "./lib/closestPointQuery.js";
 import { PREFETCH_SIZE } from "./streams/constants.js";
+import { paginationResultValidator } from "convex/server";
 
 export { PREFETCH_SIZE } from "./streams/constants.js";
 
@@ -45,10 +46,7 @@ const queryResultWithDistance = v.object({
   distance: v.number(),
 });
 
-const executeResult = v.object({
-  results: v.array(queryResult),
-  nextCursor: v.optional(v.string()),
-});
+const executePaginationResult = paginationResultValidator(queryResult)
 
 export const execute = query({
   args: {
@@ -60,7 +58,7 @@ export const execute = query({
     maxCells: v.number(),
     logLevel,
   },
-  returns: executeResult,
+  returns: executePaginationResult,
   handler: async (ctx, args) => {
     const logger = createLogger(args.logLevel);
 
@@ -78,7 +76,7 @@ export const execute = query({
       }
       if (sorting.interval.startInclusive === sorting.interval.endExclusive) {
         logger.debug("Interval is empty, returning no results");
-        return { results: [] };
+        return { page: [], isDone: true, continueCursor: "" };
       }
     }
     const { rectangle } = args.query;
@@ -180,8 +178,8 @@ export const execute = query({
       }
       logger.debug("Producer shutting down");
     };
-    const results: { key: string; coordinates: Point }[] = [];
-    let nextCursor: TupleKey | undefined = undefined;
+    const page: { key: string; coordinates: Point }[] = [];
+    let continueCursor: TupleKey | undefined = undefined;
     const consumer = async () => {
       try {
         for await (const { tupleKey, docPromise } of channel) {
@@ -195,27 +193,27 @@ export const execute = query({
             stats.rowsPostFiltered++;
             continue;
           }
-          results.push({
+          page.push({
             key: doc.key,
             coordinates: doc.coordinates,
           });
-          if (results.length >= args.query.maxResults) {
+          if (page.length >= args.query.maxResults) {
             logger.debug(
               `Consumer reached max results of ${args.query.maxResults} at ${tupleKey}`,
             );
-            nextCursor = tupleKey;
+            continueCursor = tupleKey;
             return;
           }
           if (stats.rowsRead >= 1024) {
             logger.warn(
               `Consumer reached Convex query limit of 1024 rows at ${tupleKey}`,
             );
-            nextCursor = tupleKey;
+            continueCursor = tupleKey;
             return;
           }
         }
         logger.debug(`Consumer reached end of stream`);
-        nextCursor = undefined;
+        continueCursor = undefined;
         return;
       } finally {
         if (!channel.closed) {
@@ -226,10 +224,14 @@ export const execute = query({
       }
     };
     await Promise.all([producer(), consumer()]);
-    logger.info(`Found ${results.length} results (${JSON.stringify(stats)})`);
+    logger.info(`Found ${page.length} results (${JSON.stringify(stats)})`);
     logger.timeEnd("execute");
 
-    return { results, nextCursor };
+    return {
+      page,
+      continueCursor: continueCursor ?? "",
+      isDone: continueCursor === undefined,
+    };
   },
 });
 
