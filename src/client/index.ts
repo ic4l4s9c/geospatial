@@ -174,7 +174,7 @@ export class GeospatialIndex<
    * @param key - The unique string key to remove from the index.
    * @returns - `true` if the key was found and removed, `false` otherwise.
    */
-  async remove(ctx: MutationCtx, key: Key): Promise<boolean> {
+  async delete(ctx: MutationCtx, key: Key): Promise<boolean> {
     return await ctx.runMutation(this.component.document.remove, {
       key,
       minLevel: this.minLevel,
