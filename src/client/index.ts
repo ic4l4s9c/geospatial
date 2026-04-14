@@ -45,6 +45,12 @@ type Paginated<T> = {
   nextCursor?: string;
 };
 
+export type InsertOptions<
+  Key extends string = string,
+  Filters extends GeospatialFilters = GeospatialFilters,
+> = Omit<GeospatialDocument<Key, Filters>, "sortKey"> &
+  Partial<Pick<GeospatialDocument<Key, Filters>, "sortKey">>;
+
 export type NearestQueryOptions<
   Doc extends GeospatialDocument = GeospatialDocument,
 > = {
@@ -127,10 +133,7 @@ export class GeospatialIndex<
    */
   async insert(
     ctx: MutationCtx,
-    key: Key,
-    coordinates: Point,
-    filterKeys: Filters,
-    sortKey?: number,
+    { key, coordinates, filterKeys, sortKey }: InsertOptions<Key, Filters>,
   ): Promise<void> {
     await ctx.runMutation(this.component.document.insert, {
       document: {
