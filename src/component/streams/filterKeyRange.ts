@@ -1,7 +1,7 @@
 import type { QueryCtx } from "../_generated/server.js";
 import type { Interval } from "../lib/interval.js";
 import type { Logger } from "../lib/logging.js";
-import { toKey as serialize, type Primitive } from "../lib/primitive.js";
+import { toKey as serialize, type Primitive } from "../validators/primitive.js";
 import { encodeBound, type TupleKey } from "../lib/tupleKey.js";
 import { DatabaseRange } from "./databaseRange.js";
 import type { Stats } from "./zigzag.js";

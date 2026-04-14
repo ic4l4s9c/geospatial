@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { query } from "./_generated/server.js";
 import { S2Bindings } from "./lib/s2Bindings.js";
-import { point, rectangle } from "./types.js";
+import { point, rectangle } from "./validators.js";
 
 export const cells = query({
   args: {

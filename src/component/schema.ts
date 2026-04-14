@@ -1,6 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
-import { point, primitive } from "./types.js";
+import { point, primitive } from "./validators.js";
 
 export default defineSchema({
   points: defineTable({

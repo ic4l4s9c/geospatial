@@ -1,7 +1,7 @@
 import { v, type Infer } from "convex/values";
 
-export type { Primitive } from "./lib/primitive.js";
-export { primitive } from "./lib/primitive.js";
+export type { Primitive } from "./validators/primitive.js";
+export { primitive } from "./validators/primitive.js";
 
 // Latitudes are in degrees.
 export const latitude = v.number();
@@ -16,10 +16,6 @@ export const point = v.object({
   longitude,
 });
 export type Point = Infer<typeof point>;
-
-export function pointToArray(p: Point): [number, number] {
-  return [p.latitude, p.longitude];
-}
 
 export const rectangle = v.object({
   west: longitude,

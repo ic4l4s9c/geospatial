@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { type Point, point, primitive, rectangle } from "./types.js";
+import { type Point, point, primitive, rectangle } from "./validators.js";
 import { query } from "./_generated/server.js";
 import type { PointSet, Stats } from "./streams/zigzag.js";
 import { Intersection } from "./streams/intersection.js";

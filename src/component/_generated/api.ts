@@ -16,7 +16,6 @@ import type * as lib_d64 from "../lib/d64.js";
 import type * as lib_goRuntime from "../lib/goRuntime.js";
 import type * as lib_interval from "../lib/interval.js";
 import type * as lib_logging from "../lib/logging.js";
-import type * as lib_primitive from "../lib/primitive.js";
 import type * as lib_s2Bindings from "../lib/s2Bindings.js";
 import type * as lib_s2wasm from "../lib/s2wasm.js";
 import type * as lib_tupleKey from "../lib/tupleKey.js";
@@ -29,7 +28,8 @@ import type * as streams_filterKeyRange from "../streams/filterKeyRange.js";
 import type * as streams_intersection from "../streams/intersection.js";
 import type * as streams_union from "../streams/union.js";
 import type * as streams_zigzag from "../streams/zigzag.js";
-import type * as types from "../types.js";
+import type * as validators from "../validators.js";
+import type * as validators_primitive from "../validators/primitive.js";
 
 import type {
   ApiFromModules,
@@ -47,7 +47,6 @@ const fullApi: ApiFromModules<{
   "lib/goRuntime": typeof lib_goRuntime;
   "lib/interval": typeof lib_interval;
   "lib/logging": typeof lib_logging;
-  "lib/primitive": typeof lib_primitive;
   "lib/s2Bindings": typeof lib_s2Bindings;
   "lib/s2wasm": typeof lib_s2wasm;
   "lib/tupleKey": typeof lib_tupleKey;
@@ -60,7 +59,8 @@ const fullApi: ApiFromModules<{
   "streams/intersection": typeof streams_intersection;
   "streams/union": typeof streams_union;
   "streams/zigzag": typeof streams_zigzag;
-  types: typeof types;
+  validators: typeof validators;
+  "validators/primitive": typeof validators_primitive;
 }> = anyApi as any;
 
 /**

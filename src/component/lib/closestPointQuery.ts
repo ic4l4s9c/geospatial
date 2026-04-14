@@ -1,5 +1,5 @@
 import { Heap } from "heap-js";
-import type { ChordAngle, Meters, Point, Primitive } from "../types.js";
+import type { ChordAngle, Meters, Point, Primitive } from "../validators.js";
 import type { Doc, Id } from "../_generated/dataModel.js";
 import { S2Bindings } from "./s2Bindings.js";
 import type { QueryCtx } from "../_generated/server.js";
