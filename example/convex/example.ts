@@ -71,7 +71,7 @@ export const search = query({
     nextCursor: v.optional(v.string()),
   }),
   async handler(ctx, args) {
-    const { results, nextCursor } = await geospatial.query(
+    const { page, continueCursor } = await geospatial.query(
       ctx,
       {
         shape: {
@@ -92,7 +92,7 @@ export const search = query({
       args.cursor,
     );
     const rows = await Promise.all(
-      results.map(async (result) => {
+      page.map(async (result) => {
         const row = await ctx.db.get(result.key);
         if (!row) {
           throw new Error("Invalid locationId");
@@ -102,7 +102,7 @@ export const search = query({
     );
     return {
       rows,
-      nextCursor,
+      nextCursor: continueCursor,
     };
   },
 });
