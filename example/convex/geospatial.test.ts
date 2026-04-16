@@ -1,5 +1,5 @@
 import geospatialTest from "@convex-dev/geospatial/test";
-import { expect, test, describe } from "vitest";
+import { expect, test, describe, vi } from "vitest";
 import { convexTest } from "convex-test";
 import schema from "./schema";
 import type { GeospatialFilters } from "@convex-dev/geospatial";
@@ -28,12 +28,51 @@ const SF_POINT = { latitude: 37.75, longitude: -122.45 };
 const SF_CITY_HALL = { latitude: 37.7793, longitude: -122.4193 };
 const SF_GOLDEN_GATE = { latitude: 37.8199, longitude: -122.4783 };
 const LONDON_POINT = { latitude: 51.5074, longitude: -0.1278 };
+const SYDNEY_POINT = { latitude: -33.8688, longitude: 151.2093 };
 
 const SF_SHAPE = { type: "rectangle" as const, rectangle: SF_RECTANGLE };
 const LONDON_SHAPE = {
   type: "rectangle" as const,
   rectangle: LONDON_RECTANGLE,
 };
+
+describe("constructor", () => {
+  test("invalid GEOSPATIAL_LOG_LEVEL env var falls back to INFO without throwing", async () => {
+    const originalEnv = process.env.GEOSPATIAL_LOG_LEVEL;
+    process.env.GEOSPATIAL_LOG_LEVEL = "INVALID_LEVEL";
+    const warnSpy = vi.spyOn(console, "warn");
+    try {
+      const t = initConvexTest();
+      await t.run(async () => {
+        const geo = await initGeospatial();
+        expect(geo).toBeDefined();
+      });
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("INVALID_LEVEL"),
+      );
+    } finally {
+      process.env.GEOSPATIAL_LOG_LEVEL = originalEnv;
+      warnSpy.mockRestore();
+    }
+  });
+
+  test("valid GEOSPATIAL_LOG_LEVEL env var is accepted without warning", async () => {
+    const originalEnv = process.env.GEOSPATIAL_LOG_LEVEL;
+    process.env.GEOSPATIAL_LOG_LEVEL = "DEBUG";
+    const warnSpy = vi.spyOn(console, "warn");
+    try {
+      const t = initConvexTest();
+      await t.run(async () => {
+        const geo = await initGeospatial();
+        expect(geo).toBeDefined();
+      });
+      expect(warnSpy).not.toHaveBeenCalled();
+    } finally {
+      process.env.GEOSPATIAL_LOG_LEVEL = originalEnv;
+      warnSpy.mockRestore();
+    }
+  });
+});
 
 describe("insert + get", () => {
   test("inserted document is returned by get with all fields intact", async () => {
@@ -162,6 +201,102 @@ describe("insert + get", () => {
       });
       const doc = await geo.get(ctx, "multi-tag");
       expect(doc?.filterKeys.tags).toEqual(["coffee", "wifi"]);
+    });
+  });
+
+  test("coordinates with negative latitude and positive longitude are stored correctly", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial();
+      await geo.insert(ctx, {
+        key: "sydney",
+        coordinates: SYDNEY_POINT,
+        filterKeys: { name: "Sydney" },
+        sortKey: 1,
+      });
+      const doc = await geo.get(ctx, "sydney");
+      expect(doc?.coordinates.latitude).toBeCloseTo(SYDNEY_POINT.latitude);
+      expect(doc?.coordinates.longitude).toBeCloseTo(SYDNEY_POINT.longitude);
+    });
+  });
+
+  test("empty filterKeys object is stored and returned correctly", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial<string, Record<string, never>>();
+      await geo.insert(ctx, {
+        key: "no-filters",
+        coordinates: SF_POINT,
+        filterKeys: {},
+        sortKey: 1,
+      });
+      const doc = await geo.get(ctx, "no-filters");
+      expect(doc?.filterKeys).toEqual({});
+    });
+  });
+
+  test("negative sortKey is stored and returned exactly", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial();
+      await geo.insert(ctx, {
+        key: "neg-sort",
+        coordinates: SF_POINT,
+        filterKeys: { name: "Neg" },
+        sortKey: -42,
+      });
+      const doc = await geo.get(ctx, "neg-sort");
+      expect(doc?.sortKey).toBe(-42);
+    });
+  });
+
+  test("large sortKey at timestamp scale is stored exactly", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial();
+      const ts = 1_700_000_000_000;
+      await geo.insert(ctx, {
+        key: "ts-sort",
+        coordinates: SF_POINT,
+        filterKeys: { name: "TS" },
+        sortKey: ts,
+      });
+      const doc = await geo.get(ctx, "ts-sort");
+      expect(doc?.sortKey).toBe(ts);
+    });
+  });
+
+  test("fractional sortKey is stored and returned correctly", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial();
+      await geo.insert(ctx, {
+        key: "float-sort",
+        coordinates: SF_POINT,
+        filterKeys: { name: "Float" },
+        sortKey: 3.14,
+      });
+      const doc = await geo.get(ctx, "float-sort");
+      expect(doc?.sortKey).toBeCloseTo(3.14);
+    });
+  });
+
+  test("filterKeys with mixed primitive types are stored and returned correctly", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial<
+        string,
+        { score: number; active: boolean }
+      >();
+      await geo.insert(ctx, {
+        key: "mixed",
+        coordinates: SF_POINT,
+        filterKeys: { score: 99, active: true },
+        sortKey: 1,
+      });
+      const doc = await geo.get(ctx, "mixed");
+      expect(doc?.filterKeys.score).toBe(99);
+      expect(doc?.filterKeys.active).toBe(true);
     });
   });
 });
@@ -392,7 +527,6 @@ describe("query", () => {
         filterKeys: { name: "Cafe", category: "french" },
         sortKey: 2,
       });
-
       const result = await geo.query(ctx, {
         shape: SF_SHAPE,
         limit: 10,
@@ -426,7 +560,6 @@ describe("query", () => {
         filterKeys: { name: "Gamma" },
         sortKey: 3,
       });
-
       const result = await geo.query(ctx, {
         shape: SF_SHAPE,
         limit: 10,
@@ -523,7 +656,6 @@ describe("query", () => {
         string,
         { name: string; category: string }
       >();
-
       await geo.insert(ctx, {
         key: "italian-cafe",
         coordinates: SF_CITY_HALL,
@@ -542,7 +674,6 @@ describe("query", () => {
         filterKeys: { name: "Cafe", category: "french" },
         sortKey: 3,
       });
-
       const result = await geo.query(ctx, {
         shape: SF_SHAPE,
         limit: 10,
@@ -568,13 +699,11 @@ describe("query", () => {
           sortKey: i,
         });
       }
-
       const result = await geo.query(ctx, {
         shape: SF_SHAPE,
         limit: 20,
         filter: (q) => q.gte("sortKey", 0).gte("sortKey", -1),
       });
-
       const keys = result.page.map((d) => d.key);
       expect(keys).toContain("item-0");
       expect(keys).toContain("item-1");
@@ -597,13 +726,11 @@ describe("query", () => {
           sortKey: i,
         });
       }
-
       const result = await geo.query(ctx, {
         shape: SF_SHAPE,
         limit: 20,
         filter: (q) => q.lt("sortKey", 0).lt("sortKey", 1),
       });
-
       const keys = result.page.map((d) => d.key);
       expect(keys).toContain("item-neg1");
       expect(keys).toContain("item-neg2");
@@ -636,13 +763,11 @@ describe("query", () => {
         filterKeys: { name: "Negative" },
         sortKey: -1,
       });
-
       const result = await geo.query(ctx, {
         shape: SF_SHAPE,
         limit: 20,
         filter: (q) => q.gte("sortKey", 0),
       });
-
       const keys = result.page.map((d) => d.key);
       expect(keys).toContain("positive");
       expect(keys).toContain("zero");
@@ -672,13 +797,11 @@ describe("query", () => {
         filterKeys: { name: "Negative" },
         sortKey: -1,
       });
-
       const result = await geo.query(ctx, {
         shape: SF_SHAPE,
         limit: 20,
         filter: (q) => q.lt("sortKey", 0),
       });
-
       const keys = result.page.map((d) => d.key);
       expect(keys).not.toContain("positive");
       expect(keys).not.toContain("zero");
@@ -698,10 +821,8 @@ describe("query", () => {
           sortKey: i,
         });
       }
-
       const page1 = await geo.query(ctx, { shape: SF_SHAPE, limit: 3 });
       expect(page1.page.length).toBeGreaterThan(0);
-
       if (!page1.isDone) {
         const page2 = await geo.query(
           ctx,
@@ -770,6 +891,98 @@ describe("query", () => {
       const result = await geo.query(ctx, { shape: LONDON_SHAPE, limit: 10 });
       const keys = result.page.map((d) => d.key);
       expect(keys).not.toContain("sf-doc");
+    });
+  });
+
+  test("deleted document does not appear in query results", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial();
+      await geo.insert(ctx, {
+        key: "del",
+        coordinates: SF_CITY_HALL,
+        filterKeys: { name: "Del" },
+        sortKey: 1,
+      });
+      await geo.delete(ctx, "del");
+      const result = await geo.query(ctx, { shape: SF_SHAPE, limit: 10 });
+      expect(result.page.map((d) => d.key)).not.toContain("del");
+    });
+  });
+
+  test("isDone is false when there are more results than the limit", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial();
+      for (let i = 0; i < 10; i++) {
+        await geo.insert(ctx, {
+          key: `many-${i}`,
+          coordinates: { latitude: 37.75 + i * 0.001, longitude: -122.45 },
+          filterKeys: { name: `Many ${i}` },
+          sortKey: i,
+        });
+      }
+      const result = await geo.query(ctx, { shape: SF_SHAPE, limit: 2 });
+      expect(result.isDone).toBe(false);
+    });
+  });
+
+  test("continueCursor is always a string", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial();
+      const result = await geo.query(ctx, { shape: SF_SHAPE, limit: 10 });
+      expect(typeof result.continueCursor).toBe("string");
+    });
+  });
+
+  test("paginating through all results yields every document exactly once", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial();
+      const total = 7;
+      for (let i = 0; i < total; i++) {
+        await geo.insert(ctx, {
+          key: `pg-${i}`,
+          coordinates: { latitude: 37.75 + i * 0.001, longitude: -122.45 },
+          filterKeys: { name: `Pg ${i}` },
+          sortKey: i,
+        });
+      }
+      const allKeys: string[] = [];
+      let cursor: string | undefined;
+      let done = false;
+      while (!done) {
+        const result = await geo.query(
+          ctx,
+          { shape: SF_SHAPE, limit: 3 },
+          cursor,
+        );
+        allKeys.push(...result.page.map((d) => d.key));
+        done = result.isDone;
+        cursor = result.continueCursor;
+      }
+      expect(allKeys).toHaveLength(total);
+      expect(new Set(allKeys).size).toBe(total);
+    });
+  });
+
+  test("eq filter with no matching value returns an empty page", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial();
+      await geo.insert(ctx, {
+        key: "x",
+        coordinates: SF_CITY_HALL,
+        filterKeys: { name: "X" },
+        sortKey: 1,
+      });
+      const result = await geo.query(ctx, {
+        shape: SF_SHAPE,
+        limit: 10,
+        filter: (q) => q.eq("name", "NonExistent"),
+      });
+      expect(result.page).toHaveLength(0);
     });
   });
 });
@@ -1017,6 +1230,206 @@ describe("nearest", () => {
       expect(keys).not.toContain("item-5");
     });
   });
+
+  test("each nearest result includes a non-negative distance field", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial();
+      await geo.insert(ctx, {
+        key: "close",
+        coordinates: { latitude: 37.7501, longitude: -122.4501 },
+        filterKeys: { name: "Close" },
+        sortKey: 1,
+      });
+      const result = await geo.nearest(ctx, { point: SF_POINT, limit: 1 });
+      expect(result[0]).toHaveProperty("distance");
+      expect(typeof result[0].distance).toBe("number");
+      expect(result[0].distance).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  test("distance values in nearest results are non-decreasing", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial();
+      for (let i = 1; i <= 4; i++) {
+        await geo.insert(ctx, {
+          key: `dist-${i}`,
+          coordinates: { latitude: 37.75 + i * 0.01, longitude: -122.45 },
+          filterKeys: { name: `Dist ${i}` },
+          sortKey: i,
+        });
+      }
+      const result = await geo.nearest(ctx, { point: SF_POINT, limit: 4 });
+      for (let i = 1; i < result.length; i++) {
+        expect(result[i].distance).toBeGreaterThanOrEqual(
+          result[i - 1].distance,
+        );
+      }
+    });
+  });
+
+  test("fewer documents than limit returns all available documents", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial();
+      await geo.insert(ctx, {
+        key: "only",
+        coordinates: { latitude: 37.7501, longitude: -122.4501 },
+        filterKeys: { name: "Only" },
+        sortKey: 1,
+      });
+      const result = await geo.nearest(ctx, { point: SF_POINT, limit: 100 });
+      expect(result).toHaveLength(1);
+    });
+  });
+
+  test("deleted document does not appear in nearest results", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial();
+      await geo.insert(ctx, {
+        key: "gone",
+        coordinates: { latitude: 37.7501, longitude: -122.4501 },
+        filterKeys: { name: "Gone" },
+        sortKey: 1,
+      });
+      await geo.delete(ctx, "gone");
+      const result = await geo.nearest(ctx, { point: SF_POINT, limit: 10 });
+      expect(result.map((d) => d.key)).not.toContain("gone");
+    });
+  });
+
+  test("eq filter with no matching value returns an empty array", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial();
+      await geo.insert(ctx, {
+        key: "x",
+        coordinates: SF_CITY_HALL,
+        filterKeys: { name: "X" },
+        sortKey: 1,
+      });
+      const result = await geo.nearest(ctx, {
+        point: SF_POINT,
+        limit: 10,
+        filter: (q) => q.eq("name", "NoMatch"),
+      });
+      expect(result).toHaveLength(0);
+    });
+  });
+
+  test("maxDistance combined with eq filter excludes documents that are close but do not match the filter", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial<string, { category: string }>();
+      await geo.insert(ctx, {
+        key: "close-coffee",
+        coordinates: { latitude: 37.7501, longitude: -122.4501 },
+        filterKeys: { category: "coffee" },
+        sortKey: 1,
+      });
+      await geo.insert(ctx, {
+        key: "close-hotel",
+        coordinates: { latitude: 37.7502, longitude: -122.4502 },
+        filterKeys: { category: "hotel" },
+        sortKey: 2,
+      });
+      await geo.insert(ctx, {
+        key: "far-coffee",
+        coordinates: LONDON_POINT,
+        filterKeys: { category: "coffee" },
+        sortKey: 3,
+      });
+      const result = await geo.nearest(ctx, {
+        point: SF_POINT,
+        limit: 10,
+        maxDistance: 1000,
+        filter: (q) => q.eq("category", "coffee"),
+      });
+      const keys = result.map((d) => d.key);
+      expect(keys).toContain("close-coffee");
+      expect(keys).not.toContain("close-hotel");
+      expect(keys).not.toContain("far-coffee");
+    });
+  });
+
+  test("maxDistance combined with in filter excludes documents outside distance or not in the set", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial<string, { category: string }>();
+      await geo.insert(ctx, {
+        key: "close-coffee",
+        coordinates: { latitude: 37.7501, longitude: -122.4501 },
+        filterKeys: { category: "coffee" },
+        sortKey: 1,
+      });
+      await geo.insert(ctx, {
+        key: "close-tea",
+        coordinates: { latitude: 37.7502, longitude: -122.4502 },
+        filterKeys: { category: "tea" },
+        sortKey: 2,
+      });
+      await geo.insert(ctx, {
+        key: "close-hotel",
+        coordinates: { latitude: 37.7503, longitude: -122.4503 },
+        filterKeys: { category: "hotel" },
+        sortKey: 3,
+      });
+      await geo.insert(ctx, {
+        key: "far-coffee",
+        coordinates: LONDON_POINT,
+        filterKeys: { category: "coffee" },
+        sortKey: 4,
+      });
+      const result = await geo.nearest(ctx, {
+        point: SF_POINT,
+        limit: 10,
+        maxDistance: 1000,
+        filter: (q) => q.in("category", ["coffee", "tea"]),
+      });
+      const keys = result.map((d) => d.key);
+      expect(keys).toContain("close-coffee");
+      expect(keys).toContain("close-tea");
+      expect(keys).not.toContain("close-hotel");
+      expect(keys).not.toContain("far-coffee");
+    });
+  });
+
+  test("maxDistance combined with gte + lt sortKey filter excludes documents outside either constraint", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial();
+      await geo.insert(ctx, {
+        key: "close-in-range",
+        coordinates: { latitude: 37.7501, longitude: -122.4501 },
+        filterKeys: { name: "A" },
+        sortKey: 15,
+      });
+      await geo.insert(ctx, {
+        key: "close-out-of-range",
+        coordinates: { latitude: 37.7502, longitude: -122.4502 },
+        filterKeys: { name: "B" },
+        sortKey: 5,
+      });
+      await geo.insert(ctx, {
+        key: "far-in-range",
+        coordinates: LONDON_POINT,
+        filterKeys: { name: "C" },
+        sortKey: 15,
+      });
+      const result = await geo.nearest(ctx, {
+        point: SF_POINT,
+        limit: 10,
+        maxDistance: 1000,
+        filter: (q) => q.gte("sortKey", 10).lt("sortKey", 30),
+      });
+      const keys = result.map((d) => d.key);
+      expect(keys).toContain("close-in-range");
+      expect(keys).not.toContain("close-out-of-range");
+      expect(keys).not.toContain("far-in-range");
+    });
+  });
 });
 
 describe("debugCells", () => {
@@ -1116,6 +1529,30 @@ describe("debugCells", () => {
       for (const cell of result) {
         expect(cell.vertices).toHaveLength(4);
       }
+    });
+  });
+
+  test("a very small rectangle still returns at least one cell", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial();
+      const tinyRect = {
+        north: 37.7501,
+        south: 37.75,
+        east: -122.4499,
+        west: -122.45,
+      };
+      const result = await geo.debugCells(ctx, tinyRect);
+      expect(result.length).toBeGreaterThan(0);
+    });
+  });
+
+  test("maxResolution equal to minLevel (4) still returns cells", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial();
+      const result = await geo.debugCells(ctx, SF_RECTANGLE, 4);
+      expect(result.length).toBeGreaterThan(0);
     });
   });
 });
