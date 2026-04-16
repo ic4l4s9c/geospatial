@@ -11,7 +11,7 @@ export abstract class DatabaseRange implements PointSet {
     | { type: "buffered"; buffer: TupleKey[]; pos: number }
     | { type: "done" } = { type: "init" };
 
-  constructor(
+  protected constructor(
     protected ctx: QueryCtx,
     protected logger: Logger,
     protected cursor: TupleKey | undefined,
