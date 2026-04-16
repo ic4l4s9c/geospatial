@@ -10,6 +10,7 @@
 
 import type * as constants from "../constants.js";
 import type * as example from "../example.js";
+import type * as geospatial from "../geospatial.js";
 import type * as seed from "../seed.js";
 
 import type {
@@ -21,6 +22,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   constants: typeof constants;
   example: typeof example;
+  geospatial: typeof geospatial;
   seed: typeof seed;
 }>;
 
