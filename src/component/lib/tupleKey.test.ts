@@ -15,8 +15,8 @@ describe("tupleKey ordering", () => {
   test("encodeBound should maintain numerical order", () => {
     // Test a range of values to ensure lexicographic ordering matches numerical ordering
     const testValues = [
-      0, 1, 10, 100, 500, 1000, 1140, 1150, 1160, 1200, 2000, 10000,
-      -1, -10, -100, -1000,
+      0, 1, 10, 100, 500, 1000, 1140, 1150, 1160, 1200, 2000, 10000, -1, -10,
+      -100, -1000,
     ];
 
     // Generate all pairs and verify ordering
@@ -34,7 +34,9 @@ describe("tupleKey ordering", () => {
         if (lexicographic !== numerical) {
           console.error(`ORDERING BUG: ${val1} vs ${val2}`);
           console.error(`  Numerical: ${val1} < ${val2} = ${numerical}`);
-          console.error(`  Lexicographic: "${bound1}" < "${bound2}" = ${lexicographic}`);
+          console.error(
+            `  Lexicographic: "${bound1}" < "${bound2}" = ${lexicographic}`,
+          );
           console.error(`  Bound1: ${bound1}`);
           console.error(`  Bound2: ${bound2}`);
         }
