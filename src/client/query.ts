@@ -127,7 +127,7 @@ export class FilterBuilderImpl<Doc extends GeospatialDocument> {
   gte(field: "sortKey", value: number): FilterBuilderImpl<Doc> {
     if (!this.interval) {
       this.interval = { startInclusive: value };
-    } else if (!this.interval.startInclusive) {
+    } else if (this.interval.startInclusive === undefined) {
       this.interval.startInclusive = value;
     } else {
       this.interval.startInclusive = Math.max(
@@ -140,7 +140,7 @@ export class FilterBuilderImpl<Doc extends GeospatialDocument> {
   lt(field: "sortKey", value: number): FilterBuilderImpl<Doc> {
     if (!this.interval) {
       this.interval = { endExclusive: value };
-    } else if (!this.interval.endExclusive) {
+    } else if (this.interval.endExclusive === undefined) {
       this.interval.endExclusive = value;
     } else {
       this.interval.endExclusive = Math.min(this.interval.endExclusive, value);
