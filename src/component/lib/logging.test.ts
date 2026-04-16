@@ -57,6 +57,123 @@ describe("createLogger", () => {
     vi.restoreAllMocks();
   });
 
+  describe("null level", () => {
+    it("does not throw when passed null", () => {
+      expect(() => createLogger(null)).not.toThrow();
+    });
+
+    it("returns a logger with all required methods", () => {
+      const logger = createLogger(null);
+      expect(logger).toHaveProperty("emergency");
+      expect(logger).toHaveProperty("alert");
+      expect(logger).toHaveProperty("critical");
+      expect(logger).toHaveProperty("error");
+      expect(logger).toHaveProperty("warn");
+      expect(logger).toHaveProperty("notice");
+      expect(logger).toHaveProperty("info");
+      expect(logger).toHaveProperty("debug");
+      expect(logger).toHaveProperty("time");
+      expect(logger).toHaveProperty("timeEnd");
+    });
+
+    it("suppresses all emergency logs", () => {
+      const logger = createLogger(null);
+      logger.emergency("test");
+      expect(errorSpy).not.toHaveBeenCalled();
+    });
+
+    it("suppresses all alert logs", () => {
+      const logger = createLogger(null);
+      logger.alert("test");
+      expect(errorSpy).not.toHaveBeenCalled();
+    });
+
+    it("suppresses all critical logs", () => {
+      const logger = createLogger(null);
+      logger.critical("test");
+      expect(errorSpy).not.toHaveBeenCalled();
+    });
+
+    it("suppresses all error logs", () => {
+      const logger = createLogger(null);
+      logger.error("test");
+      expect(errorSpy).not.toHaveBeenCalled();
+    });
+
+    it("suppresses all warning logs", () => {
+      const logger = createLogger(null);
+      logger.warn("test");
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
+
+    it("suppresses all notice logs", () => {
+      const logger = createLogger(null);
+      logger.notice("test");
+      expect(infoSpy).not.toHaveBeenCalled();
+    });
+
+    it("suppresses all info logs", () => {
+      const logger = createLogger(null);
+      logger.info("test");
+      expect(infoSpy).not.toHaveBeenCalled();
+    });
+
+    it("suppresses all debug logs", () => {
+      const logger = createLogger(null);
+      logger.debug("test");
+      expect(debugSpy).not.toHaveBeenCalled();
+    });
+
+    it("suppresses time", () => {
+      const logger = createLogger(null);
+      logger.time("timer");
+      expect(timeSpy).not.toHaveBeenCalled();
+    });
+
+    it("suppresses timeEnd", () => {
+      const logger = createLogger(null);
+      logger.timeEnd("timer");
+      expect(timeEndSpy).not.toHaveBeenCalled();
+    });
+
+    it("suppresses all logs when called with multiple arguments", () => {
+      const logger = createLogger(null);
+      logger.emergency("a", "b", "c");
+      logger.alert("d", "e", "f");
+      logger.critical("g", "h", "i");
+      logger.error("j", "k", "l");
+      logger.warn("m", "n", "o");
+      logger.notice("p", "q", "r");
+      logger.info("s", "t", "u");
+      logger.debug("v", "w", "x");
+      logger.time("timer");
+      logger.timeEnd("timer");
+
+      expect(errorSpy).not.toHaveBeenCalled();
+      expect(warnSpy).not.toHaveBeenCalled();
+      expect(infoSpy).not.toHaveBeenCalled();
+      expect(debugSpy).not.toHaveBeenCalled();
+      expect(timeSpy).not.toHaveBeenCalled();
+      expect(timeEndSpy).not.toHaveBeenCalled();
+    });
+
+    it("no-op methods don't throw when invoked", () => {
+      const logger = createLogger(null);
+      expect(() => {
+        logger.emergency("test");
+        logger.alert("test");
+        logger.critical("test");
+        logger.error("test");
+        logger.warn("test");
+        logger.notice("test");
+        logger.info("test");
+        logger.debug("test");
+        logger.time("timer");
+        logger.timeEnd("timer");
+      }).not.toThrow();
+    });
+  });
+
   describe("invalid level", () => {
     it("throws an error for an invalid log level", () => {
       expect(() => createLogger("INVALID" as LogLevel)).toThrow(
@@ -155,81 +272,96 @@ describe("createLogger", () => {
       expect(errorSpy).toHaveBeenCalledWith(new Error("boom"));
     });
 
-    it("forwards null and undefined arguments", () => {
+    it("forwards null and null arguments", () => {
       const logger = createLogger("DEBUG");
-      logger.debug(null, undefined);
-      expect(debugSpy).toHaveBeenCalledWith(null, undefined);
+      logger.debug(null, null);
+      expect(debugSpy).toHaveBeenCalledWith(null, null);
     });
   });
 
   describe("severity filtering per level", () => {
     LOG_LEVELS.forEach((level) => {
-      const levelIndex = LOG_LEVELS.indexOf(level);
+      const configuredSeverity = LOG_LEVELS.indexOf(level);
 
-      describe(`level = ${level} (severity ${levelIndex})`, () => {
-        it("emergency is emitted when levelIndex >= 0", () => {
+      describe(`level = ${level} (severity ${configuredSeverity})`, () => {
+        it("emergency is emitted when SEVERITY.EMERGENCY <= configuredSeverity", () => {
           const logger = createLogger(level as LogLevel);
           logger.emergency("test");
-          expect(errorSpy).toHaveBeenCalledTimes(levelIndex >= 0 ? 1 : 0);
-        });
-
-        it("alert is emitted when levelIndex >= 1", () => {
-          const logger = createLogger(level as LogLevel);
-          logger.alert("test");
-          expect(errorSpy).toHaveBeenCalledTimes(levelIndex >= 1 ? 1 : 0);
-        });
-
-        it("critical is emitted when levelIndex >= 2", () => {
-          const logger = createLogger(level as LogLevel);
-          logger.critical("test");
-          expect(errorSpy).toHaveBeenCalledTimes(levelIndex >= 2 ? 1 : 0);
-        });
-
-        it("error is emitted when levelIndex >= 3", () => {
-          const logger = createLogger(level as LogLevel);
-          logger.error("test");
-          expect(errorSpy).toHaveBeenCalledTimes(levelIndex >= 3 ? 1 : 0);
-        });
-
-        it("warning is emitted when levelIndex >= 4", () => {
-          const logger = createLogger(level as LogLevel);
-          logger.warn("test");
-          expect(warnSpy).toHaveBeenCalledTimes(levelIndex >= 4 ? 1 : 0);
-        });
-
-        it("notice is emitted when levelIndex >= 5", () => {
-          const logger = createLogger(level as LogLevel);
-          logger.notice("test");
-          expect(infoSpy).toHaveBeenCalledTimes(levelIndex >= 5 ? 1 : 0);
-        });
-
-        it("info is emitted when levelIndex >= 6", () => {
-          const logger = createLogger(level as LogLevel);
-          logger.info("test");
-          const infoCalls = infoSpy.mock.calls.length;
-          // account for notice also calling console.info
-          expect(infoCalls).toBeGreaterThanOrEqual(levelIndex >= 6 ? 1 : 0);
-        });
-
-        it("debug is emitted when levelIndex >= 7", () => {
-          const logger = createLogger(level as LogLevel);
-          logger.debug("test");
-          expect(debugSpy).toHaveBeenCalledTimes(levelIndex >= 7 ? 1 : 0);
-        });
-
-        it("time is active only when levelIndex >= 6", () => {
-          const logger = createLogger(level as LogLevel);
-          logger.time("t");
-          expect(timeSpy).toHaveBeenCalledTimes(
-            levelIndex >= SEVERITY.INFO ? 1 : 0,
+          expect(errorSpy).toHaveBeenCalledTimes(
+            SEVERITY.EMERGENCY <= configuredSeverity ? 1 : 0,
           );
         });
 
-        it("timeEnd is active only when levelIndex >= 6", () => {
+        it("alert is emitted when SEVERITY.ALERT <= configuredSeverity", () => {
+          const logger = createLogger(level as LogLevel);
+          logger.alert("test");
+          expect(errorSpy).toHaveBeenCalledTimes(
+            SEVERITY.ALERT <= configuredSeverity ? 1 : 0,
+          );
+        });
+
+        it("critical is emitted when SEVERITY.CRITICAL <= configuredSeverity", () => {
+          const logger = createLogger(level as LogLevel);
+          logger.critical("test");
+          expect(errorSpy).toHaveBeenCalledTimes(
+            SEVERITY.CRITICAL <= configuredSeverity ? 1 : 0,
+          );
+        });
+
+        it("error is emitted when SEVERITY.ERROR <= configuredSeverity", () => {
+          const logger = createLogger(level as LogLevel);
+          logger.error("test");
+          expect(errorSpy).toHaveBeenCalledTimes(
+            SEVERITY.ERROR <= configuredSeverity ? 1 : 0,
+          );
+        });
+
+        it("warning is emitted when SEVERITY.WARNING <= configuredSeverity", () => {
+          const logger = createLogger(level as LogLevel);
+          logger.warn("test");
+          expect(warnSpy).toHaveBeenCalledTimes(
+            SEVERITY.WARNING <= configuredSeverity ? 1 : 0,
+          );
+        });
+
+        it("notice is emitted when SEVERITY.NOTICE <= configuredSeverity", () => {
+          const logger = createLogger(level as LogLevel);
+          logger.notice("test");
+          expect(infoSpy).toHaveBeenCalledTimes(
+            SEVERITY.NOTICE <= configuredSeverity ? 1 : 0,
+          );
+        });
+
+        it("info is emitted when SEVERITY.INFO <= configuredSeverity", () => {
+          const logger = createLogger(level as LogLevel);
+          logger.info("test");
+          const infoCalls = infoSpy.mock.calls.length;
+          expect(infoCalls).toBeGreaterThanOrEqual(
+            SEVERITY.INFO <= configuredSeverity ? 1 : 0,
+          );
+        });
+
+        it("debug is emitted when SEVERITY.DEBUG <= configuredSeverity", () => {
+          const logger = createLogger(level as LogLevel);
+          logger.debug("test");
+          expect(debugSpy).toHaveBeenCalledTimes(
+            SEVERITY.DEBUG <= configuredSeverity ? 1 : 0,
+          );
+        });
+
+        it("time is active only when SEVERITY.INFO <= configuredSeverity", () => {
+          const logger = createLogger(level as LogLevel);
+          logger.time("t");
+          expect(timeSpy).toHaveBeenCalledTimes(
+            SEVERITY.INFO <= configuredSeverity ? 1 : 0,
+          );
+        });
+
+        it("timeEnd is active only when SEVERITY.INFO <= configuredSeverity", () => {
           const logger = createLogger(level as LogLevel);
           logger.timeEnd("t");
           expect(timeEndSpy).toHaveBeenCalledTimes(
-            levelIndex >= SEVERITY.INFO ? 1 : 0,
+            SEVERITY.INFO <= configuredSeverity ? 1 : 0,
           );
         });
       });
@@ -333,7 +465,7 @@ describe("createLogger", () => {
       expect(timeEndSpy).not.toHaveBeenCalled();
     });
 
-    it("work with undefined label", () => {
+    it("work with null label", () => {
       const logger = createLogger("INFO");
       logger.time();
       logger.timeEnd();

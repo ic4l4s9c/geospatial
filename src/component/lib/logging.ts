@@ -134,9 +134,11 @@ export const SEVERITY = {
  * (severity 4) will emit EMERGENCY, ALERT, CRITICAL, ERROR, and WARNING
  * messages, but suppress NOTICE, INFO, and DEBUG.
  *
- * @param level - The minimum RFC 5424 severity to log. Lower values are more
- *   severe; higher values are more permissive.
- * @returns A {@link Logger} instance that filters by the given severity.
+ * @param level - The minimum RFC 5424 severity to log, or `null` to
+ *   disable all logging. Lower values are more severe; higher values are
+ *   more permissive.
+ * @returns A {@link Logger} instance that filters by the given severity,
+ *   or a no-op logger if `level` is `null`.
  * @throws {Error} If `level` is not a valid RFC 5424 severity.
  *
  * @see {@link https://tools.ietf.org/html/rfc5424#section-6.2.1 | RFC 5424 §6.2.1}
@@ -148,61 +150,64 @@ export const SEVERITY = {
  * log.warning("high latency");   // [x] printed (4 <= 4)
  * log.info("request served");    // [ ] suppressed (6 > 4)
  * log.debug("payload", data);    // [ ] suppressed (7 > 4)
+ *
+ * const noLog = createLogger(null);
+ * noLog.emergency("error");      // [ ] no-op (logging disabled)
  * ```
  */
-export function createLogger(level: LogLevel): Logger {
-  const levelIndex = LOG_LEVELS.indexOf(level);
-  if (levelIndex === -1) {
+export function createLogger(level: LogLevel | null | undefined): Logger {
+  const configuredSeverity = level != null ? LOG_LEVELS.indexOf(level) : -1;
+  if (level != null && configuredSeverity === -1) {
     throw new Error(`Invalid log level: ${level}`);
   }
   return {
     emergency: (...args: unknown[]) => {
-      if (levelIndex >= SEVERITY.EMERGENCY) {
+      if (SEVERITY.EMERGENCY <= configuredSeverity) {
         console.error(...args);
       }
     },
     alert: (...args: unknown[]) => {
-      if (levelIndex >= SEVERITY.ALERT) {
+      if (SEVERITY.ALERT <= configuredSeverity) {
         console.error(...args);
       }
     },
     critical: (...args: unknown[]) => {
-      if (levelIndex >= SEVERITY.CRITICAL) {
+      if (SEVERITY.CRITICAL <= configuredSeverity) {
         console.error(...args);
       }
     },
     error: (...args: unknown[]) => {
-      if (levelIndex >= SEVERITY.ERROR) {
+      if (SEVERITY.ERROR <= configuredSeverity) {
         console.error(...args);
       }
     },
     warn: (...args: unknown[]) => {
-      if (levelIndex >= SEVERITY.WARNING) {
+      if (SEVERITY.WARNING <= configuredSeverity) {
         console.warn(...args);
       }
     },
     notice: (...args: unknown[]) => {
-      if (levelIndex >= SEVERITY.NOTICE) {
+      if (SEVERITY.NOTICE <= configuredSeverity) {
         console.info(...args);
       }
     },
     info: (...args: unknown[]) => {
-      if (levelIndex >= SEVERITY.INFO) {
+      if (SEVERITY.INFO <= configuredSeverity) {
         console.info(...args);
       }
     },
     debug: (...args: unknown[]) => {
-      if (levelIndex >= SEVERITY.DEBUG) {
+      if (SEVERITY.DEBUG <= configuredSeverity) {
         console.debug(...args);
       }
     },
     time: (label?: string) => {
-      if (levelIndex >= SEVERITY.INFO) {
+      if (SEVERITY.INFO <= configuredSeverity) {
         console.time(label);
       }
     },
     timeEnd: (label?: string) => {
-      if (levelIndex >= SEVERITY.INFO) {
+      if (SEVERITY.INFO <= configuredSeverity) {
         console.timeEnd(label);
       }
     },
