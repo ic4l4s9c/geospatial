@@ -1,7 +1,7 @@
 import { convexTest } from "convex-test";
 import { expect, test } from "vitest";
 import { test as fcTest } from "@fast-check/vitest";
-import { arbitraryDocuments } from "../tests/arbitrary.helpers.js";
+import { arbitraryDocuments } from "../_tests/helpers.js";
 import schema from "../schema.js";
 import { modules } from "../test.setup.js";
 import { S2Bindings } from "./s2Bindings.js";
@@ -100,7 +100,7 @@ test("closest point query - basic functionality", async () => {
     expect(result3.length).toBe(1);
     expect(result3[0].key).toBe("point1");
 
-    // Test must filter
+    // Test 'must' filter
     const query4 = new ClosestPointQuery(
       s2,
       logger,
@@ -122,7 +122,7 @@ test("closest point query - basic functionality", async () => {
     expect(result4.length).toBe(2);
     expect(result4.map((r) => r.key).sort()).toEqual(["point1", "point3"]);
 
-    // Test should filter (must match at least one)
+    // Test 'should' filter (must match at least one)
     const query5 = new ClosestPointQuery(
       s2,
       logger,
@@ -161,7 +161,7 @@ test("closest point query - basic functionality", async () => {
     expect(result6.length).toBe(1);
     expect(result6[0].key).toBe("point3");
 
-    // Test multiple should filters
+    // Test multiple 'should' filters
     const query7 = new ClosestPointQuery(
       s2,
       logger,

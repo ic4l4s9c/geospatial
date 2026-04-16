@@ -1,10 +1,10 @@
 import { convexTest } from "convex-test";
 import { expect, test } from "vitest";
-import { api } from "../_generated/api.js";
-import schema from "../schema.js";
-import { modules } from "../test.setup.js";
+import { api } from "./_generated/api.js";
+import schema from "./schema.js";
+import { modules } from "./test.setup.js";
 import { test as fcTest } from "@fast-check/vitest";
-import { arbitraryDocuments } from "./arbitrary.helpers.js";
+import { arbitraryDocuments } from "./_tests/helpers.js";
 
 const opts = {
   minLevel: 4,
