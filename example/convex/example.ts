@@ -1,13 +1,7 @@
-import { GeospatialIndex, point, rectangle } from "@convex-dev/geospatial";
-import { Id } from "./_generated/dataModel";
-import { components } from "./_generated/api";
+import { point, rectangle } from "@convex-dev/geospatial";
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-
-export const geospatial = new GeospatialIndex<
-  Id<"locations">,
-  { name: string }
->(components.geospatial);
+import { geospatial } from "./geospatial";
 
 export const addPoint = mutation({
   args: { point, name: v.string() },
@@ -35,7 +29,7 @@ export const nearestPoints = query({
     });
     return await Promise.all(
       results.map(async (result) => {
-        const row = await ctx.db.get(result.key as Id<"locations">);
+        const row = await ctx.db.get(result.key);
         if (!row) {
           throw new Error("Invalid locationId");
         }

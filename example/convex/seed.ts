@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { geospatial } from "./example.js";
+import { geospatial } from "./geospatial.js";
 import { action, internalMutation } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { FOOD_EMOJIS } from "./constants.js";
