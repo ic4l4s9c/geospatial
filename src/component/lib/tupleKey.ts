@@ -1,10 +1,9 @@
-// Encode (sortKey: number, pointId: Id<"points">) as an order preserving string.
-
 import type { Id } from "../_generated/dataModel.js";
 import * as d64 from "./d64.js";
 
 export type TupleKey = string;
 
+// Encode (sortKey: number, pointId: Id<"points">) as an order preserving string.
 export function encodeTupleKey(
   sortKey: number,
   pointId: Id<"points">,
@@ -21,7 +20,7 @@ export function encodeTupleKey(
 
   let sortKeyUint64 = view.getBigUint64(1, littleEndian);
 
-  // Flip all of the bits if the sign bit is set.
+  // Flip all the bits if the sign bit is set.
   if ((sortKeyUint64 & (1n << 63n)) !== 0n) {
     sortKeyUint64 = ~sortKeyUint64;
   }
@@ -66,7 +65,7 @@ export function decodeTupleKey(key: TupleKey): {
   if ((encodedUint64 & (1n << 63n)) !== 0n) {
     encodedUint64 &= ~(1n << 63n);
   }
-  // Otherwise, flip all of the bits.
+  // Otherwise, flip all the bits.
   else {
     encodedUint64 = ~encodedUint64;
   }

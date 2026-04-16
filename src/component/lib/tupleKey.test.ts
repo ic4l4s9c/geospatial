@@ -1,5 +1,6 @@
 import { expect, test, describe } from "vitest";
 import { encodeTupleKey, decodeTupleKey, encodeBound } from "./tupleKey.js";
+import * as d64 from "./d64.js";
 import type { Id } from "../_generated/dataModel.js";
 
 test("encodeTupleKey and decodeTupleKey", () => {
@@ -110,5 +111,35 @@ describe("tupleKey ordering", () => {
     expect(tuple1 < nextBound).toBe(true);
     expect(tuple2 < nextBound).toBe(true);
     expect(tuple3 < nextBound).toBe(true);
+  });
+});
+
+describe("decodeTupleKey error cases", () => {
+  test("throws when key has no colon separator", () => {
+    expect(() => decodeTupleKey("invalidkeynocolon")).toThrow(
+      "Invalid tuple key invalidkeynocolon: Expected two parts separated by a colon",
+    );
+  });
+
+  test("throws when key has more than one colon", () => {
+    expect(() => decodeTupleKey("part1:part2:part3")).toThrow(
+      "Invalid tuple key part1:part2:part3: Expected two parts separated by a colon",
+    );
+  });
+
+  test("throws when encoded bytes are not 9 bytes", () => {
+    const shortBuf = new ArrayBuffer(4);
+    const shortEncoded = d64.encode(shortBuf);
+    const key = `${shortEncoded}:somePointId`;
+    expect(() => decodeTupleKey(key)).toThrow(/Expected 9 bytes, got \d+/);
+  });
+
+  test("throws when header byte is not 0x0D", () => {
+    const buf = new ArrayBuffer(9);
+    const view = new DataView(buf);
+    view.setUint8(0, 0xff);
+    const encoded = d64.encode(buf);
+    const key = `${encoded}:somePointId`;
+    expect(() => decodeTupleKey(key)).toThrow(/Expected header 0x0D, got 255/);
   });
 });
