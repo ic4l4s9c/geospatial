@@ -995,6 +995,163 @@ describe("query", () => {
   });
 });
 
+describe("query - interval validation (sortKey bounds)", () => {
+  test("interval where startInclusive equals endExclusive returns empty page immediately", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial();
+      await geo.insert(ctx, {
+        key: "eq-bound",
+        coordinates: SF_CITY_HALL,
+        filterKeys: { name: "EqBound" },
+        sortKey: 5,
+      });
+      // gte(5).lt(5) produces startInclusive === endExclusive === 5
+      const result = await geo.query(ctx, {
+        shape: SF_SHAPE,
+        limit: 10,
+        filter: (q) => q.gte("sortKey", 5).lt("sortKey", 5),
+      });
+      expect(result.page).toHaveLength(0);
+      expect(result.isDone).toBe(true);
+      expect(result.continueCursor).toBe("");
+    });
+  });
+
+  test("interval where startInclusive is greater than endExclusive throws an error", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial();
+      await geo.insert(ctx, {
+        key: "bad-interval",
+        coordinates: SF_CITY_HALL,
+        filterKeys: { name: "BadInterval" },
+        sortKey: 5,
+      });
+      // gte(10).lt(5) produces startInclusive=10 > endExclusive=5
+      await expect(
+        geo.query(ctx, {
+          shape: SF_SHAPE,
+          limit: 10,
+          filter: (q) => q.gte("sortKey", 10).lt("sortKey", 5),
+        }),
+      ).rejects.toThrow("Invalid interval: start is greater than end");
+    });
+  });
+});
+
+describe("query - nearest interval validation", () => {
+  test("nearest with startInclusive equals endExclusive returns empty array", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial();
+      await geo.insert(ctx, {
+        key: "eq-bound-nearest",
+        coordinates: SF_CITY_HALL,
+        filterKeys: { name: "EqBound" },
+        sortKey: 5,
+      });
+      // gte(5).lt(5) => startInclusive === endExclusive
+      const result = await geo.nearest(ctx, {
+        point: SF_POINT,
+        limit: 10,
+        filter: (q) => q.gte("sortKey", 5).lt("sortKey", 5),
+      });
+      expect(result).toEqual([]);
+    });
+  });
+
+  test("nearest with startInclusive greater than endExclusive returns empty array", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial();
+      await geo.insert(ctx, {
+        key: "bad-interval-nearest",
+        coordinates: SF_CITY_HALL,
+        filterKeys: { name: "BadInterval" },
+        sortKey: 5,
+      });
+      // gte(10).lt(5) => startInclusive=10 > endExclusive=5
+      // nearestPoints does not validate the interval, it simply finds no matches
+      const result = await geo.nearest(ctx, {
+        point: SF_POINT,
+        limit: 10,
+        filter: (q) => q.gte("sortKey", 10).lt("sortKey", 5),
+      });
+      expect(result).toEqual([]);
+    });
+  });
+});
+
+describe("query - 1024 row safety limit", () => {
+  test("query hitting 1024 row read limit returns a continuation cursor and isDone false", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial();
+      // Insert 1025 documents inside the SF rectangle so the consumer
+      // hits the 1024-row safety limit before exhausting the stream.
+      for (let i = 0; i < 1025; i++) {
+        // Spread points across the rectangle to avoid S2 cell edge effects.
+        const latitude = 37.71 + (i % 50) * 0.001;
+        const longitude = -122.49 + Math.floor(i / 50) * 0.001;
+        await geo.insert(ctx, {
+          key: `bulk-${i}`,
+          coordinates: { latitude, longitude },
+          filterKeys: { name: `Bulk ${i}` },
+          sortKey: i,
+        });
+      }
+      // Request more than 1024 results so the row-read limit is hit first.
+      const result = await geo.query(ctx, {
+        shape: SF_SHAPE,
+        limit: 2000,
+      });
+      expect(result.isDone).toBe(false);
+      expect(typeof result.continueCursor).toBe("string");
+      expect(result.continueCursor.length).toBeGreaterThan(0);
+      expect(result.page.length).toBeGreaterThan(0);
+      expect(result.page.length).toBeLessThan(1025);
+    });
+  });
+
+  test("paginating past the 1024 row limit eventually retrieves all documents", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial();
+      const total = 1025;
+      for (let i = 0; i < total; i++) {
+        const latitude = 37.71 + (i % 50) * 0.001;
+        const longitude = -122.49 + Math.floor(i / 50) * 0.001;
+        await geo.insert(ctx, {
+          key: `bulk-${i}`,
+          coordinates: { latitude, longitude },
+          filterKeys: { name: `Bulk ${i}` },
+          sortKey: i,
+        });
+      }
+      const allKeys: string[] = [];
+      let cursor: string | undefined;
+      let done = false;
+      let pages = 0;
+      while (!done) {
+        const result = await geo.query(
+          ctx,
+          { shape: SF_SHAPE, limit: 2000 },
+          cursor,
+        );
+        allKeys.push(...result.page.map((d) => d.key));
+        done = result.isDone;
+        cursor = result.continueCursor;
+        pages++;
+        // Safety: should not need more than a handful of pages.
+        if (pages > 10) break;
+      }
+      expect(allKeys.length).toBe(total);
+      expect(new Set(allKeys).size).toBe(total);
+    });
+  });
+});
+
 describe("nearest", () => {
   test("the closest point is ranked first in the results", async () => {
     const t = initConvexTest();
@@ -1436,6 +1593,26 @@ describe("nearest", () => {
       expect(keys).toContain("close-in-range");
       expect(keys).not.toContain("close-out-of-range");
       expect(keys).not.toContain("far-in-range");
+    });
+  });
+});
+
+describe("nearest - zero limit returns empty array immediately", () => {
+  test("limit of 0 returns an empty array without querying", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial();
+      await geo.insert(ctx, {
+        key: "some-point",
+        coordinates: SF_CITY_HALL,
+        filterKeys: { name: "SomePoint" },
+        sortKey: 1,
+      });
+      const result = await geo.nearest(ctx, {
+        point: SF_POINT,
+        limit: 0,
+      });
+      expect(result).toEqual([]);
     });
   });
 });
