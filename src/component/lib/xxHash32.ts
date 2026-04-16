@@ -8,37 +8,14 @@ export const PRIME32_3 = 3266489917;
 export const PRIME32_4 = 668265263;
 export const PRIME32_5 = 374761393;
 
-export function toUtf8(input: string): Uint8Array {
-  const bytes: number[] = [];
-  for (let i = 0, n = input.length; i < n; ++i) {
-    const c = input.charCodeAt(i);
-    if (c < 0x80) {
-      bytes.push(c);
-    } else if (c < 0x800) {
-      bytes.push(0xc0 | (c >> 6), 0x80 | (c & 0x3f));
-    } else if (c < 0xd800 || c >= 0xe000) {
-      bytes.push(0xe0 | (c >> 12), 0x80 | ((c >> 6) & 0x3f), 0x80 | (c & 0x3f));
-    } else {
-      const cp =
-        0x10000 + (((c & 0x3ff) << 10) | (input.charCodeAt(++i) & 0x3ff));
-      bytes.push(
-        0xf0 | ((cp >> 18) & 0x7),
-        0x80 | ((cp >> 12) & 0x3f),
-        0x80 | ((cp >> 6) & 0x3f),
-        0x80 | (cp & 0x3f),
-      );
-    }
-  }
-  return new Uint8Array(bytes);
-}
-
 /**
  *
  * @param buffer - byte array or string
  * @param seed - optional seed (32-bit unsigned);
  */
 export function xxHash32(buffer: Uint8Array | string, seed = 0): number {
-  buffer = typeof buffer === "string" ? toUtf8(buffer) : buffer;
+  buffer =
+    typeof buffer === "string" ? new TextEncoder().encode(buffer) : buffer;
   const b = buffer;
 
   /*
