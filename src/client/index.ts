@@ -83,7 +83,8 @@ export class GeospatialIndex<
   Key extends string = string,
   Filters extends GeospatialFilters = GeospatialFilters,
 > {
-  readonly #config: Required<GeospatialIndexOptions>;
+  readonly #config: Required<Omit<GeospatialIndexOptions, "logLevel">> &
+    Pick<GeospatialIndexOptions, "logLevel">;
 
   /**
    * Create a new geospatial index, powered by S2 and Convex. This index maps unique string keys to geographic coordinates
@@ -96,18 +97,19 @@ export class GeospatialIndex<
     private component: ComponentApi,
     options?: GeospatialIndexOptions,
   ) {
-    let DEFAULT_LOG_LEVEL: LogLevel = "INFO";
-    if (process.env.GEOSPATIAL_LOG_LEVEL) {
+    let logLevel: LogLevel | undefined;
+    if (process.env.GEOSPATIAL_LOG_LEVEL != null) {
       if (LOG_LEVELS.includes(process.env.GEOSPATIAL_LOG_LEVEL)) {
-        DEFAULT_LOG_LEVEL = process.env.GEOSPATIAL_LOG_LEVEL as LogLevel;
+        logLevel = process.env.GEOSPATIAL_LOG_LEVEL as LogLevel;
       } else {
+        logLevel = "INFO";
         console.warn(
-          `Invalid log level (${process.env.GEOSPATIAL_LOG_LEVEL}), defaulting to "${DEFAULT_LOG_LEVEL}"`,
+          `Invalid log level (${process.env.GEOSPATIAL_LOG_LEVEL}), defaulting to "${logLevel}"`,
         );
       }
     }
     this.#config = {
-      logLevel: options?.logLevel ?? DEFAULT_LOG_LEVEL,
+      logLevel: options?.logLevel ?? logLevel,
       minLevel: options?.minLevel ?? GEOSPATIAL_DEFAULTS.minLevel,
       maxLevel: options?.maxLevel ?? GEOSPATIAL_DEFAULTS.maxLevel,
       levelMod: options?.levelMod ?? GEOSPATIAL_DEFAULTS.levelMod,

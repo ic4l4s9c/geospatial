@@ -51,7 +51,11 @@ describe("constructor", () => {
         expect.stringContaining("INVALID_LEVEL"),
       );
     } finally {
-      process.env.GEOSPATIAL_LOG_LEVEL = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GEOSPATIAL_LOG_LEVEL;
+      } else {
+        process.env.GEOSPATIAL_LOG_LEVEL = originalEnv;
+      }
       warnSpy.mockRestore();
     }
   });
@@ -68,7 +72,11 @@ describe("constructor", () => {
       });
       expect(warnSpy).not.toHaveBeenCalled();
     } finally {
-      process.env.GEOSPATIAL_LOG_LEVEL = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GEOSPATIAL_LOG_LEVEL;
+      } else {
+        process.env.GEOSPATIAL_LOG_LEVEL = originalEnv;
+      }
       warnSpy.mockRestore();
     }
   });

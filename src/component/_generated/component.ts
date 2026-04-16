@@ -114,7 +114,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         {
           cursor?: string;
           levelMod: number;
-          logLevel:
+          logLevel?:
             | "EMERGENCY"
             | "ALERT"
             | "CRITICAL"
@@ -166,7 +166,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             occur: "should" | "must";
           }>;
           levelMod: number;
-          logLevel:
+          logLevel?:
             | "EMERGENCY"
             | "ALERT"
             | "CRITICAL"

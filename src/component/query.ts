@@ -56,7 +56,7 @@ export const execute = query({
     maxLevel: v.number(),
     levelMod: v.number(),
     maxCells: v.number(),
-    logLevel,
+    logLevel: v.optional(logLevel),
   },
   returns: executePaginationResult,
   handler: async (ctx, args) => {
@@ -248,7 +248,7 @@ export const nearestPoints = query({
     sorting: v.object({
       interval,
     }),
-    logLevel,
+    logLevel: v.optional(logLevel),
   },
   returns: v.array(queryResultWithDistance),
   handler: async (ctx, args) => {
