@@ -181,7 +181,9 @@ button {
 
 /* Emoji marker styling */
 .emoji-marker {
-  transition: transform 0.2s ease-in-out, filter 0.2s ease-in-out;
+  transition:
+    transform 0.2s ease-in-out,
+    filter 0.2s ease-in-out;
 }
 
 .emoji-marker:hover {
@@ -305,9 +307,15 @@ input[type="number"]::-webkit-inner-spin-button {
 
 /* Loading indicator animation */
 @keyframes pulse {
-  0% { opacity: 0.6; }
-  50% { opacity: 1; }
-  100% { opacity: 0.6; }
+  0% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.6;
+  }
 }
 
 .loading-indicator {
@@ -350,9 +358,10 @@ input[type="number"]::-webkit-inner-spin-button {
 /* Dark mode specific map adjustments */
 @media (prefers-color-scheme: dark) {
   .leaflet-tile {
-    filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7) !important;
+    filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg)
+      saturate(0.3) brightness(0.7) !important;
   }
-  
+
   .leaflet-container {
     background: #333 !important;
   }

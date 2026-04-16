@@ -117,7 +117,7 @@ function LocationSearch(props: {
       if (!props.isNearestMode) return;
       const latLng = map.mouseEventToLatLng(e.originalEvent);
       props.setNearestPoint({ latitude: latLng.lat, longitude: latLng.lng });
-    }
+    },
   });
 
   const rectangle = useMemo(() => {
@@ -138,7 +138,7 @@ function LocationSearch(props: {
 
   const { rows: nearestRows } = useNearestQuery(
     props.nearestPoint,
-    props.maxResults
+    props.maxResults,
   );
 
   const rows = props.isNearestMode ? nearestRows : viewportRows;
@@ -172,19 +172,21 @@ function LocationSearch(props: {
 
   return (
     <>
-      {!props.isNearestMode && props.showDebugCells && tilingPolygons.map(({ polygon, cell }, i) => (
-        <Polygon
-          key={i}
-          pathOptions={{ color: "blue", lineCap: "round", lineJoin: "bevel" }}
-          positions={polygon}
-          eventHandlers={{
-            click: (e) => {
-              e.originalEvent.preventDefault();
-              console.log(`Clicked on cell ${cell}`, polygon);
-            },
-          }}
-        />
-      ))}
+      {!props.isNearestMode &&
+        props.showDebugCells &&
+        tilingPolygons.map(({ polygon, cell }, i) => (
+          <Polygon
+            key={i}
+            pathOptions={{ color: "blue", lineCap: "round", lineJoin: "bevel" }}
+            positions={polygon}
+            eventHandlers={{
+              click: (e) => {
+                e.originalEvent.preventDefault();
+                console.log(`Clicked on cell ${cell}`, polygon);
+              },
+            }}
+          />
+        ))}
       {stickyRows.current.map((row) => (
         <SearchResult key={row._id} row={row} />
       ))}
@@ -224,7 +226,7 @@ function SearchResult(props: {
           iconUrl: `data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2248%22 fill=%22white%22 stroke=%22%234a90e2%22 stroke-width=%222%22 opacity=%220.9%22 /><text y=%22.9em%22 x=%2250%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 font-size=%2270%22>${row.name}</text></svg>`,
           iconSize: [size, size],
           iconAnchor: [size / 2, size / 2],
-          className: 'emoji-marker'
+          className: "emoji-marker",
         })
       }
     />
@@ -245,117 +247,147 @@ function App() {
   const [showDebugCells, setShowDebugCells] = useState(false);
 
   const commonButtonStyle = {
-    backgroundColor: 'var(--accent-primary)',
-    color: 'var(--bg-secondary)',
-    border: 'none',
-    padding: '8px 16px',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    fontSize: '14px',
-    transition: 'all 0.2s',
-    marginLeft: '10px',
-    ':hover': {
-      backgroundColor: 'var(--accent-secondary)',
-    }
+    backgroundColor: "var(--accent-primary)",
+    color: "var(--bg-secondary)",
+    border: "none",
+    padding: "8px 16px",
+    borderRadius: "6px",
+    cursor: "pointer",
+    fontSize: "14px",
+    transition: "all 0.2s",
+    marginLeft: "10px",
+    ":hover": {
+      backgroundColor: "var(--accent-secondary)",
+    },
   } as const;
 
   const commonInputStyle = {
-    padding: '8px 12px',
-    borderRadius: '6px',
-    border: '1px solid var(--border-color)',
-    fontSize: '14px',
-    width: '120px',
-    backgroundColor: 'var(--bg-secondary)',
-    color: 'var(--text-primary)',
+    padding: "8px 12px",
+    borderRadius: "6px",
+    border: "1px solid var(--border-color)",
+    fontSize: "14px",
+    width: "120px",
+    backgroundColor: "var(--bg-secondary)",
+    color: "var(--text-primary)",
   } as const;
 
   return (
-    <div style={{ 
-      maxWidth: '1200px', 
-      margin: '0 auto', 
-      padding: '20px',
-      backgroundColor: 'var(--bg-primary)',
-      borderRadius: '12px',
-      boxShadow: '0 2px 8px var(--shadow-color)'
-    }}>
-      <h1 style={{ 
-        fontSize: '2.5em', 
-        marginBottom: '24px',
-        background: 'linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%)',
-        WebkitBackgroundClip: 'text',
-        WebkitTextFillColor: 'transparent',
-        textAlign: 'center'
-      }}>
+    <div
+      style={{
+        maxWidth: "1200px",
+        margin: "0 auto",
+        padding: "20px",
+        backgroundColor: "var(--bg-primary)",
+        borderRadius: "12px",
+        boxShadow: "0 2px 8px var(--shadow-color)",
+      }}
+    >
+      <h1
+        style={{
+          fontSize: "2.5em",
+          marginBottom: "24px",
+          background:
+            "linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%)",
+          WebkitBackgroundClip: "text",
+          WebkitTextFillColor: "transparent",
+          textAlign: "center",
+        }}
+      >
         Convex Geospatial Demo
       </h1>
       {isNearestMode ? (
         <>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '16px',
-            marginBottom: '20px',
-          }}>
-            <p style={{ margin: 0, fontSize: '16px', color: 'var(--text-primary)' }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "16px",
+              marginBottom: "20px",
+            }}
+          >
+            <p
+              style={{
+                margin: 0,
+                fontSize: "16px",
+                color: "var(--text-primary)",
+              }}
+            >
               Left click on the map to set a point and find the nearest emojis!
             </p>
-            <button 
+            <button
               onClick={() => setIsNearestMode(false)}
               style={commonButtonStyle}
             >
               Back to viewport mode
             </button>
           </div>
-          <div style={{
-            marginBottom: "20px",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            gap: "16px",
-            position: "relative",
-            zIndex: 1000,
-            padding: "16px",
-            backgroundColor: "var(--bg-secondary)",
-            borderRadius: "8px",
-            boxShadow: "0 1px 4px var(--shadow-color)"
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <label style={{ fontSize: '14px', color: 'var(--text-primary)' }}>Max results:</label>
+          <div
+            style={{
+              marginBottom: "20px",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              gap: "16px",
+              position: "relative",
+              zIndex: 1000,
+              padding: "16px",
+              backgroundColor: "var(--bg-secondary)",
+              borderRadius: "8px",
+              boxShadow: "0 1px 4px var(--shadow-color)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <label style={{ fontSize: "14px", color: "var(--text-primary)" }}>
+                Max results:
+              </label>
               <input
                 type="number"
                 value={maxResults}
-                onChange={(e) => setMaxResults(Math.max(1, parseInt(e.target.value) || 1))}
+                onChange={(e) =>
+                  setMaxResults(Math.max(1, parseInt(e.target.value) || 1))
+                }
                 style={commonInputStyle}
               />
             </div>
             {nearestPoint && (
-              <div style={{ 
-                fontSize: '14px',
-                backgroundColor: 'var(--accent-light)',
-                padding: '8px 16px',
-                borderRadius: '6px',
-                border: '1px solid var(--accent-border)',
-                color: 'var(--text-primary)'
-              }}>
-                Selected point: ({nearestPoint.latitude.toFixed(4)}, {nearestPoint.longitude.toFixed(4)})
+              <div
+                style={{
+                  fontSize: "14px",
+                  backgroundColor: "var(--accent-light)",
+                  padding: "8px 16px",
+                  borderRadius: "6px",
+                  border: "1px solid var(--accent-border)",
+                  color: "var(--text-primary)",
+                }}
+              >
+                Selected point: ({nearestPoint.latitude.toFixed(4)},{" "}
+                {nearestPoint.longitude.toFixed(4)})
               </div>
             )}
           </div>
         </>
       ) : (
         <>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '16px',
-            marginBottom: '20px',
-          }}>
-            <p style={{ margin: 0, fontSize: '16px', color: 'var(--text-primary)' }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "16px",
+              marginBottom: "20px",
+            }}
+          >
+            <p
+              style={{
+                margin: 0,
+                fontSize: "16px",
+                color: "var(--text-primary)",
+              }}
+            >
               Right click on the map to put down a random emoji!
             </p>
-            <button 
+            <button
               onClick={() => setIsNearestMode(true)}
               style={commonButtonStyle}
             >
@@ -374,37 +406,41 @@ function App() {
             }}
           >
             <div style={{ marginBottom: "16px" }}>
-              <label style={{ 
-                display: "flex", 
-                alignItems: "center", 
-                justifyContent: "center", 
-                gap: "8px",
-                fontSize: '14px',
-                cursor: 'pointer',
-                color: 'var(--text-primary)'
-              }}>
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "8px",
+                  fontSize: "14px",
+                  cursor: "pointer",
+                  color: "var(--text-primary)",
+                }}
+              >
                 <input
                   type="checkbox"
                   checked={showDebugCells}
                   onChange={(e) => setShowDebugCells(e.target.checked)}
-                  style={{ cursor: 'pointer' }}
+                  style={{ cursor: "pointer" }}
                 />
                 Show S2 index cells
               </label>
             </div>
-            <div style={{ 
-              display: 'flex', 
-              gap: '16px',
-              flexWrap: 'wrap'
-            }}>
+            <div
+              style={{
+                display: "flex",
+                gap: "16px",
+                flexWrap: "wrap",
+              }}
+            >
               <Select
                 allowClear
                 placeholder="Pick an emoji to require"
                 defaultValue={undefined}
                 options={emojiFilterItems}
-                style={{ 
+                style={{
                   width: "calc(50% - 8px)",
-                  fontSize: '14px'
+                  fontSize: "14px",
                 }}
                 onChange={(v: string) => setMustFilter(v ? [v] : [])}
               />
@@ -414,35 +450,39 @@ function App() {
                 placeholder="Pick some emoji to allow"
                 defaultValue={[]}
                 options={emojiFilterItems}
-                style={{ 
+                style={{
                   width: "calc(50% - 8px)",
-                  fontSize: '14px'
+                  fontSize: "14px",
                 }}
                 onChange={setShouldFilter}
               />
             </div>
             {loading && (
-              <div style={{ 
-                position: "absolute", 
-                right: "16px", 
-                top: "16px",
-                backgroundColor: 'var(--bg-primary)',
-                padding: '4px 12px',
-                borderRadius: '16px',
-                fontSize: '14px',
-                color: 'var(--text-secondary)'
-              }}>
+              <div
+                style={{
+                  position: "absolute",
+                  right: "16px",
+                  top: "16px",
+                  backgroundColor: "var(--bg-primary)",
+                  padding: "4px 12px",
+                  borderRadius: "16px",
+                  fontSize: "14px",
+                  color: "var(--text-secondary)",
+                }}
+              >
                 Loading...
               </div>
             )}
           </div>
         </>
       )}
-      <div style={{ 
-        borderRadius: '12px', 
-        overflow: 'hidden',
-        boxShadow: '0 4px 12px var(--shadow-color-strong)'
-      }}>
+      <div
+        style={{
+          borderRadius: "12px",
+          overflow: "hidden",
+          boxShadow: "0 4px 12px var(--shadow-color-strong)",
+        }}
+      >
         <MapContainer
           center={manhattan as LatLngExpression}
           id="mapId"

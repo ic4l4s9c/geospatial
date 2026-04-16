@@ -46,7 +46,7 @@ const queryResultWithDistance = v.object({
   distance: v.number(),
 });
 
-const executePaginationResult = paginationResultValidator(queryResult)
+const executePaginationResult = paginationResultValidator(queryResult);
 
 export const execute = query({
   args: {
