@@ -25,7 +25,8 @@ export const GEOSPATIAL_DEFAULTS = {
   maxLevel: 16,
   maxCells: 8,
   levelMod: 2,
-} satisfies Required<Omit<GeospatialIndexOptions, "logLevel">>;
+  logLevel: "INFO",
+} satisfies Required<GeospatialIndexOptions>;
 
 export type GeospatialFilters = Record<string, Primitive | Primitive[]>;
 export type GeospatialDocument<
@@ -102,7 +103,7 @@ export class GeospatialIndex<
       if (LOG_LEVELS.includes(process.env.GEOSPATIAL_LOG_LEVEL)) {
         logLevel = process.env.GEOSPATIAL_LOG_LEVEL as LogLevel;
       } else {
-        logLevel = "INFO";
+        logLevel = GEOSPATIAL_DEFAULTS.logLevel;
         console.warn(
           `Invalid log level (${process.env.GEOSPATIAL_LOG_LEVEL}), defaulting to "${logLevel}"`,
         );
