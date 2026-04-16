@@ -9,7 +9,7 @@ export const primitive = v.union(
 );
 export type Primitive = Infer<typeof primitive>;
 
-export function toKey(value: Primitive): string {
+export function serialize(value: Primitive): string {
   if (typeof value === "string") {
     return `s:${value}`;
   }
