@@ -114,7 +114,15 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         {
           cursor?: string;
           levelMod: number;
-          logLevel: "DEBUG" | "INFO" | "WARN" | "ERROR";
+          logLevel:
+            | "EMERGENCY"
+            | "ALERT"
+            | "CRITICAL"
+            | "ERROR"
+            | "WARNING"
+            | "NOTICE"
+            | "INFO"
+            | "DEBUG";
           maxCells: number;
           maxLevel: number;
           minLevel: number;
@@ -158,7 +166,15 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             occur: "should" | "must";
           }>;
           levelMod: number;
-          logLevel: "DEBUG" | "INFO" | "WARN" | "ERROR";
+          logLevel:
+            | "EMERGENCY"
+            | "ALERT"
+            | "CRITICAL"
+            | "ERROR"
+            | "WARNING"
+            | "NOTICE"
+            | "INFO"
+            | "DEBUG";
           maxDistance?: number;
           maxLevel: number;
           maxResults: number;
