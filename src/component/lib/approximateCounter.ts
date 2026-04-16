@@ -1,6 +1,6 @@
 import type { Id } from "../_generated/dataModel.js";
 import type { MutationCtx, QueryCtx } from "../_generated/server.js";
-import { xxHash32 } from "./xxhash.js";
+import { xxHash32 } from "./xxHash32.js";
 
 // We assume that (_id, key) is globally unique, so we can implement a probabilistic counter
 // by incrementing and decrementing whenever `hash(_id + key) % SAMPLING_RATE == 0`. This has

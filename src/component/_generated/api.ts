@@ -19,7 +19,7 @@ import type * as lib_logging from "../lib/logging.js";
 import type * as lib_s2Bindings from "../lib/s2Bindings.js";
 import type * as lib_s2wasm from "../lib/s2wasm.js";
 import type * as lib_tupleKey from "../lib/tupleKey.js";
-import type * as lib_xxhash from "../lib/xxhash.js";
+import type * as lib_xxHash32 from "../lib/xxHash32.js";
 import type * as query from "../query.js";
 import type * as streams_cellRange from "../streams/cellRange.js";
 import type * as streams_constants from "../streams/constants.js";
@@ -50,7 +50,7 @@ const fullApi: ApiFromModules<{
   "lib/s2Bindings": typeof lib_s2Bindings;
   "lib/s2wasm": typeof lib_s2wasm;
   "lib/tupleKey": typeof lib_tupleKey;
-  "lib/xxhash": typeof lib_xxhash;
+  "lib/xxHash32": typeof lib_xxHash32;
   query: typeof query;
   "streams/cellRange": typeof streams_cellRange;
   "streams/constants": typeof streams_constants;
