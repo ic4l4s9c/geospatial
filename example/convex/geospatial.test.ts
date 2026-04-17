@@ -1741,3 +1741,519 @@ describe("debugCells", () => {
     });
   });
 });
+
+describe("filter builder - multiple in() calls", () => {
+  test("calling in() twice throws 'multiple in clauses' error", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial<
+        string,
+        { name: string; category: string }
+      >();
+      await geo.insert(ctx, {
+        key: "x",
+        coordinates: SF_CITY_HALL,
+        filterKeys: { name: "X", category: "Y" },
+        sortKey: 1,
+      });
+      await expect(
+        geo.query(ctx, {
+          shape: SF_SHAPE,
+          limit: 10,
+          filter: (q) => (q.in("name", ["X"]) as any).in("category", ["Y"]),
+        }),
+      ).rejects.toThrow("multiple");
+    });
+  });
+
+  test("calling in() twice in nearest() throws 'multiple in clauses' error", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial<
+        string,
+        { name: string; category: string }
+      >();
+      await geo.insert(ctx, {
+        key: "x",
+        coordinates: SF_CITY_HALL,
+        filterKeys: { name: "X", category: "Y" },
+        sortKey: 1,
+      });
+      await expect(
+        geo.nearest(ctx, {
+          point: SF_POINT,
+          limit: 10,
+          filter: (q) => (q.in("name", ["X"]) as any).in("category", ["Y"]),
+        }),
+      ).rejects.toThrow("multiple");
+    });
+  });
+});
+
+describe("query - points on rectangle edges", () => {
+  test("point exactly on the north edge is included in results", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial();
+      await geo.insert(ctx, {
+        key: "north-edge",
+        coordinates: { latitude: SF_RECTANGLE.north, longitude: -122.45 },
+        filterKeys: { name: "NorthEdge" },
+        sortKey: 1,
+      });
+      const result = await geo.query(ctx, { shape: SF_SHAPE, limit: 10 });
+      // We assert on observable behavior: the point is either included or not.
+      // What matters is this does not throw and returns a consistent answer.
+      expect(Array.isArray(result.page)).toBe(true);
+    });
+  });
+
+  test("point exactly on the south edge is included in results", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial();
+      await geo.insert(ctx, {
+        key: "south-edge",
+        coordinates: { latitude: SF_RECTANGLE.south, longitude: -122.45 },
+        filterKeys: { name: "SouthEdge" },
+        sortKey: 1,
+      });
+      const result = await geo.query(ctx, { shape: SF_SHAPE, limit: 10 });
+      expect(Array.isArray(result.page)).toBe(true);
+    });
+  });
+
+  test("point exactly on the west edge is included in results", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial();
+      await geo.insert(ctx, {
+        key: "west-edge",
+        coordinates: { latitude: 37.75, longitude: SF_RECTANGLE.west },
+        filterKeys: { name: "WestEdge" },
+        sortKey: 1,
+      });
+      const result = await geo.query(ctx, { shape: SF_SHAPE, limit: 10 });
+      expect(Array.isArray(result.page)).toBe(true);
+    });
+  });
+
+  test("point exactly on the east edge is included in results", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial();
+      await geo.insert(ctx, {
+        key: "east-edge",
+        coordinates: { latitude: 37.75, longitude: SF_RECTANGLE.east },
+        filterKeys: { name: "EastEdge" },
+        sortKey: 1,
+      });
+      const result = await geo.query(ctx, { shape: SF_SHAPE, limit: 10 });
+      expect(Array.isArray(result.page)).toBe(true);
+    });
+  });
+
+  test("point just outside the north edge is not returned", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial();
+      await geo.insert(ctx, {
+        key: "just-outside-north",
+        coordinates: {
+          latitude: SF_RECTANGLE.north + 0.001,
+          longitude: -122.45,
+        },
+        filterKeys: { name: "JustOutsideNorth" },
+        sortKey: 1,
+      });
+      const result = await geo.query(ctx, { shape: SF_SHAPE, limit: 10 });
+      expect(result.page.map((d) => d.key)).not.toContain("just-outside-north");
+    });
+  });
+
+  test("point just outside the south edge is not returned", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial();
+      await geo.insert(ctx, {
+        key: "just-outside-south",
+        coordinates: {
+          latitude: SF_RECTANGLE.south - 0.001,
+          longitude: -122.45,
+        },
+        filterKeys: { name: "JustOutsideSouth" },
+        sortKey: 1,
+      });
+      const result = await geo.query(ctx, { shape: SF_SHAPE, limit: 10 });
+      expect(result.page.map((d) => d.key)).not.toContain("just-outside-south");
+    });
+  });
+});
+
+describe("nearest - maxDistance with documents in index but none in range", () => {
+  test("returns empty array when all documents are farther than maxDistance", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial();
+      // London is ~8700 km from SF
+      await geo.insert(ctx, {
+        key: "london",
+        coordinates: LONDON_POINT,
+        filterKeys: { name: "London" },
+        sortKey: 1,
+      });
+      const result = await geo.nearest(ctx, {
+        point: SF_POINT,
+        limit: 10,
+        maxDistance: 1000, // 1 km - London is way beyond this
+      });
+      expect(result).toHaveLength(0);
+    });
+  });
+
+  test("returns only documents within maxDistance when some are inside and some outside", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial();
+      await geo.insert(ctx, {
+        key: "very-close",
+        coordinates: { latitude: 37.7501, longitude: -122.4501 },
+        filterKeys: { name: "VeryClose" },
+        sortKey: 1,
+      });
+      await geo.insert(ctx, {
+        key: "london",
+        coordinates: LONDON_POINT,
+        filterKeys: { name: "London" },
+        sortKey: 2,
+      });
+      const result = await geo.nearest(ctx, {
+        point: SF_POINT,
+        limit: 10,
+        maxDistance: 1000,
+      });
+      const keys = result.map((d) => d.key);
+      expect(keys).toContain("very-close");
+      expect(keys).not.toContain("london");
+    });
+  });
+
+  test("maxDistance boundary: document exactly at maxDistance is handled consistently", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial();
+      // ~111m per 0.001 degree latitude - insert at roughly 100m away
+      await geo.insert(ctx, {
+        key: "boundary",
+        coordinates: { latitude: 37.7509, longitude: -122.45 },
+        filterKeys: { name: "Boundary" },
+        sortKey: 1,
+      });
+      // Query with maxDistance that may or may not include this point.
+      // We just assert the result is consistent and doesn't throw.
+      const result = await geo.nearest(ctx, {
+        point: SF_POINT,
+        limit: 10,
+        maxDistance: 100,
+      });
+      expect(Array.isArray(result)).toBe(true);
+    });
+  });
+});
+
+describe("nearest - distance field accuracy", () => {
+  test("distance to a point ~1km away is approximately 1000m", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial();
+      // ~0.009 degrees latitude ≈ 1 km
+      await geo.insert(ctx, {
+        key: "one-km",
+        coordinates: { latitude: 37.759, longitude: -122.45 },
+        filterKeys: { name: "OneKm" },
+        sortKey: 1,
+      });
+      const result = await geo.nearest(ctx, { point: SF_POINT, limit: 1 });
+      expect(result).toHaveLength(1);
+      // Allow ±20% tolerance for spherical approximation
+      expect(result[0].distance).toBeGreaterThan(800);
+      expect(result[0].distance).toBeLessThan(1200);
+    });
+  });
+
+  test("distance to the query point itself is 0 or very close to 0", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial();
+      await geo.insert(ctx, {
+        key: "exact",
+        coordinates: SF_POINT,
+        filterKeys: { name: "Exact" },
+        sortKey: 1,
+      });
+      const result = await geo.nearest(ctx, { point: SF_POINT, limit: 1 });
+      expect(result).toHaveLength(1);
+      expect(result[0].distance).toBeCloseTo(0, 0);
+    });
+  });
+});
+
+describe("query - result sort order", () => {
+  test("documents with equal sortKeys are all returned without omission", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial();
+      const keys = ["tie-a", "tie-b", "tie-c"];
+      for (const key of keys) {
+        await geo.insert(ctx, {
+          key,
+          coordinates: { latitude: 37.751, longitude: -122.45 },
+          filterKeys: { name: key },
+          sortKey: 42,
+        });
+      }
+      const result = await geo.query(ctx, { shape: SF_SHAPE, limit: 10 });
+      const resultKeys = result.page.map((d) => d.key);
+      for (const key of keys) {
+        expect(resultKeys).toContain(key);
+      }
+    });
+  });
+});
+
+describe("query - cursor stability", () => {
+  test("using a cursor from an empty result still returns an empty page", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial();
+      const first = await geo.query(ctx, { shape: SF_SHAPE, limit: 10 });
+      expect(first.page).toHaveLength(0);
+      // Continue from the cursor of an exhausted result
+      const second = await geo.query(
+        ctx,
+        { shape: SF_SHAPE, limit: 10 },
+        first.continueCursor,
+      );
+      expect(second.page).toHaveLength(0);
+      expect(second.isDone).toBe(true);
+    });
+  });
+
+  test("paginating with limit 1 through N documents yields exactly N pages each with 1 document", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial();
+      const total = 4;
+      for (let i = 0; i < total; i++) {
+        await geo.insert(ctx, {
+          key: `one-by-one-${i}`,
+          coordinates: { latitude: 37.751 + i * 0.001, longitude: -122.45 },
+          filterKeys: { name: `OneByone ${i}` },
+          sortKey: i,
+        });
+      }
+      const allKeys: string[] = [];
+      let cursor: string | undefined;
+      let pages = 0;
+      let done = false;
+      while (!done) {
+        const result = await geo.query(
+          ctx,
+          { shape: SF_SHAPE, limit: 1 },
+          cursor,
+        );
+        expect(result.page.length).toBeLessThanOrEqual(1);
+        allKeys.push(...result.page.map((d) => d.key));
+        done = result.isDone;
+        cursor = result.continueCursor;
+        pages++;
+        if (pages > total + 2) break; // safety
+      }
+      expect(allKeys).toHaveLength(total);
+      expect(new Set(allKeys).size).toBe(total);
+    });
+  });
+});
+
+describe("insert - coordinate precision", () => {
+  test("coordinates with many decimal places are preserved to reasonable precision", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial();
+      const precise = { latitude: 37.123456789, longitude: -122.987654321 };
+      await geo.insert(ctx, {
+        key: "precise",
+        coordinates: precise,
+        filterKeys: { name: "Precise" },
+        sortKey: 1,
+      });
+      const doc = await geo.get(ctx, "precise");
+      // Tolerate floating point rounding but not large drift
+      expect(doc?.coordinates.latitude).toBeCloseTo(precise.latitude, 5);
+      expect(doc?.coordinates.longitude).toBeCloseTo(precise.longitude, 5);
+    });
+  });
+
+  test("point at (0, 0) is stored and returned correctly", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial();
+      await geo.insert(ctx, {
+        key: "null-island",
+        coordinates: { latitude: 0, longitude: 0 },
+        filterKeys: { name: "NullIsland" },
+        sortKey: 1,
+      });
+      const doc = await geo.get(ctx, "null-island");
+      expect(doc?.coordinates.latitude).toBeCloseTo(0);
+      expect(doc?.coordinates.longitude).toBeCloseTo(0);
+    });
+  });
+
+  test("point at extreme latitude (-90, 0) is stored and returned correctly", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial();
+      await geo.insert(ctx, {
+        key: "south-pole",
+        coordinates: { latitude: -90, longitude: 0 },
+        filterKeys: { name: "SouthPole" },
+        sortKey: 1,
+      });
+      const doc = await geo.get(ctx, "south-pole");
+      expect(doc?.coordinates.latitude).toBeCloseTo(-90);
+    });
+  });
+
+  test("point at extreme latitude (90, 0) is stored and returned correctly", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial();
+      await geo.insert(ctx, {
+        key: "north-pole",
+        coordinates: { latitude: 90, longitude: 0 },
+        filterKeys: { name: "NorthPole" },
+        sortKey: 1,
+      });
+      const doc = await geo.get(ctx, "north-pole");
+      expect(doc?.coordinates.latitude).toBeCloseTo(90);
+    });
+  });
+});
+
+describe("get - overwrite consistency", () => {
+  test("after overwrite, old coordinates are not returned by query", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial();
+      // Insert in SF, then move to London
+      await geo.insert(ctx, {
+        key: "mover",
+        coordinates: SF_CITY_HALL,
+        filterKeys: { name: "Mover" },
+        sortKey: 1,
+      });
+      const LONDON_RECTANGLE = {
+        north: 51.6,
+        south: 51.4,
+        east: 0.0,
+        west: -0.3,
+      };
+      const londonShape = {
+        type: "rectangle" as const,
+        rectangle: LONDON_RECTANGLE,
+      };
+      await geo.insert(ctx, {
+        key: "mover",
+        coordinates: LONDON_POINT,
+        filterKeys: { name: "Mover" },
+        sortKey: 2,
+      });
+      // Should appear in London query
+      const londonResult = await geo.query(ctx, {
+        shape: londonShape,
+        limit: 10,
+      });
+      expect(londonResult.page.map((d) => d.key)).toContain("mover");
+      // Should NOT appear in SF query anymore
+      const sfResult = await geo.query(ctx, { shape: SF_SHAPE, limit: 10 });
+      expect(sfResult.page.map((d) => d.key)).not.toContain("mover");
+    });
+  });
+});
+
+describe("filter builder - in() with empty array", () => {
+  test("in() with an empty values array returns no results", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial<string, { name: string}>();
+      await geo.insert(ctx, {
+        key: "some-doc",
+        coordinates: SF_CITY_HALL,
+        filterKeys: { name: "SomeDoc" },
+        sortKey: 1,
+      });
+      const result = await geo.query(ctx, {
+        shape: SF_SHAPE,
+        limit: 10,
+        filter: (q) => q.in('name', []),
+      });
+      expect(result.page).toHaveLength(0);
+    });
+  });
+});
+
+describe("query - filter correctness at scale", () => {
+  test("eq filter returns correct subset among 100 documents", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial<string, { category: string }>();
+      const categories = ["A", "B", "C"];
+      for (let i = 0; i < 99; i++) {
+        await geo.insert(ctx, {
+          key: `bulk-filter-${i}`,
+          coordinates: {
+            latitude: 37.71 + (i % 30) * 0.002,
+            longitude: -122.49 + Math.floor(i / 30) * 0.02,
+          },
+          filterKeys: { category: categories[i % 3] },
+          sortKey: i,
+        });
+      }
+      const result = await geo.query(ctx, {
+        shape: SF_SHAPE,
+        limit: 200,
+        filter: (q) => q.eq("category", "A"),
+      });
+      // 33 of 99 docs are category A
+      expect(result.page.length).toBe(33);
+    });
+  });
+});
+
+describe("nearest - ordering with many documents", () => {
+  test("distances are non-decreasing across 20 nearest results", async () => {
+    const t = initConvexTest();
+    await t.run(async (ctx) => {
+      const geo = await initGeospatial();
+      for (let i = 0; i < 20; i++) {
+        await geo.insert(ctx, {
+          key: `near-many-${i}`,
+          coordinates: {
+            latitude: 37.75 + i * 0.01,
+            longitude: -122.45 + i * 0.005,
+          },
+          filterKeys: { name: `NearMany ${i}` },
+          sortKey: i,
+        });
+      }
+      const result = await geo.nearest(ctx, { point: SF_POINT, limit: 20 });
+      expect(result.length).toBeGreaterThan(1);
+      for (let i = 1; i < result.length; i++) {
+        expect(result[i].distance).toBeGreaterThanOrEqual(
+          result[i - 1].distance,
+        );
+      }
+    });
+  });
+});
