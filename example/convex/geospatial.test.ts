@@ -1617,12 +1617,12 @@ describe("nearest - zero limit returns empty array immediately", () => {
   });
 });
 
-describe("debugCells", () => {
+describe("debug.cells", () => {
   test("returns a non-empty array of cells for a rectangle", async () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      const result = await geo.debugCells(ctx, SF_RECTANGLE);
+      const result = await geo.debug.cells(ctx, SF_RECTANGLE);
       expect(Array.isArray(result)).toBe(true);
       expect(result.length).toBeGreaterThan(0);
     });
@@ -1632,7 +1632,7 @@ describe("debugCells", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      const result = await geo.debugCells(ctx, SF_RECTANGLE);
+      const result = await geo.debug.cells(ctx, SF_RECTANGLE);
       for (const cell of result) {
         expect(typeof cell.token).toBe("string");
         expect(cell.token.length).toBeGreaterThan(0);
@@ -1646,7 +1646,7 @@ describe("debugCells", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      const result = await geo.debugCells(ctx, SF_RECTANGLE);
+      const result = await geo.debug.cells(ctx, SF_RECTANGLE);
       for (const cell of result) {
         for (const vertex of cell.vertices) {
           expect(typeof vertex.latitude).toBe("number");
@@ -1664,7 +1664,7 @@ describe("debugCells", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      const result = await geo.debugCells(ctx, SF_RECTANGLE);
+      const result = await geo.debug.cells(ctx, SF_RECTANGLE);
       const tokens = result.map((c) => c.token);
       expect(new Set(tokens).size).toBe(tokens.length);
     });
@@ -1674,8 +1674,8 @@ describe("debugCells", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      const lowRes = await geo.debugCells(ctx, SF_RECTANGLE, 4);
-      const highRes = await geo.debugCells(ctx, SF_RECTANGLE, 16);
+      const lowRes = await geo.debug.cells(ctx, SF_RECTANGLE, 4);
+      const highRes = await geo.debug.cells(ctx, SF_RECTANGLE, 16);
       expect(highRes.length).toBeGreaterThan(lowRes.length);
     });
   });
@@ -1684,8 +1684,8 @@ describe("debugCells", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      const withDefault = await geo.debugCells(ctx, SF_RECTANGLE);
-      const withExplicit = await geo.debugCells(ctx, SF_RECTANGLE, 16);
+      const withDefault = await geo.debug.cells(ctx, SF_RECTANGLE);
+      const withExplicit = await geo.debug.cells(ctx, SF_RECTANGLE, 16);
       expect(withDefault.length).toBe(withExplicit.length);
       const defaultTokens = withDefault.map((c) => c.token).sort();
       const explicitTokens = withExplicit.map((c) => c.token).sort();
@@ -1697,8 +1697,8 @@ describe("debugCells", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      const sfCells = await geo.debugCells(ctx, SF_RECTANGLE);
-      const londonCells = await geo.debugCells(ctx, LONDON_RECTANGLE);
+      const sfCells = await geo.debug.cells(ctx, SF_RECTANGLE);
+      const londonCells = await geo.debug.cells(ctx, LONDON_RECTANGLE);
       const sfTokens = new Set(sfCells.map((c) => c.token));
       const londonTokens = new Set(londonCells.map((c) => c.token));
       const intersection = [...sfTokens].filter((tok) => londonTokens.has(tok));
@@ -1710,7 +1710,7 @@ describe("debugCells", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      const result = await geo.debugCells(ctx, SF_RECTANGLE);
+      const result = await geo.debug.cells(ctx, SF_RECTANGLE);
       for (const cell of result) {
         expect(cell.vertices).toHaveLength(4);
       }
@@ -1727,7 +1727,7 @@ describe("debugCells", () => {
         east: -122.4499,
         west: -122.45,
       };
-      const result = await geo.debugCells(ctx, tinyRect);
+      const result = await geo.debug.cells(ctx, tinyRect);
       expect(result.length).toBeGreaterThan(0);
     });
   });
@@ -1736,7 +1736,7 @@ describe("debugCells", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      const result = await geo.debugCells(ctx, SF_RECTANGLE, 4);
+      const result = await geo.debug.cells(ctx, SF_RECTANGLE, 4);
       expect(result.length).toBeGreaterThan(0);
     });
   });

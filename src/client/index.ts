@@ -88,6 +88,33 @@ export class GeospatialIndex<
     Pick<GeospatialIndexOptions, "logLevel">;
 
   /**
+   * Debug utilities for inspecting S2 cell geometry used by the index.
+   */
+  readonly debug = {
+    /**
+     * Debug the S2 cells that would be queried for a given rectangle.
+     *
+     * @param ctx - The Convex query context.
+     * @param rectangle - The geographic area to query.
+     * @param maxResolution - The maximum resolution to use when querying.
+     * @returns - An array of S2 cell identifiers and their vertices.
+     */
+    cells: async (
+      ctx: QueryCtx,
+      rectangle: Rectangle,
+      maxResolution?: number,
+    ): Promise<{ token: string; vertices: Point[] }[]> => {
+      return await ctx.runQuery(this.component.debug.cells, {
+        rectangle,
+        minLevel: this.#config.minLevel,
+        maxLevel: maxResolution ?? this.#config.maxLevel,
+        levelMod: this.#config.levelMod,
+        maxCells: this.#config.maxCells,
+      });
+    },
+  };
+
+  /**
    * Create a new geospatial index, powered by S2 and Convex. This index maps unique string keys to geographic coordinates
    * on the Earth's surface, with the ability to efficiently query for all keys within a given geographic area.
    *
@@ -253,28 +280,6 @@ export class GeospatialIndex<
       sorting: { interval: filterBuilder.interval ?? {} },
     });
     return result as Narrow<(typeof result)[number], { key: Key }>[];
-  }
-
-  /**
-   * Debug the S2 cells that would be queried for a given rectangle.
-   *
-   * @param ctx - The Convex query context.
-   * @param rectangle - The geographic area to query.
-   * @param maxResolution - The maximum resolution to use when querying.
-   * @returns - An array of S2 cell identifiers and their vertices.
-   */
-  async debugCells(
-    ctx: QueryCtx,
-    rectangle: Rectangle,
-    maxResolution?: number,
-  ): Promise<{ token: string; vertices: Point[] }[]> {
-    return await ctx.runQuery(this.component.debug.cells, {
-      rectangle,
-      minLevel: this.#config.minLevel,
-      maxLevel: maxResolution ?? this.#config.maxLevel,
-      levelMod: this.#config.levelMod,
-      maxCells: this.#config.maxCells,
-    });
   }
 }
 
