@@ -28,9 +28,9 @@ export class ClosestPointQuery {
   results: Heap<Result>;
 
   maxDistanceChordAngle?: ChordAngle;
-  private mustFilters: FilterCondition[];
-  private shouldFilters: FilterCondition[];
-  private sortInterval: Interval;
+  private readonly mustFilters: FilterCondition[];
+  private readonly shouldFilters: FilterCondition[];
+  private readonly sortInterval: Interval;
   private readonly checkFilters: boolean;
   private static readonly FILTER_SUBDIVIDE_THRESHOLD = 8;
   private cellStreams = new Map<string, CellStreamState>();
@@ -178,13 +178,8 @@ export class ClosestPointQuery {
     ) {
       return false;
     }
-    if (
-      this.sortInterval.endExclusive !== undefined &&
-      sortKey >= this.sortInterval.endExclusive
-    ) {
-      return false;
-    }
-    return true;
+    return !(this.sortInterval.endExclusive !== undefined &&
+      sortKey >= this.sortInterval.endExclusive);
   }
 
   private getOrCreateStreamForCell(
