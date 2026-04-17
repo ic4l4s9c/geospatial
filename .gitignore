@@ -4,6 +4,7 @@
 *.log
 /.vscode/
 /docs/.vitepress/cache
+coverage
 dist
 dist-ssr
 explorations
