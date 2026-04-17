@@ -4,7 +4,7 @@ import { api } from "./_generated/api.js";
 import schema from "./schema.js";
 import { modules } from "./test.setup.js";
 import { test as fcTest } from "@fast-check/vitest";
-import { arbitraryDocuments } from "./_tests/helpers.js";
+import { arbitraryDocuments } from "../__tests__/fixtures.js";
 
 const opts = {
   minLevel: 4,

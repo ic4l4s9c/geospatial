@@ -1,7 +1,7 @@
 import { convexTest } from "convex-test";
 import { expect, test } from "vitest";
 import { test as fcTest } from "@fast-check/vitest";
-import { arbitraryDocuments } from "../_tests/helpers.js";
+import { arbitraryDocuments } from "../../__tests__/fixtures.js";
 import schema from "../schema.js";
 import { modules } from "../test.setup.js";
 import { S2Bindings } from "./s2Bindings.js";
