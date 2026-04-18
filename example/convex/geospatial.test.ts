@@ -16,9 +16,9 @@ async function initGeospatial<
   K extends string = string,
   F extends GeospatialFilters = GeospatialFilters,
 >() {
-  const { GeospatialIndex } = await import("@convex-dev/geospatial");
+  const { Geospatial } = await import("@convex-dev/geospatial");
   const { components } = await import("./_generated/api");
-  return new GeospatialIndex<K, F>(components.geospatial);
+  return new Geospatial<K, F>(components.geospatial);
 }
 
 const SF_RECTANGLE = { north: 37.8, south: 37.7, east: -122.4, west: -122.5 };

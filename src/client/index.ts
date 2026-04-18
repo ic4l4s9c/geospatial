@@ -26,7 +26,7 @@ export const GEOSPATIAL_DEFAULTS = {
   maxCells: 8,
   levelMod: 2,
   logLevel: "INFO",
-} satisfies Required<GeospatialIndexOptions>;
+} satisfies Required<GeospatialOptions>;
 
 export type GeospatialFilters = Record<string, Primitive | Primitive[]>;
 export type GeospatialDocument<
@@ -57,7 +57,7 @@ export type NearestQueryOptions<
   filter?: NonNullable<GeospatialQuery<Doc>["filter"]>;
 };
 
-export interface GeospatialIndexOptions {
+export interface GeospatialOptions {
   /**
    * The minimum S2 cell level to use when querying. Defaults to 4.
    */
@@ -80,12 +80,12 @@ export interface GeospatialIndexOptions {
   logLevel?: LogLevel;
 }
 
-export class GeospatialIndex<
+export class Geospatial<
   Key extends string = string,
   Filters extends GeospatialFilters = GeospatialFilters,
 > {
-  readonly #config: Required<Omit<GeospatialIndexOptions, "logLevel">> &
-    Pick<GeospatialIndexOptions, "logLevel">;
+  readonly #config: Required<Omit<GeospatialOptions, "logLevel">> &
+    Pick<GeospatialOptions, "logLevel">;
 
   /**
    * Debug utilities for inspecting S2 cell geometry used by the index.
@@ -123,7 +123,7 @@ export class GeospatialIndex<
    */
   constructor(
     private component: ComponentApi,
-    options?: GeospatialIndexOptions,
+    options?: GeospatialOptions,
   ) {
     let logLevel: LogLevel | undefined;
     if (process.env.GEOSPATIAL_LOG_LEVEL != null) {
