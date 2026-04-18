@@ -2186,7 +2186,7 @@ describe("filter builder - in() with empty array", () => {
   test("in() with an empty values array returns no results", async () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
-      const geo = await initGeospatial<string, { name: string}>();
+      const geo = await initGeospatial<string, { name: string }>();
       await geo.insert(ctx, {
         key: "some-doc",
         coordinates: SF_CITY_HALL,
@@ -2196,7 +2196,7 @@ describe("filter builder - in() with empty array", () => {
       const result = await geo.query(ctx, {
         shape: SF_SHAPE,
         limit: 10,
-        filter: (q) => q.in('name', []),
+        filter: (q) => q.in("name", []),
       });
       expect(result.page).toHaveLength(0);
     });

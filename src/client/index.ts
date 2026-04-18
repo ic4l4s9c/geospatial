@@ -6,7 +6,7 @@ import type {
 } from "convex/server";
 import type { Point, Primitive, Rectangle } from "../component/validators.js";
 import { LOG_LEVELS, type LogLevel } from "../component/lib/logging.js";
-import { FilterBuilderImpl, type GeospatialQuery } from "./query.js";
+import { FilterBuilder, type GeospatialQuery } from "./query.js";
 import type { ComponentApi } from "../component/_generated/component.js";
 
 export type { Point, Primitive, GeospatialQuery, Rectangle };
@@ -220,9 +220,7 @@ export class GeospatialIndex<
     query: GeospatialQuery<GeospatialDocument<Key, Filters>>,
     cursor?: string,
   ) {
-    const filterBuilder = new FilterBuilderImpl<
-      GeospatialDocument<Key, Filters>
-    >();
+    const filterBuilder = new FilterBuilder<GeospatialDocument<Key, Filters>>();
     if (query.filter) {
       query.filter(filterBuilder);
     }
@@ -261,9 +259,7 @@ export class GeospatialIndex<
       filter,
     }: NearestQueryOptions<GeospatialDocument<Key, Filters>>,
   ) {
-    const filterBuilder = new FilterBuilderImpl<
-      GeospatialDocument<Key, Filters>
-    >();
+    const filterBuilder = new FilterBuilder<GeospatialDocument<Key, Filters>>();
     if (filter) {
       filter(filterBuilder);
     }

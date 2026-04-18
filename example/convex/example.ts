@@ -107,6 +107,10 @@ export const debugCells = query({
     maxResolution: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    return await geospatial.debug.cells(ctx, args.rectangle, args.maxResolution);
+    return await geospatial.debug.cells(
+      ctx,
+      args.rectangle,
+      args.maxResolution,
+    );
   },
 });

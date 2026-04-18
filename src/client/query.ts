@@ -19,7 +19,7 @@ export interface GeospatialQuery<Doc extends GeospatialDocument> {
   limit?: number;
 }
 
-interface GeospatialFilterBuilder<Doc extends GeospatialDocument> {
+interface GeospatialFilterBuilderBase<Doc extends GeospatialDocument, Self> {
   /**
    * Require that a match's field equal a particular value. All conditions are ANDed together, so call
    * `.eq()` multiple times to further filter the set of matching documents.
@@ -30,8 +30,31 @@ interface GeospatialFilterBuilder<Doc extends GeospatialDocument> {
   eq<FieldName extends keyof Doc["filterKeys"] & string>(
     field: FieldName,
     value: FilterValue<Doc, FieldName>,
-  ): GeospatialFilterBuilder<Doc>;
+  ): Self;
 
+  /**
+   * Require that a match's sort key be greater than or equal to the provided value.
+   *
+   * @param field The filter field (only "sortKey").
+   * @param value The inclusive lower bound on the sort key.
+   */
+  gte(field: "sortKey", value: number): Self;
+
+  /**
+   * Require that a match's sort key be less than the provided value.
+   *
+   * @param field The filter field (only "sortKey").
+   * @param value The exclusive upper bound on the sort key.
+   */
+  lt(field: "sortKey", value: number): Self;
+}
+
+type GeospatialFilterBuilderAfterIn<Doc extends GeospatialDocument> =
+  GeospatialFilterBuilderBase<Doc, GeospatialFilterBuilderAfterIn<Doc>>;
+
+interface GeospatialFilterBuilder<
+  Doc extends GeospatialDocument,
+> extends GeospatialFilterBuilderBase<Doc, GeospatialFilterBuilder<Doc>> {
   /**
    * Require that a match's field equal any of the provided values. This OR condition applies in addition
    * to other calls to `.eq()`. There can be at most one `.in()` call in a filter expression.
@@ -43,55 +66,13 @@ interface GeospatialFilterBuilder<Doc extends GeospatialDocument> {
     field: FieldName,
     values: FilterValue<Doc, FieldName>[],
   ): GeospatialFilterBuilderAfterIn<Doc>;
-
-  /**
-   * Require that a match's sort key be greater than or equal to the provided value.
-   *
-   * @param value The inclusive lower bound on the sort key.
-   */
-  gte(field: "sortKey", value: number): GeospatialFilterBuilder<Doc>;
-
-  /**
-   * Require that a match's sort key be less than the provided value.
-   *
-   * @param value The exclusive upper bound on the sort key.
-   */
-  lt(field: "sortKey", value: number): GeospatialFilterBuilder<Doc>;
-}
-
-interface GeospatialFilterBuilderAfterIn<Doc extends GeospatialDocument> {
-  /**
-   * Require that a match's field equal a particular value. All conditions are ANDed together, so call
-   * `.eq()` multiple times to further filter the set of matching documents.
-   *
-   * @param field The filter field.
-   * @param value The value to match against.
-   */
-  eq<FieldName extends keyof Doc["filterKeys"] & string>(
-    field: FieldName,
-    value: FilterValue<Doc, FieldName>,
-  ): GeospatialFilterBuilderAfterIn<Doc>;
-
-  /**
-   * Require that a match's sort key be greater than or equal to the provided value.
-   *
-   * @param value The inclusive lower bound on the sort key.
-   */
-  gte(field: "sortKey", value: number): GeospatialFilterBuilderAfterIn<Doc>;
-
-  /**
-   * Require that a match's sort key be less than the provided value.
-   *
-   * @param value The exclusive upper bound on the sort key.
-   */
-  lt(field: "sortKey", value: number): GeospatialFilterBuilderAfterIn<Doc>;
 }
 
 type GeospatialFilterExpression<Doc extends GeospatialDocument> =
   | GeospatialFilterBuilder<Doc>
   | GeospatialFilterBuilderAfterIn<Doc>;
 
-export class FilterBuilderImpl<Doc extends GeospatialDocument> {
+export class FilterBuilder<Doc extends GeospatialDocument> {
   filterConditions: FilterObject<Doc>[] = [];
   interval?: { startInclusive?: number; endExclusive?: number };
   inDefined: boolean = false;
@@ -99,7 +80,7 @@ export class FilterBuilderImpl<Doc extends GeospatialDocument> {
   eq<FieldName extends keyof Doc["filterKeys"] & string>(
     field: FieldName,
     value: FilterValue<Doc, FieldName>,
-  ): FilterBuilderImpl<Doc> {
+  ): FilterBuilder<Doc> {
     this.filterConditions.push({
       filterKey: field,
       filterValue: value,
@@ -110,7 +91,7 @@ export class FilterBuilderImpl<Doc extends GeospatialDocument> {
   in<FieldName extends keyof Doc["filterKeys"] & string>(
     field: FieldName,
     values: FilterValue<Doc, FieldName>[],
-  ): FilterBuilderImpl<Doc> {
+  ): FilterBuilder<Doc> {
     if (this.inDefined) {
       throw new Error("Invalid query: Can't have multiple `in` clauses.");
     }
@@ -124,7 +105,7 @@ export class FilterBuilderImpl<Doc extends GeospatialDocument> {
     }
     return this;
   }
-  gte(field: "sortKey", value: number): FilterBuilderImpl<Doc> {
+  gte(_field: "sortKey", value: number): FilterBuilder<Doc> {
     if (!this.interval) {
       this.interval = { startInclusive: value };
     } else if (this.interval.startInclusive === undefined) {
@@ -137,7 +118,7 @@ export class FilterBuilderImpl<Doc extends GeospatialDocument> {
     }
     return this;
   }
-  lt(field: "sortKey", value: number): FilterBuilderImpl<Doc> {
+  lt(_field: "sortKey", value: number): FilterBuilder<Doc> {
     if (!this.interval) {
       this.interval = { endExclusive: value };
     } else if (this.interval.endExclusive === undefined) {
