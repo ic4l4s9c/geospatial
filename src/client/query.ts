@@ -19,7 +19,10 @@ export interface GeospatialQuery<Doc extends GeospatialDocument> {
   limit?: number;
 }
 
-interface GeospatialFilterBuilderBase<Doc extends GeospatialDocument, Self> {
+export interface GeospatialFilterBuilderBase<
+  Doc extends GeospatialDocument,
+  Self,
+> {
   /**
    * Require that a match's field equal a particular value. All conditions are ANDed together, so call
    * `.eq()` multiple times to further filter the set of matching documents.
@@ -49,10 +52,10 @@ interface GeospatialFilterBuilderBase<Doc extends GeospatialDocument, Self> {
   lt(field: "sortKey", value: number): Self;
 }
 
-type GeospatialFilterBuilderAfterIn<Doc extends GeospatialDocument> =
+export type GeospatialFilterBuilderAfterIn<Doc extends GeospatialDocument> =
   GeospatialFilterBuilderBase<Doc, GeospatialFilterBuilderAfterIn<Doc>>;
 
-interface GeospatialFilterBuilder<
+export interface GeospatialFilterBuilder<
   Doc extends GeospatialDocument,
 > extends GeospatialFilterBuilderBase<Doc, GeospatialFilterBuilder<Doc>> {
   /**
@@ -68,7 +71,7 @@ interface GeospatialFilterBuilder<
   ): GeospatialFilterBuilderAfterIn<Doc>;
 }
 
-type GeospatialFilterExpression<Doc extends GeospatialDocument> =
+export type GeospatialFilterExpression<Doc extends GeospatialDocument> =
   | GeospatialFilterBuilder<Doc>
   | GeospatialFilterBuilderAfterIn<Doc>;
 

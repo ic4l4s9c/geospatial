@@ -30,12 +30,6 @@ const SF_GOLDEN_GATE = { latitude: 37.8199, longitude: -122.4783 };
 const LONDON_POINT = { latitude: 51.5074, longitude: -0.1278 };
 const SYDNEY_POINT = { latitude: -33.8688, longitude: 151.2093 };
 
-const SF_SHAPE = { type: "rectangle" as const, rectangle: SF_RECTANGLE };
-const LONDON_SHAPE = {
-  type: "rectangle" as const,
-  rectangle: LONDON_RECTANGLE,
-};
-
 describe("constructor", () => {
   test("invalid GEOSPATIAL_LOG_LEVEL env var falls back to INFO without throwing", async () => {
     const originalEnv = process.env.GEOSPATIAL_LOG_LEVEL;
@@ -411,7 +405,11 @@ describe("query", () => {
         filterKeys: { name: "Outside" },
         sortKey: 2,
       });
-      const result = await geo.query(ctx, { shape: SF_SHAPE, limit: 10 });
+      const result = await geo
+        .query(ctx)
+        .within(SF_RECTANGLE)
+        .limit(10)
+        .paginate();
       const keys = result.page.map((d) => d.key);
       expect(keys).toContain("inside");
       expect(keys).not.toContain("outside");
@@ -422,7 +420,11 @@ describe("query", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      const result = await geo.query(ctx, { shape: SF_SHAPE, limit: 10 });
+      const result = await geo
+        .query(ctx)
+        .within(SF_RECTANGLE)
+        .limit(10)
+        .paginate();
       expect(result.page).toHaveLength(0);
     });
   });
@@ -437,7 +439,11 @@ describe("query", () => {
         filterKeys: { name: "London" },
         sortKey: 1,
       });
-      const result = await geo.query(ctx, { shape: SF_SHAPE, limit: 10 });
+      const result = await geo
+        .query(ctx)
+        .within(SF_RECTANGLE)
+        .limit(10)
+        .paginate();
       expect(result.page).toHaveLength(0);
     });
   });
@@ -446,7 +452,11 @@ describe("query", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      const result = await geo.query(ctx, { shape: SF_SHAPE, limit: 10 });
+      const result = await geo
+        .query(ctx)
+        .within(SF_RECTANGLE)
+        .limit(10)
+        .paginate();
       expect(result).toHaveProperty("page");
       expect(result).toHaveProperty("isDone");
       expect(result).toHaveProperty("continueCursor");
@@ -464,7 +474,11 @@ describe("query", () => {
         filterKeys: { name: "Shape Test" },
         sortKey: 42,
       });
-      const result = await geo.query(ctx, { shape: SF_SHAPE, limit: 10 });
+      const result = await geo
+        .query(ctx)
+        .within(SF_RECTANGLE)
+        .limit(10)
+        .paginate();
       const doc = result.page.find((d) => d.key === "shape-test");
       expect(doc).toBeDefined();
       expect(doc?.coordinates).toHaveProperty("latitude");
@@ -484,7 +498,11 @@ describe("query", () => {
           sortKey: i,
         });
       }
-      const result = await geo.query(ctx, { shape: SF_SHAPE, limit: 2 });
+      const result = await geo
+        .query(ctx)
+        .within(SF_RECTANGLE)
+        .limit(2)
+        .paginate();
       expect(result.page.length).toBeLessThanOrEqual(2);
     });
   });
@@ -505,11 +523,12 @@ describe("query", () => {
         filterKeys: { name: "Park" },
         sortKey: 2,
       });
-      const result = await geo.query(ctx, {
-        shape: SF_SHAPE,
-        limit: 10,
-        filter: (q) => q.eq("name", "Cafe"),
-      });
+      const result = await geo
+        .query(ctx)
+        .within(SF_RECTANGLE)
+        .filter((q) => q.eq("name", "Cafe"))
+        .limit(10)
+        .paginate();
       const keys = result.page.map((d) => d.key);
       expect(keys).toContain("cafe");
       expect(keys).not.toContain("park");
@@ -535,11 +554,12 @@ describe("query", () => {
         filterKeys: { name: "Cafe", category: "french" },
         sortKey: 2,
       });
-      const result = await geo.query(ctx, {
-        shape: SF_SHAPE,
-        limit: 10,
-        filter: (q) => q.eq("name", "Cafe").eq("category", "italian"),
-      });
+      const result = await geo
+        .query(ctx)
+        .within(SF_RECTANGLE)
+        .filter((q) => q.eq("name", "Cafe").eq("category", "italian"))
+        .limit(10)
+        .paginate();
       const keys = result.page.map((d) => d.key);
       expect(keys).toContain("italian-cafe");
       expect(keys).not.toContain("french-cafe");
@@ -568,11 +588,12 @@ describe("query", () => {
         filterKeys: { name: "Gamma" },
         sortKey: 3,
       });
-      const result = await geo.query(ctx, {
-        shape: SF_SHAPE,
-        limit: 10,
-        filter: (q) => q.in("name", ["Alpha", "Beta"]),
-      });
+      const result = await geo
+        .query(ctx)
+        .within(SF_RECTANGLE)
+        .filter((q) => q.in("name", ["Alpha", "Beta"]))
+        .limit(10)
+        .paginate();
       const keys = result.page.map((d) => d.key);
       expect(keys).toContain("alpha");
       expect(keys).toContain("beta");
@@ -592,11 +613,12 @@ describe("query", () => {
           sortKey: i,
         });
       }
-      const result = await geo.query(ctx, {
-        shape: SF_SHAPE,
-        limit: 10,
-        filter: (q) => q.gte("sortKey", 3),
-      });
+      const result = await geo
+        .query(ctx)
+        .within(SF_RECTANGLE)
+        .filter((q) => q.gte("sortKey", 3))
+        .limit(10)
+        .paginate();
       const keys = result.page.map((d) => d.key);
       expect(keys).toContain("item-3");
       expect(keys).toContain("item-4");
@@ -617,11 +639,12 @@ describe("query", () => {
           sortKey: i,
         });
       }
-      const result = await geo.query(ctx, {
-        shape: SF_SHAPE,
-        limit: 10,
-        filter: (q) => q.lt("sortKey", 3),
-      });
+      const result = await geo
+        .query(ctx)
+        .within(SF_RECTANGLE)
+        .filter((q) => q.lt("sortKey", 3))
+        .limit(10)
+        .paginate();
       const keys = result.page.map((d) => d.key);
       expect(keys).toContain("item-1");
       expect(keys).toContain("item-2");
@@ -642,11 +665,12 @@ describe("query", () => {
           sortKey: i,
         });
       }
-      const result = await geo.query(ctx, {
-        shape: SF_SHAPE,
-        limit: 10,
-        filter: (q) => q.gte("sortKey", 2).lt("sortKey", 5),
-      });
+      const result = await geo
+        .query(ctx)
+        .within(SF_RECTANGLE)
+        .filter((q) => q.gte("sortKey", 2).lt("sortKey", 5))
+        .limit(10)
+        .paginate();
       const keys = result.page.map((d) => d.key);
       expect(keys).toContain("item-2");
       expect(keys).toContain("item-3");
@@ -682,12 +706,14 @@ describe("query", () => {
         filterKeys: { name: "Cafe", category: "french" },
         sortKey: 3,
       });
-      const result = await geo.query(ctx, {
-        shape: SF_SHAPE,
-        limit: 10,
-        filter: (q) =>
+      const result = await geo
+        .query(ctx)
+        .within(SF_RECTANGLE)
+        .filter((q) =>
           q.in("name", ["Cafe", "Restaurant"]).eq("category", "italian"),
-      });
+        )
+        .limit(10)
+        .paginate();
       const keys = result.page.map((d) => d.key);
       expect(keys).toContain("italian-cafe");
       expect(keys).toContain("italian-restaurant");
@@ -707,11 +733,12 @@ describe("query", () => {
           sortKey: i,
         });
       }
-      const result = await geo.query(ctx, {
-        shape: SF_SHAPE,
-        limit: 20,
-        filter: (q) => q.gte("sortKey", 0).gte("sortKey", -1),
-      });
+      const result = await geo
+        .query(ctx)
+        .within(SF_RECTANGLE)
+        .filter((q) => q.gte("sortKey", 0).gte("sortKey", -1))
+        .limit(20)
+        .paginate();
       const keys = result.page.map((d) => d.key);
       expect(keys).toContain("item-0");
       expect(keys).toContain("item-1");
@@ -734,11 +761,12 @@ describe("query", () => {
           sortKey: i,
         });
       }
-      const result = await geo.query(ctx, {
-        shape: SF_SHAPE,
-        limit: 20,
-        filter: (q) => q.lt("sortKey", 0).lt("sortKey", 1),
-      });
+      const result = await geo
+        .query(ctx)
+        .within(SF_RECTANGLE)
+        .filter((q) => q.lt("sortKey", 0).lt("sortKey", 1))
+        .limit(20)
+        .paginate();
       const keys = result.page.map((d) => d.key);
       expect(keys).toContain("item-neg1");
       expect(keys).toContain("item-neg2");
@@ -771,11 +799,12 @@ describe("query", () => {
         filterKeys: { name: "Negative" },
         sortKey: -1,
       });
-      const result = await geo.query(ctx, {
-        shape: SF_SHAPE,
-        limit: 20,
-        filter: (q) => q.gte("sortKey", 0),
-      });
+      const result = await geo
+        .query(ctx)
+        .within(SF_RECTANGLE)
+        .filter((q) => q.gte("sortKey", 0))
+        .limit(20)
+        .paginate();
       const keys = result.page.map((d) => d.key);
       expect(keys).toContain("positive");
       expect(keys).toContain("zero");
@@ -805,11 +834,12 @@ describe("query", () => {
         filterKeys: { name: "Negative" },
         sortKey: -1,
       });
-      const result = await geo.query(ctx, {
-        shape: SF_SHAPE,
-        limit: 20,
-        filter: (q) => q.lt("sortKey", 0),
-      });
+      const result = await geo
+        .query(ctx)
+        .within(SF_RECTANGLE)
+        .filter((q) => q.lt("sortKey", 0))
+        .limit(20)
+        .paginate();
       const keys = result.page.map((d) => d.key);
       expect(keys).not.toContain("positive");
       expect(keys).not.toContain("zero");
@@ -829,14 +859,18 @@ describe("query", () => {
           sortKey: i,
         });
       }
-      const page1 = await geo.query(ctx, { shape: SF_SHAPE, limit: 3 });
+      const page1 = await geo
+        .query(ctx)
+        .within(SF_RECTANGLE)
+        .limit(3)
+        .paginate();
       expect(page1.page.length).toBeGreaterThan(0);
       if (!page1.isDone) {
-        const page2 = await geo.query(
-          ctx,
-          { shape: SF_SHAPE, limit: 3 },
-          page1.continueCursor,
-        );
+        const page2 = await geo
+          .query(ctx)
+          .within(SF_RECTANGLE)
+          .limit(3)
+          .paginate(page1.continueCursor);
         const overlap = page1.page
           .map((d) => d.key)
           .filter((k) => page2.page.map((d) => d.key).includes(k));
@@ -864,7 +898,11 @@ describe("query", () => {
         },
       ];
       for (const loc of locs) await geo.insert(ctx, loc);
-      const result = await geo.query(ctx, { shape: SF_SHAPE, limit: 10 });
+      const result = await geo
+        .query(ctx)
+        .within(SF_RECTANGLE)
+        .limit(10)
+        .paginate();
       const keys = result.page.map((d) => d.key);
       expect(keys).toContain("loc-a");
       expect(keys).toContain("loc-b");
@@ -881,7 +919,11 @@ describe("query", () => {
         filterKeys: { name: "Only" },
         sortKey: 1,
       });
-      const result = await geo.query(ctx, { shape: SF_SHAPE, limit: 100 });
+      const result = await geo
+        .query(ctx)
+        .within(SF_RECTANGLE)
+        .limit(100)
+        .paginate();
       expect(result.isDone).toBe(true);
     });
   });
@@ -896,7 +938,11 @@ describe("query", () => {
         filterKeys: { name: "SF" },
         sortKey: 1,
       });
-      const result = await geo.query(ctx, { shape: LONDON_SHAPE, limit: 10 });
+      const result = await geo
+        .query(ctx)
+        .within(LONDON_RECTANGLE)
+        .limit(10)
+        .paginate();
       const keys = result.page.map((d) => d.key);
       expect(keys).not.toContain("sf-doc");
     });
@@ -913,7 +959,11 @@ describe("query", () => {
         sortKey: 1,
       });
       await geo.delete(ctx, "del");
-      const result = await geo.query(ctx, { shape: SF_SHAPE, limit: 10 });
+      const result = await geo
+        .query(ctx)
+        .within(SF_RECTANGLE)
+        .limit(10)
+        .paginate();
       expect(result.page.map((d) => d.key)).not.toContain("del");
     });
   });
@@ -930,7 +980,11 @@ describe("query", () => {
           sortKey: i,
         });
       }
-      const result = await geo.query(ctx, { shape: SF_SHAPE, limit: 2 });
+      const result = await geo
+        .query(ctx)
+        .within(SF_RECTANGLE)
+        .limit(2)
+        .paginate();
       expect(result.isDone).toBe(false);
     });
   });
@@ -939,7 +993,11 @@ describe("query", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      const result = await geo.query(ctx, { shape: SF_SHAPE, limit: 10 });
+      const result = await geo
+        .query(ctx)
+        .within(SF_RECTANGLE)
+        .limit(10)
+        .paginate();
       expect(typeof result.continueCursor).toBe("string");
     });
   });
@@ -961,11 +1019,11 @@ describe("query", () => {
       let cursor: string | undefined;
       let done = false;
       while (!done) {
-        const result = await geo.query(
-          ctx,
-          { shape: SF_SHAPE, limit: 3 },
-          cursor,
-        );
+        const result = await geo
+          .query(ctx)
+          .within(SF_RECTANGLE)
+          .limit(3)
+          .paginate(cursor);
         allKeys.push(...result.page.map((d) => d.key));
         done = result.isDone;
         cursor = result.continueCursor;
@@ -985,11 +1043,12 @@ describe("query", () => {
         filterKeys: { name: "X" },
         sortKey: 1,
       });
-      const result = await geo.query(ctx, {
-        shape: SF_SHAPE,
-        limit: 10,
-        filter: (q) => q.eq("name", "NonExistent"),
-      });
+      const result = await geo
+        .query(ctx)
+        .within(SF_RECTANGLE)
+        .filter((q) => q.eq("name", "NonExistent"))
+        .limit(10)
+        .paginate();
       expect(result.page).toHaveLength(0);
     });
   });
@@ -1007,11 +1066,12 @@ describe("query - interval validation (sortKey bounds)", () => {
         sortKey: 5,
       });
       // gte(5).lt(5) produces startInclusive === endExclusive === 5
-      const result = await geo.query(ctx, {
-        shape: SF_SHAPE,
-        limit: 10,
-        filter: (q) => q.gte("sortKey", 5).lt("sortKey", 5),
-      });
+      const result = await geo
+        .query(ctx)
+        .within(SF_RECTANGLE)
+        .filter((q) => q.gte("sortKey", 5).lt("sortKey", 5))
+        .limit(10)
+        .paginate();
       expect(result.page).toHaveLength(0);
       expect(result.isDone).toBe(true);
       expect(result.continueCursor).toBe("");
@@ -1030,11 +1090,12 @@ describe("query - interval validation (sortKey bounds)", () => {
       });
       // gte(10).lt(5) produces startInclusive=10 > endExclusive=5
       await expect(
-        geo.query(ctx, {
-          shape: SF_SHAPE,
-          limit: 10,
-          filter: (q) => q.gte("sortKey", 10).lt("sortKey", 5),
-        }),
+        geo
+          .query(ctx)
+          .within(SF_RECTANGLE)
+          .filter((q) => q.gte("sortKey", 10).lt("sortKey", 5))
+          .limit(10)
+          .paginate(),
       ).rejects.toThrow("Invalid interval: start is greater than end");
     });
   });
@@ -1052,11 +1113,12 @@ describe("query - nearest interval validation", () => {
         sortKey: 5,
       });
       // gte(5).lt(5) => startInclusive === endExclusive
-      const result = await geo.nearest(ctx, {
-        point: SF_POINT,
-        limit: 10,
-        filter: (q) => q.gte("sortKey", 5).lt("sortKey", 5),
-      });
+      const result = await geo
+        .query(ctx)
+        .nearest(SF_POINT)
+        .filter((q) => q.gte("sortKey", 5).lt("sortKey", 5))
+        .limit(10)
+        .collect();
       expect(result).toEqual([]);
     });
   });
@@ -1073,11 +1135,12 @@ describe("query - nearest interval validation", () => {
       });
       // gte(10).lt(5) => startInclusive=10 > endExclusive=5
       // nearestPoints does not validate the interval, it simply finds no matches
-      const result = await geo.nearest(ctx, {
-        point: SF_POINT,
-        limit: 10,
-        filter: (q) => q.gte("sortKey", 10).lt("sortKey", 5),
-      });
+      const result = await geo
+        .query(ctx)
+        .nearest(SF_POINT)
+        .filter((q) => q.gte("sortKey", 10).lt("sortKey", 5))
+        .limit(10)
+        .collect();
       expect(result).toEqual([]);
     });
   });
@@ -1102,10 +1165,11 @@ describe("query - 1024 row safety limit", () => {
         });
       }
       // Request more than 1024 results so the row-read limit is hit first.
-      const result = await geo.query(ctx, {
-        shape: SF_SHAPE,
-        limit: 2000,
-      });
+      const result = await geo
+        .query(ctx)
+        .within(SF_RECTANGLE)
+        .limit(2000)
+        .paginate();
       expect(result.isDone).toBe(false);
       expect(typeof result.continueCursor).toBe("string");
       expect(result.continueCursor.length).toBeGreaterThan(0);
@@ -1134,11 +1198,11 @@ describe("query - 1024 row safety limit", () => {
       let done = false;
       let pages = 0;
       while (!done) {
-        const result = await geo.query(
-          ctx,
-          { shape: SF_SHAPE, limit: 2000 },
-          cursor,
-        );
+        const result = await geo
+          .query(ctx)
+          .within(SF_RECTANGLE)
+          .limit(2000)
+          .paginate(cursor);
         allKeys.push(...result.page.map((d) => d.key));
         done = result.isDone;
         cursor = result.continueCursor;
@@ -1169,7 +1233,7 @@ describe("nearest", () => {
         filterKeys: { name: "Far Away" },
         sortKey: 2,
       });
-      const result = await geo.nearest(ctx, { point: SF_POINT, limit: 2 });
+      const result = await geo.query(ctx).nearest(SF_POINT).limit(2).collect();
       expect(result.length).toBeGreaterThan(0);
       expect(result[0].key).toBe("very-close");
     });
@@ -1199,7 +1263,7 @@ describe("nearest", () => {
       for (const p of points) {
         await geo.insert(ctx, { ...p, filterKeys: { name: p.key } });
       }
-      const result = await geo.nearest(ctx, { point: SF_POINT, limit: 3 });
+      const result = await geo.query(ctx).nearest(SF_POINT).limit(3).collect();
       expect(result).toHaveLength(3);
       for (let i = 1; i < result.length; i++) {
         const prevDistSq = Math.pow(
@@ -1225,7 +1289,7 @@ describe("nearest", () => {
         filterKeys: { name: "Nearby" },
         sortKey: 1,
       });
-      const result = await geo.nearest(ctx, { point: SF_POINT, limit: 1 });
+      const result = await geo.query(ctx).nearest(SF_POINT).limit(1).collect();
       expect(result).toHaveLength(1);
       expect(result[0]).toHaveProperty("key");
       expect(result[0]).toHaveProperty("coordinates");
@@ -1249,7 +1313,7 @@ describe("nearest", () => {
           sortKey: i,
         });
       }
-      const result = await geo.nearest(ctx, { point: SF_POINT, limit: 3 });
+      const result = await geo.query(ctx).nearest(SF_POINT).limit(3).collect();
       expect(result.length).toBeLessThanOrEqual(3);
     });
   });
@@ -1258,7 +1322,7 @@ describe("nearest", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      const result = await geo.nearest(ctx, { point: SF_POINT, limit: 5 });
+      const result = await geo.query(ctx).nearest(SF_POINT).limit(5).collect();
       expect(result).toEqual([]);
     });
   });
@@ -1279,11 +1343,11 @@ describe("nearest", () => {
         filterKeys: { name: "Far" },
         sortKey: 2,
       });
-      const result = await geo.nearest(ctx, {
-        point: SF_POINT,
-        limit: 10,
-        maxDistance: 1000,
-      });
+      const result = await geo
+        .query(ctx)
+        .nearest(SF_POINT, { maxDistance: 1000 })
+        .limit(10)
+        .collect();
       const keys = result.map((d) => d.key);
       expect(keys).toContain("close");
       expect(keys).not.toContain("far");
@@ -1300,11 +1364,11 @@ describe("nearest", () => {
         filterKeys: { name: "Somewhere" },
         sortKey: 1,
       });
-      const result = await geo.nearest(ctx, {
-        point: SF_POINT,
-        limit: 10,
-        maxDistance: 0,
-      });
+      const result = await geo
+        .query(ctx)
+        .nearest(SF_POINT, { maxDistance: 0 })
+        .limit(10)
+        .collect();
       expect(result).toHaveLength(0);
     });
   });
@@ -1325,11 +1389,12 @@ describe("nearest", () => {
         filterKeys: { name: "Hotel" },
         sortKey: 2,
       });
-      const result = await geo.nearest(ctx, {
-        point: SF_POINT,
-        limit: 10,
-        filter: (q) => q.eq("name", "Restaurant"),
-      });
+      const result = await geo
+        .query(ctx)
+        .nearest(SF_POINT)
+        .filter((q) => q.eq("name", "Restaurant"))
+        .limit(10)
+        .collect();
       const keys = result.map((d) => d.key);
       expect(keys).toContain("restaurant");
       expect(keys).not.toContain("hotel");
@@ -1358,11 +1423,12 @@ describe("nearest", () => {
         filterKeys: { name: "Gamma" },
         sortKey: 3,
       });
-      const result = await geo.nearest(ctx, {
-        point: SF_POINT,
-        limit: 10,
-        filter: (q) => q.in("name", ["Alpha", "Beta"]),
-      });
+      const result = await geo
+        .query(ctx)
+        .nearest(SF_POINT)
+        .filter((q) => q.in("name", ["Alpha", "Beta"]))
+        .limit(10)
+        .collect();
       const keys = result.map((d) => d.key);
       expect(keys).toContain("alpha");
       expect(keys).toContain("beta");
@@ -1382,11 +1448,12 @@ describe("nearest", () => {
           sortKey: i,
         });
       }
-      const result = await geo.nearest(ctx, {
-        point: SF_POINT,
-        limit: 10,
-        filter: (q) => q.gte("sortKey", 2).lt("sortKey", 4),
-      });
+      const result = await geo
+        .query(ctx)
+        .nearest(SF_POINT)
+        .filter((q) => q.gte("sortKey", 2).lt("sortKey", 4))
+        .limit(10)
+        .collect();
       const keys = result.map((d) => d.key);
       expect(keys).toContain("item-2");
       expect(keys).toContain("item-3");
@@ -1406,7 +1473,7 @@ describe("nearest", () => {
         filterKeys: { name: "Close" },
         sortKey: 1,
       });
-      const result = await geo.nearest(ctx, { point: SF_POINT, limit: 1 });
+      const result = await geo.query(ctx).nearest(SF_POINT).limit(1).collect();
       expect(result[0]).toHaveProperty("distance");
       expect(typeof result[0].distance).toBe("number");
       expect(result[0].distance).toBeGreaterThanOrEqual(0);
@@ -1425,7 +1492,7 @@ describe("nearest", () => {
           sortKey: i,
         });
       }
-      const result = await geo.nearest(ctx, { point: SF_POINT, limit: 4 });
+      const result = await geo.query(ctx).nearest(SF_POINT).limit(4).collect();
       for (let i = 1; i < result.length; i++) {
         expect(result[i].distance).toBeGreaterThanOrEqual(
           result[i - 1].distance,
@@ -1444,7 +1511,11 @@ describe("nearest", () => {
         filterKeys: { name: "Only" },
         sortKey: 1,
       });
-      const result = await geo.nearest(ctx, { point: SF_POINT, limit: 100 });
+      const result = await geo
+        .query(ctx)
+        .nearest(SF_POINT)
+        .limit(100)
+        .collect();
       expect(result).toHaveLength(1);
     });
   });
@@ -1460,7 +1531,7 @@ describe("nearest", () => {
         sortKey: 1,
       });
       await geo.delete(ctx, "gone");
-      const result = await geo.nearest(ctx, { point: SF_POINT, limit: 10 });
+      const result = await geo.query(ctx).nearest(SF_POINT).limit(10).collect();
       expect(result.map((d) => d.key)).not.toContain("gone");
     });
   });
@@ -1475,11 +1546,12 @@ describe("nearest", () => {
         filterKeys: { name: "X" },
         sortKey: 1,
       });
-      const result = await geo.nearest(ctx, {
-        point: SF_POINT,
-        limit: 10,
-        filter: (q) => q.eq("name", "NoMatch"),
-      });
+      const result = await geo
+        .query(ctx)
+        .nearest(SF_POINT)
+        .filter((q) => q.eq("name", "NoMatch"))
+        .limit(10)
+        .collect();
       expect(result).toHaveLength(0);
     });
   });
@@ -1506,12 +1578,12 @@ describe("nearest", () => {
         filterKeys: { category: "coffee" },
         sortKey: 3,
       });
-      const result = await geo.nearest(ctx, {
-        point: SF_POINT,
-        limit: 10,
-        maxDistance: 1000,
-        filter: (q) => q.eq("category", "coffee"),
-      });
+      const result = await geo
+        .query(ctx)
+        .nearest(SF_POINT, { maxDistance: 1000 })
+        .filter((q) => q.eq("category", "coffee"))
+        .limit(10)
+        .collect();
       const keys = result.map((d) => d.key);
       expect(keys).toContain("close-coffee");
       expect(keys).not.toContain("close-hotel");
@@ -1547,12 +1619,12 @@ describe("nearest", () => {
         filterKeys: { category: "coffee" },
         sortKey: 4,
       });
-      const result = await geo.nearest(ctx, {
-        point: SF_POINT,
-        limit: 10,
-        maxDistance: 1000,
-        filter: (q) => q.in("category", ["coffee", "tea"]),
-      });
+      const result = await geo
+        .query(ctx)
+        .nearest(SF_POINT, { maxDistance: 1000 })
+        .filter((q) => q.in("category", ["coffee", "tea"]))
+        .limit(10)
+        .collect();
       const keys = result.map((d) => d.key);
       expect(keys).toContain("close-coffee");
       expect(keys).toContain("close-tea");
@@ -1583,12 +1655,12 @@ describe("nearest", () => {
         filterKeys: { name: "C" },
         sortKey: 15,
       });
-      const result = await geo.nearest(ctx, {
-        point: SF_POINT,
-        limit: 10,
-        maxDistance: 1000,
-        filter: (q) => q.gte("sortKey", 10).lt("sortKey", 30),
-      });
+      const result = await geo
+        .query(ctx)
+        .nearest(SF_POINT, { maxDistance: 1000 })
+        .filter((q) => q.gte("sortKey", 10).lt("sortKey", 30))
+        .limit(10)
+        .collect();
       const keys = result.map((d) => d.key);
       expect(keys).toContain("close-in-range");
       expect(keys).not.toContain("close-out-of-range");
@@ -1608,10 +1680,7 @@ describe("nearest - zero limit returns empty array immediately", () => {
         filterKeys: { name: "SomePoint" },
         sortKey: 1,
       });
-      const result = await geo.nearest(ctx, {
-        point: SF_POINT,
-        limit: 0,
-      });
+      const result = await geo.query(ctx).nearest(SF_POINT).limit(0).collect();
       expect(result).toEqual([]);
     });
   });
@@ -1757,11 +1826,12 @@ describe("filter builder - multiple in() calls", () => {
         sortKey: 1,
       });
       await expect(
-        geo.query(ctx, {
-          shape: SF_SHAPE,
-          limit: 10,
-          filter: (q) => (q.in("name", ["X"]) as any).in("category", ["Y"]),
-        }),
+        geo
+          .query(ctx)
+          .within(SF_RECTANGLE)
+          .filter((q) => (q.in("name", ["X"]) as any).in("category", ["Y"]))
+          .limit(10)
+          .paginate(),
       ).rejects.toThrow("multiple");
     });
   });
@@ -1780,11 +1850,12 @@ describe("filter builder - multiple in() calls", () => {
         sortKey: 1,
       });
       await expect(
-        geo.nearest(ctx, {
-          point: SF_POINT,
-          limit: 10,
-          filter: (q) => (q.in("name", ["X"]) as any).in("category", ["Y"]),
-        }),
+        geo
+          .query(ctx)
+          .nearest(SF_POINT)
+          .filter((q) => (q.in("name", ["X"]) as any).in("category", ["Y"]))
+          .limit(10)
+          .collect(),
       ).rejects.toThrow("multiple");
     });
   });
@@ -1801,7 +1872,11 @@ describe("query - points on rectangle edges", () => {
         filterKeys: { name: "NorthEdge" },
         sortKey: 1,
       });
-      const result = await geo.query(ctx, { shape: SF_SHAPE, limit: 10 });
+      const result = await geo
+        .query(ctx)
+        .within(SF_RECTANGLE)
+        .limit(10)
+        .paginate();
       // We assert on observable behavior: the point is either included or not.
       // What matters is this does not throw and returns a consistent answer.
       expect(Array.isArray(result.page)).toBe(true);
@@ -1818,7 +1893,11 @@ describe("query - points on rectangle edges", () => {
         filterKeys: { name: "SouthEdge" },
         sortKey: 1,
       });
-      const result = await geo.query(ctx, { shape: SF_SHAPE, limit: 10 });
+      const result = await geo
+        .query(ctx)
+        .within(SF_RECTANGLE)
+        .limit(10)
+        .paginate();
       expect(Array.isArray(result.page)).toBe(true);
     });
   });
@@ -1833,7 +1912,11 @@ describe("query - points on rectangle edges", () => {
         filterKeys: { name: "WestEdge" },
         sortKey: 1,
       });
-      const result = await geo.query(ctx, { shape: SF_SHAPE, limit: 10 });
+      const result = await geo
+        .query(ctx)
+        .within(SF_RECTANGLE)
+        .limit(10)
+        .paginate();
       expect(Array.isArray(result.page)).toBe(true);
     });
   });
@@ -1848,7 +1931,11 @@ describe("query - points on rectangle edges", () => {
         filterKeys: { name: "EastEdge" },
         sortKey: 1,
       });
-      const result = await geo.query(ctx, { shape: SF_SHAPE, limit: 10 });
+      const result = await geo
+        .query(ctx)
+        .within(SF_RECTANGLE)
+        .limit(10)
+        .paginate();
       expect(Array.isArray(result.page)).toBe(true);
     });
   });
@@ -1866,7 +1953,11 @@ describe("query - points on rectangle edges", () => {
         filterKeys: { name: "JustOutsideNorth" },
         sortKey: 1,
       });
-      const result = await geo.query(ctx, { shape: SF_SHAPE, limit: 10 });
+      const result = await geo
+        .query(ctx)
+        .within(SF_RECTANGLE)
+        .limit(10)
+        .paginate();
       expect(result.page.map((d) => d.key)).not.toContain("just-outside-north");
     });
   });
@@ -1884,7 +1975,11 @@ describe("query - points on rectangle edges", () => {
         filterKeys: { name: "JustOutsideSouth" },
         sortKey: 1,
       });
-      const result = await geo.query(ctx, { shape: SF_SHAPE, limit: 10 });
+      const result = await geo
+        .query(ctx)
+        .within(SF_RECTANGLE)
+        .limit(10)
+        .paginate();
       expect(result.page.map((d) => d.key)).not.toContain("just-outside-south");
     });
   });
@@ -1902,11 +1997,11 @@ describe("nearest - maxDistance with documents in index but none in range", () =
         filterKeys: { name: "London" },
         sortKey: 1,
       });
-      const result = await geo.nearest(ctx, {
-        point: SF_POINT,
-        limit: 10,
-        maxDistance: 1000, // 1 km - London is way beyond this
-      });
+      const result = await geo
+        .query(ctx)
+        .nearest(SF_POINT, { maxDistance: 1000 })
+        .limit(10)
+        .collect();
       expect(result).toHaveLength(0);
     });
   });
@@ -1927,11 +2022,11 @@ describe("nearest - maxDistance with documents in index but none in range", () =
         filterKeys: { name: "London" },
         sortKey: 2,
       });
-      const result = await geo.nearest(ctx, {
-        point: SF_POINT,
-        limit: 10,
-        maxDistance: 1000,
-      });
+      const result = await geo
+        .query(ctx)
+        .nearest(SF_POINT, { maxDistance: 1000 })
+        .limit(10)
+        .collect();
       const keys = result.map((d) => d.key);
       expect(keys).toContain("very-close");
       expect(keys).not.toContain("london");
@@ -1951,11 +2046,11 @@ describe("nearest - maxDistance with documents in index but none in range", () =
       });
       // Query with maxDistance that may or may not include this point.
       // We just assert the result is consistent and doesn't throw.
-      const result = await geo.nearest(ctx, {
-        point: SF_POINT,
-        limit: 10,
-        maxDistance: 100,
-      });
+      const result = await geo
+        .query(ctx)
+        .nearest(SF_POINT, { maxDistance: 100 })
+        .limit(10)
+        .collect();
       expect(Array.isArray(result)).toBe(true);
     });
   });
@@ -1973,7 +2068,7 @@ describe("nearest - distance field accuracy", () => {
         filterKeys: { name: "OneKm" },
         sortKey: 1,
       });
-      const result = await geo.nearest(ctx, { point: SF_POINT, limit: 1 });
+      const result = await geo.query(ctx).nearest(SF_POINT).limit(1).collect();
       expect(result).toHaveLength(1);
       // Allow ±20% tolerance for spherical approximation
       expect(result[0].distance).toBeGreaterThan(800);
@@ -1991,7 +2086,7 @@ describe("nearest - distance field accuracy", () => {
         filterKeys: { name: "Exact" },
         sortKey: 1,
       });
-      const result = await geo.nearest(ctx, { point: SF_POINT, limit: 1 });
+      const result = await geo.query(ctx).nearest(SF_POINT).limit(1).collect();
       expect(result).toHaveLength(1);
       expect(result[0].distance).toBeCloseTo(0, 0);
     });
@@ -2012,7 +2107,11 @@ describe("query - result sort order", () => {
           sortKey: 42,
         });
       }
-      const result = await geo.query(ctx, { shape: SF_SHAPE, limit: 10 });
+      const result = await geo
+        .query(ctx)
+        .within(SF_RECTANGLE)
+        .limit(10)
+        .paginate();
       const resultKeys = result.page.map((d) => d.key);
       for (const key of keys) {
         expect(resultKeys).toContain(key);
@@ -2026,14 +2125,18 @@ describe("query - cursor stability", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      const first = await geo.query(ctx, { shape: SF_SHAPE, limit: 10 });
+      const first = await geo
+        .query(ctx)
+        .within(SF_RECTANGLE)
+        .limit(10)
+        .paginate();
       expect(first.page).toHaveLength(0);
       // Continue from the cursor of an exhausted result
-      const second = await geo.query(
-        ctx,
-        { shape: SF_SHAPE, limit: 10 },
-        first.continueCursor,
-      );
+      const second = await geo
+        .query(ctx)
+        .within(SF_RECTANGLE)
+        .limit(10)
+        .paginate(first.continueCursor);
       expect(second.page).toHaveLength(0);
       expect(second.isDone).toBe(true);
     });
@@ -2057,11 +2160,11 @@ describe("query - cursor stability", () => {
       let pages = 0;
       let done = false;
       while (!done) {
-        const result = await geo.query(
-          ctx,
-          { shape: SF_SHAPE, limit: 1 },
-          cursor,
-        );
+        const result = await geo
+          .query(ctx)
+          .within(SF_RECTANGLE)
+          .limit(1)
+          .paginate(cursor);
         expect(result.page.length).toBeLessThanOrEqual(1);
         allKeys.push(...result.page.map((d) => d.key));
         done = result.isDone;
@@ -2153,16 +2256,6 @@ describe("get - overwrite consistency", () => {
         filterKeys: { name: "Mover" },
         sortKey: 1,
       });
-      const LONDON_RECTANGLE = {
-        north: 51.6,
-        south: 51.4,
-        east: 0.0,
-        west: -0.3,
-      };
-      const londonShape = {
-        type: "rectangle" as const,
-        rectangle: LONDON_RECTANGLE,
-      };
       await geo.insert(ctx, {
         key: "mover",
         coordinates: LONDON_POINT,
@@ -2170,35 +2263,19 @@ describe("get - overwrite consistency", () => {
         sortKey: 2,
       });
       // Should appear in London query
-      const londonResult = await geo.query(ctx, {
-        shape: londonShape,
-        limit: 10,
-      });
+      const londonResult = await geo
+        .query(ctx)
+        .within(LONDON_RECTANGLE)
+        .limit(10)
+        .paginate();
       expect(londonResult.page.map((d) => d.key)).toContain("mover");
       // Should NOT appear in SF query anymore
-      const sfResult = await geo.query(ctx, { shape: SF_SHAPE, limit: 10 });
+      const sfResult = await geo
+        .query(ctx)
+        .within(SF_RECTANGLE)
+        .limit(10)
+        .paginate();
       expect(sfResult.page.map((d) => d.key)).not.toContain("mover");
-    });
-  });
-});
-
-describe("filter builder - in() with empty array", () => {
-  test("in() with an empty values array returns no results", async () => {
-    const t = initConvexTest();
-    await t.run(async (ctx) => {
-      const geo = await initGeospatial<string, { name: string }>();
-      await geo.insert(ctx, {
-        key: "some-doc",
-        coordinates: SF_CITY_HALL,
-        filterKeys: { name: "SomeDoc" },
-        sortKey: 1,
-      });
-      const result = await geo.query(ctx, {
-        shape: SF_SHAPE,
-        limit: 10,
-        filter: (q) => q.in("name", []),
-      });
-      expect(result.page).toHaveLength(0);
     });
   });
 });
@@ -2220,11 +2297,12 @@ describe("query - filter correctness at scale", () => {
           sortKey: i,
         });
       }
-      const result = await geo.query(ctx, {
-        shape: SF_SHAPE,
-        limit: 200,
-        filter: (q) => q.eq("category", "A"),
-      });
+      const result = await geo
+        .query(ctx)
+        .within(SF_RECTANGLE)
+        .filter((q) => q.eq("category", "A"))
+        .limit(200)
+        .paginate();
       // 33 of 99 docs are category A
       expect(result.page.length).toBe(33);
     });
@@ -2247,7 +2325,7 @@ describe("nearest - ordering with many documents", () => {
           sortKey: i,
         });
       }
-      const result = await geo.nearest(ctx, { point: SF_POINT, limit: 20 });
+      const result = await geo.query(ctx).nearest(SF_POINT).limit(20).collect();
       expect(result.length).toBeGreaterThan(1);
       for (let i = 1; i < result.length; i++) {
         expect(result[i].distance).toBeGreaterThanOrEqual(

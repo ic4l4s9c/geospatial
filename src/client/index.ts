@@ -6,7 +6,13 @@ import type {
 } from "convex/server";
 import type { Point, Primitive, Rectangle } from "../component/validators.js";
 import { LOG_LEVELS, type LogLevel } from "../component/lib/logging.js";
-import { FilterBuilder, type GeospatialQuery } from "./query.js";
+import {
+  FilterBuilder,
+  type GeospatialQuery,
+  type GeospatialFilterBuilder,
+  type GeospatialFilterExpression,
+  type QueryShape,
+} from "./query.js";
 import type { ComponentApi } from "../component/_generated/component.js";
 
 export type { Point, Primitive, GeospatialQuery, Rectangle };
@@ -29,33 +35,33 @@ export const GEOSPATIAL_DEFAULTS = {
 } satisfies Required<GeospatialOptions>;
 
 export type GeospatialFilters = Record<string, Primitive | Primitive[]>;
+
+type GeospatialBase<Key extends string = string> = {
+  key: Key;
+  coordinates: Point;
+};
+
+type WithOptional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
+
 export type GeospatialDocument<
   Key extends string = string,
   Filters extends GeospatialFilters = GeospatialFilters,
-> = {
-  key: Key;
-  coordinates: Point;
+> = GeospatialBase<Key> & {
   filterKeys: Filters;
   sortKey: number;
 };
 
-type Narrow<T, Overrides extends Partial<T>> = Omit<T, keyof Overrides> &
-  Overrides;
-
-export type InsertOptions<
+export type InsertDocument<
   Key extends string = string,
   Filters extends GeospatialFilters = GeospatialFilters,
-> = Omit<GeospatialDocument<Key, Filters>, "sortKey"> &
-  Partial<Pick<GeospatialDocument<Key, Filters>, "sortKey">>;
+> = WithOptional<GeospatialDocument<Key, Filters>, "sortKey">;
 
-export type NearestQueryOptions<
-  Doc extends GeospatialDocument = GeospatialDocument,
-> = {
-  point: Point;
-  limit: number;
-  maxDistance?: number;
-  filter?: NonNullable<GeospatialQuery<Doc>["filter"]>;
+export type NearestResult<Key extends string = string> = GeospatialBase<Key> & {
+  distance: number;
 };
+
+type Narrow<T, Overrides extends Partial<T>> = Omit<T, keyof Overrides> &
+  Overrides;
 
 export interface GeospatialOptions {
   /**
@@ -80,12 +86,178 @@ export interface GeospatialOptions {
   logLevel?: LogLevel;
 }
 
+type FilterFn<Key extends string, Filters extends GeospatialFilters> = (
+  q: GeospatialFilterBuilder<GeospatialDocument<Key, Filters>>,
+) => GeospatialFilterExpression<GeospatialDocument<Key, Filters>>;
+
+type GeospatialConfig = Required<Omit<GeospatialOptions, "logLevel">> &
+  Pick<GeospatialOptions, "logLevel">;
+
+/**
+ * Entry point returned by `geo.query(ctx)`. Call `.within()` or `.nearest()` to choose a query strategy.
+ */
+class GeospatialQueryBuilder<
+  Key extends string,
+  Filters extends GeospatialFilters,
+> {
+  constructor(
+    private ctx: QueryCtx,
+    private component: ComponentApi,
+    private config: GeospatialConfig,
+  ) {}
+
+  /**
+   * Query for all keys within a rectangle.
+   */
+  within(rectangle: Rectangle): WithinQueryBuilder<Key, Filters> {
+    return new WithinQueryBuilder(this.ctx, this.component, this.config, {
+      type: "rectangle",
+      rectangle,
+    });
+  }
+
+  /**
+   * Query for the nearest keys to a point.
+   */
+  nearest(
+    point: Point,
+    options?: { maxDistance?: number },
+  ): NearestQueryBuilder<Key, Filters> {
+    return new NearestQueryBuilder(
+      this.ctx,
+      this.component,
+      this.config,
+      point,
+      options?.maxDistance,
+    );
+  }
+}
+
+/**
+ * Builder for a rectangle (within) query. Call `.filter()`, `.limit()`, then `.paginate()`.
+ */
+class WithinQueryBuilder<
+  Key extends string,
+  Filters extends GeospatialFilters,
+> {
+  #filter?: FilterFn<Key, Filters>;
+  #limit?: number;
+
+  constructor(
+    private ctx: QueryCtx,
+    private component: ComponentApi,
+    private config: GeospatialConfig,
+    private shape: QueryShape,
+  ) {}
+
+  /**
+   * Add a filter expression to the query.
+   */
+  filter(fn: FilterFn<Key, Filters>): this {
+    this.#filter = fn;
+    return this;
+  }
+
+  /**
+   * Set a limit on the number of results returned (default: 64).
+   */
+  limit(n: number): this {
+    this.#limit = n;
+    return this;
+  }
+
+  /**
+   * Execute the query and return a paginated result.
+   */
+  async paginate(
+    cursor?: string,
+  ): Promise<PaginationResult<GeospatialBase<Key>>> {
+    const filterBuilder = new FilterBuilder<GeospatialDocument<Key, Filters>>();
+    if (this.#filter) {
+      this.#filter(filterBuilder);
+    }
+    const result = await this.ctx.runQuery(this.component.query.execute, {
+      query: {
+        rectangle: this.shape.rectangle,
+        filtering: filterBuilder.filterConditions,
+        sorting: { interval: filterBuilder.interval ?? {} },
+        maxResults: this.#limit ?? 64,
+      },
+      cursor,
+      minLevel: this.config.minLevel,
+      maxLevel: this.config.maxLevel,
+      levelMod: this.config.levelMod,
+      maxCells: this.config.maxCells,
+      logLevel: this.config.logLevel,
+    });
+    return result as PaginationResult<
+      Narrow<(typeof result.page)[number], { key: Key }>
+    >;
+  }
+}
+
+/**
+ * Builder for a nearest-neighbor query. Call `.filter()`, `.limit()`, then `.collect()`.
+ */
+class NearestQueryBuilder<
+  Key extends string,
+  Filters extends GeospatialFilters,
+> {
+  #filter?: FilterFn<Key, Filters>;
+  #limit?: number;
+
+  constructor(
+    private ctx: QueryCtx,
+    private component: ComponentApi,
+    private config: GeospatialConfig,
+    private point: Point,
+    private maxDistance?: number,
+  ) {}
+
+  /**
+   * Add a filter expression to the query.
+   */
+  filter(fn: FilterFn<Key, Filters>): this {
+    this.#filter = fn;
+    return this;
+  }
+
+  /**
+   * Set a limit on the number of results returned (default: 64).
+   */
+  limit(n: number): this {
+    this.#limit = n;
+    return this;
+  }
+
+  /**
+   * Execute the query and return all results.
+   */
+  async collect(): Promise<NearestResult<Key>[]> {
+    const filterBuilder = new FilterBuilder<GeospatialDocument<Key, Filters>>();
+    if (this.#filter) {
+      this.#filter(filterBuilder);
+    }
+    const result = await this.ctx.runQuery(this.component.query.nearestPoints, {
+      point: this.point,
+      maxDistance: this.maxDistance,
+      maxResults: this.#limit ?? 64,
+      minLevel: this.config.minLevel,
+      maxLevel: this.config.maxLevel,
+      levelMod: this.config.levelMod,
+      logLevel: this.config.logLevel,
+      filtering: filterBuilder.filterConditions,
+      sorting: { interval: filterBuilder.interval ?? {} },
+    });
+    return result as Narrow<(typeof result)[number], { key: Key }>[];
+  }
+}
+
 export class Geospatial<
   Key extends string = string,
   Filters extends GeospatialFilters = GeospatialFilters,
 > {
-  readonly #config: Required<Omit<GeospatialOptions, "logLevel">> &
-    Pick<GeospatialOptions, "logLevel">;
+  readonly #config: GeospatialConfig;
 
   /**
    * Debug utilities for inspecting S2 cell geometry used by the index.
@@ -156,7 +328,7 @@ export class Geospatial<
    */
   async insert(
     ctx: MutationCtx,
-    { key, coordinates, filterKeys, sortKey }: InsertOptions<Key, Filters>,
+    { key, coordinates, filterKeys, sortKey }: InsertDocument<Key, Filters>,
   ): Promise<void> {
     await ctx.runMutation(this.component.document.insert, {
       document: {
@@ -208,74 +380,13 @@ export class Geospatial<
   }
 
   /**
-   * Query for keys within a given shape.
+   * Begin a geospatial query. Call `.within(rectangle)` for area queries or
+   * `.nearest(point)` for nearest-neighbor queries.
    *
    * @param ctx - The Convex query context.
-   * @param query - The query to execute.
-   * @param cursor - The continuation cursor to use for paginating through results.
-   * @returns - An array of objects with the key-coordinate pairs and optionally a continuation cursor.
    */
-  async query(
-    ctx: QueryCtx,
-    query: GeospatialQuery<GeospatialDocument<Key, Filters>>,
-    cursor?: string,
-  ) {
-    const filterBuilder = new FilterBuilder<GeospatialDocument<Key, Filters>>();
-    if (query.filter) {
-      query.filter(filterBuilder);
-    }
-    const result = await ctx.runQuery(this.component.query.execute, {
-      query: {
-        rectangle: query.shape.rectangle,
-        filtering: filterBuilder.filterConditions,
-        sorting: { interval: filterBuilder.interval ?? {} },
-        maxResults: query.limit ?? 64,
-      },
-      cursor,
-      minLevel: this.#config.minLevel,
-      maxLevel: this.#config.maxLevel,
-      levelMod: this.#config.levelMod,
-      maxCells: this.#config.maxCells,
-      logLevel: this.#config.logLevel,
-    });
-    return result as PaginationResult<
-      Narrow<(typeof result.page)[number], { key: Key }>
-    >;
-  }
-
-  /**
-   * Query for the nearest points to a given point.
-   *
-   * @param ctx - The Convex query context.
-   * @param options - The nearest query parameters.
-   * @returns - An array of objects with the key-coordinate pairs and their distance from the query point in meters.
-   */
-  async nearest(
-    ctx: QueryCtx,
-    {
-      point,
-      limit,
-      maxDistance,
-      filter,
-    }: NearestQueryOptions<GeospatialDocument<Key, Filters>>,
-  ) {
-    const filterBuilder = new FilterBuilder<GeospatialDocument<Key, Filters>>();
-    if (filter) {
-      filter(filterBuilder);
-    }
-
-    const result = await ctx.runQuery(this.component.query.nearestPoints, {
-      point,
-      maxDistance,
-      maxResults: limit,
-      minLevel: this.#config.minLevel,
-      maxLevel: this.#config.maxLevel,
-      levelMod: this.#config.levelMod,
-      logLevel: this.#config.logLevel,
-      filtering: filterBuilder.filterConditions,
-      sorting: { interval: filterBuilder.interval ?? {} },
-    });
-    return result as Narrow<(typeof result)[number], { key: Key }>[];
+  query(ctx: QueryCtx): GeospatialQueryBuilder<Key, Filters> {
+    return new GeospatialQueryBuilder(ctx, this.component, this.#config);
   }
 }
 

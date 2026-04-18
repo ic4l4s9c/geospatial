@@ -22,11 +22,11 @@ export const nearestPoints = query({
     maxDistance: v.optional(v.number()),
   },
   handler: async (ctx, { point, maxRows, maxDistance }) => {
-    const results = await geospatial.nearest(ctx, {
-      point,
-      limit: maxRows,
-      maxDistance,
-    });
+    const results = await geospatial
+      .query(ctx)
+      .nearest(point, { maxDistance })
+      .limit(maxRows)
+      .collect();
     return await Promise.all(
       results.map(async (result) => {
         const row = await ctx.db.get(result.key);
@@ -65,26 +65,20 @@ export const search = query({
     nextCursor: v.optional(v.string()),
   }),
   async handler(ctx, args) {
-    const { page, continueCursor } = await geospatial.query(
-      ctx,
-      {
-        shape: {
-          type: "rectangle",
-          rectangle: args.rectangle,
-        },
-        filter: (q) => {
-          for (const condition of args.mustFilter) {
-            q = q.eq("name", condition);
-          }
-          if (!args.shouldFilter.length) {
-            return q;
-          }
-          return q.in("name", args.shouldFilter);
-        },
-        limit: args.maxRows,
-      },
-      args.cursor,
-    );
+    const { page, continueCursor } = await geospatial
+      .query(ctx)
+      .within(args.rectangle)
+      .filter((q) => {
+        for (const condition of args.mustFilter) {
+          q = q.eq("name", condition);
+        }
+        if (!args.shouldFilter.length) {
+          return q;
+        }
+        return q.in("name", args.shouldFilter);
+      })
+      .limit(args.maxRows)
+      .paginate(args.cursor);
     const rows = await Promise.all(
       page.map(async (result) => {
         const row = await ctx.db.get(result.key);
