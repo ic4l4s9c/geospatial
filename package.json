@@ -38,7 +38,7 @@
     "preversion": "bun ci && bun run build:clean && bun run test && bun run lint && bun run typecheck",
     "alpha": "bun version prerelease --preid alpha && bun publish --tag alpha && git push --follow-tags",
     "release": "bun version patch && bun publish && git push --follow-tags",
-    "version": "(bun whoami || bun login) && vim -c 'normal o' -c 'normal o## '$npm_package_version CHANGELOG.md && prettier -w CHANGELOG.md && git add CHANGELOG.md"
+    "version": "(bun whoami || bun login) && vim -c 'normal o' -c 'normal o## '$npm_package_version CHANGELOG.md && oxfmt CHANGELOG.md && git add CHANGELOG.md"
   },
   "files": [
     "dist",
@@ -98,7 +98,7 @@
     "globals": "17.4.0",
     "h3-js": "4.4.0",
     "leaflet": "1.9.4",
-    "prettier": "3.8.1",
+    "oxfmt": "^0.45.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "react-leaflet": "4.2.1",
