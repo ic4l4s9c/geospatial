@@ -7,7 +7,7 @@ import { cellCounterKey } from "./streams/cellRange.js";
 import * as approximateCounter from "./lib/approximateCounter.js";
 import { S2Bindings } from "./lib/s2Bindings.js";
 
-const geoDocument = v.object({
+const document = v.object({
   key: v.string(),
   coordinates: point,
   sortKey: v.number(),
@@ -16,7 +16,7 @@ const geoDocument = v.object({
 
 export const insert = mutation({
   args: {
-    document: geoDocument,
+    document: document,
     minLevel: v.number(),
     maxLevel: v.number(),
     levelMod: v.number(),
@@ -57,7 +57,7 @@ export const get = query({
   args: {
     key: v.string(),
   },
-  returns: v.union(geoDocument, v.null()),
+  returns: v.union(document, v.null()),
   handler: async (ctx, args) => {
     const result = await ctx.db
       .query("points")

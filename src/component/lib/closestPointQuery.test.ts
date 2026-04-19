@@ -45,7 +45,7 @@ test("closest point query - basic functionality", async () => {
 
   // Insert all points
   for (const point of points) {
-    await t.mutation(api.document.insert, {
+    await t.mutation(api.points.insert, {
       document: point,
       ...opts,
     });
@@ -201,7 +201,7 @@ fcTest.prop({ documents: arbitraryDocuments })(
 
     // Insert all documents
     for (const document of documents) {
-      await t.mutation(api.document.insert, {
+      await t.mutation(api.points.insert, {
         document,
         ...opts,
       });

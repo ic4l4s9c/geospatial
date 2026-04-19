@@ -9,7 +9,6 @@
  */
 
 import type * as debug from "../debug.js";
-import type * as document from "../document.js";
 import type * as lib_approximateCounter from "../lib/approximateCounter.js";
 import type * as lib_closestPointQuery from "../lib/closestPointQuery.js";
 import type * as lib_d64 from "../lib/d64.js";
@@ -22,6 +21,7 @@ import type * as lib_s2Bindings from "../lib/s2Bindings.js";
 import type * as lib_s2wasm from "../lib/s2wasm.js";
 import type * as lib_tupleKey from "../lib/tupleKey.js";
 import type * as lib_xxHash32 from "../lib/xxHash32.js";
+import type * as points from "../points.js";
 import type * as polygons from "../polygons.js";
 import type * as polylines from "../polylines.js";
 import type * as query from "../query.js";
@@ -44,7 +44,6 @@ import { anyApi, componentsGeneric } from "convex/server";
 
 const fullApi: ApiFromModules<{
   debug: typeof debug;
-  document: typeof document;
   "lib/approximateCounter": typeof lib_approximateCounter;
   "lib/closestPointQuery": typeof lib_closestPointQuery;
   "lib/d64": typeof lib_d64;
@@ -57,6 +56,7 @@ const fullApi: ApiFromModules<{
   "lib/s2wasm": typeof lib_s2wasm;
   "lib/tupleKey": typeof lib_tupleKey;
   "lib/xxHash32": typeof lib_xxHash32;
+  points: typeof points;
   polygons: typeof polygons;
   polylines: typeof polylines;
   query: typeof query;

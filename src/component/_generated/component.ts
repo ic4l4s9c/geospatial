@@ -46,7 +46,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         Name
       >;
     };
-    document: {
+    points: {
       get: FunctionReference<
         "query",
         "internal",

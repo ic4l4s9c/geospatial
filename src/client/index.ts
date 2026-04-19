@@ -331,7 +331,7 @@ export class Geospatial<
       sortKey,
     }: Optional<GeospatialDocument<Key, Filters>, "sortKey">,
   ): Promise<void> {
-    await ctx.runMutation(this.component.document.insert, {
+    await ctx.runMutation(this.component.points.insert, {
       document: {
         key,
         coordinates,
@@ -356,7 +356,7 @@ export class Geospatial<
     ctx: QueryCtx,
     key: Key,
   ): Promise<GeospatialDocument<Key, Filters> | null> {
-    const result = await ctx.runQuery(this.component.document.get, { key });
+    const result = await ctx.runQuery(this.component.points.get, { key });
     return result as Narrow<
       NonNullable<typeof result>,
       { key: Key; filterKeys: Filters }
@@ -371,7 +371,7 @@ export class Geospatial<
    * @returns - `true` if the key was found and removed, `false` otherwise.
    */
   async delete(ctx: MutationCtx, key: Key): Promise<boolean> {
-    return await ctx.runMutation(this.component.document.remove, {
+    return await ctx.runMutation(this.component.points.remove, {
       key,
       minLevel: this.#config.minLevel,
       maxLevel: this.#config.maxLevel,
