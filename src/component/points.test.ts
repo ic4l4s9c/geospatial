@@ -6,7 +6,7 @@ import { modules } from "./test.setup.js";
 import { test as fcTest } from "@fast-check/vitest";
 import { arbitraryDocuments } from "../__tests__/fixtures.js";
 
-const opts = {
+const config = {
   minLevel: 4,
   maxLevel: 16,
   levelMod: 2,
@@ -23,7 +23,7 @@ test("CRUD operations", async () => {
   };
   await t.mutation(api.points.insert, {
     document,
-    ...opts,
+    config,
   });
   const result = await t.query(api.points.get, { key: "test" });
   expect(result).toEqual(document);
@@ -36,14 +36,14 @@ test("CRUD operations", async () => {
   };
   await t.mutation(api.points.insert, {
     document: newDocument,
-    ...opts,
+    config,
   });
   const result2 = await t.query(api.points.get, { key: "test" });
   expect(result2).toEqual(newDocument);
 
-  await t.mutation(api.points.remove, {
+  await t.mutation(api.points.del, {
     key: "test",
-    ...opts,
+    config,
   });
   const result3 = await t.query(api.points.get, { key: "test" });
   expect(result3).toEqual(null);
@@ -67,7 +67,7 @@ fcTest.prop({ documents: arbitraryDocuments })(
     for (const document of documents) {
       await t.mutation(api.points.insert, {
         document,
-        ...opts,
+        config,
       });
       const result = await t.query(api.points.get, { key: document.key });
       expect(result).toEqual(document);
@@ -78,9 +78,9 @@ fcTest.prop({ documents: arbitraryDocuments })(
       const result = await t.query(api.points.get, { key });
       expect(result).toEqual(document);
 
-      await t.mutation(api.points.remove, {
+      await t.mutation(api.points.del, {
         key,
-        ...opts,
+        config,
       });
       const result2 = await t.query(api.points.get, { key });
       expect(result2).toEqual(null);

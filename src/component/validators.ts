@@ -41,5 +41,12 @@ export const filterKeys = v.optional(
   v.record(v.string(), v.union(primitive, v.array(primitive))),
 );
 
+export const config = v.object({
+  minLevel: v.number(),
+  maxLevel: v.number(),
+  levelMod: v.number(),
+  maxCells: v.number(),
+});
+
 export type Meters = number;
 export type ChordAngle = number;

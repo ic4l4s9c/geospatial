@@ -4,7 +4,13 @@ import type {
   GenericQueryCtx,
   PaginationResult,
 } from "convex/server";
-import type { Point, Primitive, Rectangle } from "../component/validators.js";
+import type {
+  Point,
+  Polygon,
+  Polyline,
+  Primitive,
+  Rectangle,
+} from "../component/validators.js";
 import { LOG_LEVELS, type LogLevel } from "../component/lib/logging.js";
 import {
   FilterBuilder,
@@ -37,11 +43,22 @@ export const GEOSPATIAL_DEFAULTS = {
 export type GeospatialFilters = Record<string, Primitive | Primitive[]>;
 
 export type GeospatialDocument<
+  Type extends "point" | "polygon" | "polyline" =
+    | "point"
+    | "polygon"
+    | "polyline",
   Key extends string = string,
   Filters extends GeospatialFilters = GeospatialFilters,
 > = {
   key: Key;
-  coordinates: Point;
+  coordinates: Type extends "point"
+    ? Point
+    : Type extends "polygon"
+      ? Polygon
+      : Type extends "polyline"
+        ? Polyline
+        : Point | Polygon | Polyline;
+  boundingBox?: Type extends "point" ? never : Rectangle;
   filterKeys: Filters;
   sortKey: number;
 };
@@ -50,7 +67,11 @@ export type WithDistance<Type> = Type & {
   distance: number;
 };
 
-type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
+/** Make only the keys in K optional, keep the rest unchanged. */
+type PartialBy<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
+
+/** Make all keys optional except those in K. */
+type RequireOnly<T, K extends keyof T> = Partial<T> & Pick<T, K>;
 
 type Narrow<T, Overrides extends Partial<T>> = Omit<T, keyof Overrides> &
   Overrides;
@@ -79,51 +100,11 @@ export interface GeospatialOptions {
 }
 
 type FilterFn<Key extends string, Filters extends GeospatialFilters> = (
-  q: GeospatialFilterBuilder<GeospatialDocument<Key, Filters>>,
-) => GeospatialFilterExpression<GeospatialDocument<Key, Filters>>;
+  q: GeospatialFilterBuilder<GeospatialDocument<"point", Key, Filters>>,
+) => GeospatialFilterExpression<GeospatialDocument<"point", Key, Filters>>;
 
 type GeospatialConfig = Required<Omit<GeospatialOptions, "logLevel">> &
   Pick<GeospatialOptions, "logLevel">;
-
-/**
- * Entry point returned by `geo.query(ctx)`. Call `.within()` or `.nearest()` to choose a query strategy.
- */
-class GeospatialQueryBuilder<
-  Key extends string,
-  Filters extends GeospatialFilters,
-> {
-  constructor(
-    private ctx: QueryCtx,
-    private component: ComponentApi,
-    private config: GeospatialConfig,
-  ) {}
-
-  /**
-   * Query for all keys within a rectangle.
-   */
-  within(rectangle: Rectangle): WithinQueryBuilder<Key, Filters> {
-    return new WithinQueryBuilder(this.ctx, this.component, this.config, {
-      type: "rectangle",
-      rectangle,
-    });
-  }
-
-  /**
-   * Query for the nearest keys to a point.
-   */
-  nearest(
-    point: Point,
-    options?: { maxDistance?: number },
-  ): NearestQueryBuilder<Key, Filters> {
-    return new NearestQueryBuilder(
-      this.ctx,
-      this.component,
-      this.config,
-      point,
-      options?.maxDistance,
-    );
-  }
-}
 
 /**
  * Builder for a rectangle (within) query. Call `.filter()`, `.limit()`, then `.paginate()`.
@@ -164,9 +145,13 @@ class WithinQueryBuilder<
   async paginate(
     cursor?: string,
   ): Promise<
-    PaginationResult<Omit<GeospatialDocument<Key>, "filterKeys" | "sortKey">>
+    PaginationResult<
+      Omit<GeospatialDocument<"point", Key>, "filterKeys" | "sortKey">
+    >
   > {
-    const filterBuilder = new FilterBuilder<GeospatialDocument<Key, Filters>>();
+    const filterBuilder = new FilterBuilder<
+      GeospatialDocument<"point", Key, Filters>
+    >();
     if (this.#filter) {
       this.#filter(filterBuilder);
     }
@@ -228,9 +213,13 @@ class NearestQueryBuilder<
    * Execute the query and return all results.
    */
   async collect(): Promise<
-    WithDistance<Omit<GeospatialDocument<Key>, "filterKeys" | "sortKey">>[]
+    WithDistance<
+      Omit<GeospatialDocument<"point", Key>, "filterKeys" | "sortKey">
+    >[]
   > {
-    const filterBuilder = new FilterBuilder<GeospatialDocument<Key, Filters>>();
+    const filterBuilder = new FilterBuilder<
+      GeospatialDocument<"point", Key, Filters>
+    >();
     if (this.#filter) {
       this.#filter(filterBuilder);
     }
@@ -249,11 +238,277 @@ class NearestQueryBuilder<
   }
 }
 
+class GeospatialQueryBuilder<
+  Key extends string,
+  Filters extends GeospatialFilters,
+> {
+  constructor(
+    private ctx: QueryCtx,
+    private component: ComponentApi,
+    private config: GeospatialConfig,
+  ) {}
+
+  within(rectangle: Rectangle): WithinQueryBuilder<Key, Filters> {
+    return new WithinQueryBuilder(this.ctx, this.component, this.config, {
+      type: "rectangle",
+      rectangle,
+    });
+  }
+
+  nearest(
+    point: Point,
+    options?: { maxDistance?: number },
+  ): NearestQueryBuilder<Key, Filters> {
+    return new NearestQueryBuilder(
+      this.ctx,
+      this.component,
+      this.config,
+      point,
+      options?.maxDistance,
+    );
+  }
+}
+
+/**
+ * Namespace for point geometry operations: insert, get, delete, query.
+ */
+class PointsNamespace<Key extends string, Filters extends GeospatialFilters> {
+  constructor(
+    private component: ComponentApi,
+    private config: GeospatialConfig,
+  ) {}
+
+  /**
+   * Insert a new key-coordinate pair into the index.
+   *
+   * @param ctx - The Convex mutation context.
+   * @param key - The unique string key to associate with the coordinate.
+   * @param coordinates - The geographic coordinate `{ latitude, longitude }` to associate with the key.
+   * @param filterKeys - The filter keys to associate with the key.
+   * @param sortKey - The sort key to associate with the key, defaults to `Date.now()`.
+   */
+  async insert(
+    ctx: MutationCtx,
+    {
+      key,
+      coordinates,
+      filterKeys,
+      sortKey,
+    }: PartialBy<GeospatialDocument<"point", Key, Filters>, "sortKey">,
+  ): Promise<void> {
+    await ctx.runMutation(this.component.points.insert, {
+      document: {
+        key,
+        coordinates,
+        filterKeys,
+        sortKey: sortKey ?? Date.now(),
+      },
+      config: this.config,
+    });
+  }
+
+  /**
+   * Retrieve the coordinate associated with a specific key.
+   *
+   * @param ctx - The Convex query context.
+   * @param key - The unique string key to retrieve the coordinate for.
+   * @returns - The geographic coordinate `{ latitude, longitude }` associated with the key, or `null` if the key is not found.
+   */
+  async get(
+    ctx: QueryCtx,
+    key: Key,
+  ): Promise<GeospatialDocument<"point", Key, Filters> | null> {
+    const result = await ctx.runQuery(this.component.points.get, { key });
+    return result as Narrow<
+      NonNullable<typeof result>,
+      { key: Key; filterKeys: Filters }
+    > | null;
+  }
+
+  /**
+   * Update an existing point in the index. Only fields provided are changed;
+   * `key` is always required to identify the entry.
+   *
+   * @param ctx - The Convex mutation context.
+   * @param document - Partial document; `key` is required, all other fields are optional.
+   * @returns `true` if the entry was found and updated, `false` otherwise.
+   */
+  async update(
+    ctx: MutationCtx,
+    document: RequireOnly<GeospatialDocument<"point", Key, Filters>, "key">,
+  ): Promise<boolean> {
+    return ctx.runMutation(this.component.points.update, {
+      document,
+      config: this.config,
+    });
+  }
+
+  /**
+   * Remove a key-coordinate pair from the index.
+   *
+   * @param ctx - The Convex mutation context.
+   * @param key - The unique string key to remove from the index.
+   * @returns - `true` if the key was found and removed, `false` otherwise.
+   */
+  async delete(ctx: MutationCtx, key: Key): Promise<boolean> {
+    return await ctx.runMutation(this.component.points.del, {
+      key,
+      config: this.config,
+    });
+  }
+
+  /**
+   * Begin a geospatial query over points. Call `.within(rectangle)` or
+   * `.nearest(point)` to choose a query strategy.
+   */
+  query(ctx: QueryCtx): GeospatialQueryBuilder<Key, Filters> {
+    return new GeospatialQueryBuilder(ctx, this.component, this.config);
+  }
+}
+
+/**
+ * Namespace for polygon geometry operations.
+ *
+ * Placeholder — wire up to `component.polygons.*` once the component exposes
+ * those handlers.
+ */
+class PolygonsNamespace<Key extends string, Filters extends GeospatialFilters> {
+  constructor(
+    private component: ComponentApi,
+    private config: GeospatialConfig,
+  ) {}
+
+  async insert(
+    ctx: MutationCtx,
+    {
+      key,
+      coordinates,
+      filterKeys,
+      sortKey,
+    }: PartialBy<GeospatialDocument<"polygon", Key, Filters>, "sortKey">,
+  ): Promise<void> {
+    await ctx.runMutation(this.component.polygons.insert, {
+      document: {
+        key,
+        coordinates,
+        filterKeys,
+        sortKey: sortKey ?? Date.now(),
+      },
+      config: this.config,
+    });
+  }
+
+  async get(
+    ctx: QueryCtx,
+    key: Key,
+  ): Promise<GeospatialDocument<"polygon", Key, Filters> | null> {
+    const result = await ctx.runQuery(this.component.polygons.get, { key });
+    return result as Narrow<
+      NonNullable<typeof result>,
+      { key: Key; filterKeys: Filters }
+    > | null;
+  }
+
+  async update(
+    ctx: MutationCtx,
+    document: RequireOnly<GeospatialDocument<"polygon", Key, Filters>, "key">,
+  ): Promise<boolean> {
+    return ctx.runMutation(this.component.polygons.update, {
+      document,
+      config: this.config,
+    });
+  }
+
+  async delete(ctx: MutationCtx, key: Key): Promise<boolean> {
+    return await ctx.runMutation(this.component.polygons.del, {
+      key,
+      config: this.config,
+    });
+  }
+}
+
+/**
+ * Namespace for polyline geometry operations.
+ *
+ * Placeholder — wire up to `component.polylines.*` once the component exposes
+ * those handlers.
+ */
+class PolylinesNamespace<
+  Key extends string,
+  Filters extends GeospatialFilters,
+> {
+  constructor(
+    private component: ComponentApi,
+    private config: GeospatialConfig,
+  ) {}
+
+  async insert(
+    ctx: MutationCtx,
+    {
+      key,
+      coordinates,
+      filterKeys,
+      sortKey,
+    }: PartialBy<GeospatialDocument<"polyline", Key, Filters>, "sortKey">,
+  ): Promise<void> {
+    await ctx.runMutation(this.component.polylines.insert, {
+      document: {
+        key,
+        coordinates,
+        filterKeys,
+        sortKey: sortKey ?? Date.now(),
+      },
+      config: this.config,
+    });
+  }
+
+  async get(
+    ctx: QueryCtx,
+    key: Key,
+  ): Promise<GeospatialDocument<"polyline", Key, Filters> | null> {
+    const result = await ctx.runQuery(this.component.polylines.get, { key });
+    return result as Narrow<
+      NonNullable<typeof result>,
+      { key: Key; filterKeys: Filters }
+    > | null;
+  }
+
+  async update(
+    ctx: MutationCtx,
+    document: RequireOnly<GeospatialDocument<"polyline", Key, Filters>, "key">,
+  ): Promise<boolean> {
+    return ctx.runMutation(this.component.polylines.update, {
+      document,
+      config: this.config,
+    });
+  }
+
+  async delete(ctx: MutationCtx, key: Key): Promise<boolean> {
+    return await ctx.runMutation(this.component.polylines.del, {
+      key,
+      config: this.config,
+    });
+  }
+}
+
 export class Geospatial<
-  Key extends string = string,
-  Filters extends GeospatialFilters = GeospatialFilters,
+  PointKey extends string = string,
+  PointFilters extends GeospatialFilters = GeospatialFilters,
+  PolygonKey extends string = string,
+  PolygonFilters extends GeospatialFilters = GeospatialFilters,
+  PolylineKey extends string = string,
+  PolylineFilters extends GeospatialFilters = GeospatialFilters,
 > {
   readonly #config: GeospatialConfig;
+
+  /** Operations scoped to point geometries. */
+  readonly points: PointsNamespace<PointKey, PointFilters>;
+
+  /** Operations scoped to polygon geometries. */
+  readonly polygons: PolygonsNamespace<PolygonKey, PolygonFilters>;
+
+  /** Operations scoped to polyline geometries. */
+  readonly polylines: PolylinesNamespace<PolylineKey, PolylineFilters>;
 
   /**
    * Debug utilities for inspecting S2 cell geometry used by the index.
@@ -304,6 +559,7 @@ export class Geospatial<
         );
       }
     }
+
     this.#config = {
       logLevel: options?.logLevel ?? logLevel,
       minLevel: options?.minLevel ?? GEOSPATIAL_DEFAULTS.minLevel,
@@ -311,83 +567,19 @@ export class Geospatial<
       levelMod: options?.levelMod ?? GEOSPATIAL_DEFAULTS.levelMod,
       maxCells: options?.maxCells ?? GEOSPATIAL_DEFAULTS.maxCells,
     };
-  }
 
-  /**
-   * Insert a new key-coordinate pair into the index.
-   *
-   * @param ctx - The Convex mutation context.
-   * @param key - The unique string key to associate with the coordinate.
-   * @param coordinates - The geographic coordinate `{ latitude, longitude }` to associate with the key.
-   * @param filterKeys - The filter keys to associate with the key.
-   * @param sortKey - The sort key to associate with the key, defaults to `Date.now()`.
-   */
-  async insert(
-    ctx: MutationCtx,
-    {
-      key,
-      coordinates,
-      filterKeys,
-      sortKey,
-    }: Optional<GeospatialDocument<Key, Filters>, "sortKey">,
-  ): Promise<void> {
-    await ctx.runMutation(this.component.points.insert, {
-      document: {
-        key,
-        coordinates,
-        filterKeys,
-        sortKey: sortKey ?? Date.now(),
-      },
-      minLevel: this.#config.minLevel,
-      maxLevel: this.#config.maxLevel,
-      levelMod: this.#config.levelMod,
-      maxCells: this.#config.maxCells,
-    });
-  }
-
-  /**
-   * Retrieve the coordinate associated with a specific key.
-   *
-   * @param ctx - The Convex query context.
-   * @param key - The unique string key to retrieve the coordinate for.
-   * @returns - The geographic coordinate `{ latitude, longitude }` associated with the key, or `null` if the key is not found.
-   */
-  async get(
-    ctx: QueryCtx,
-    key: Key,
-  ): Promise<GeospatialDocument<Key, Filters> | null> {
-    const result = await ctx.runQuery(this.component.points.get, { key });
-    return result as Narrow<
-      NonNullable<typeof result>,
-      { key: Key; filterKeys: Filters }
-    > | null;
-  }
-
-  /**
-   * Remove a key-coordinate pair from the index.
-   *
-   * @param ctx - The Convex mutation context.
-   * @param key - The unique string key to remove from the index.
-   * @returns - `true` if the key was found and removed, `false` otherwise.
-   */
-  async delete(ctx: MutationCtx, key: Key): Promise<boolean> {
-    return await ctx.runMutation(this.component.points.remove, {
-      key,
-      minLevel: this.#config.minLevel,
-      maxLevel: this.#config.maxLevel,
-      levelMod: this.#config.levelMod,
-      maxCells: this.#config.maxCells,
-    });
-  }
-
-  /**
-   * Begin a geospatial query. Call `.within(rectangle)` for area queries or
-   * `.nearest(point)` for nearest-neighbor queries.
-   *
-   * @param ctx - The Convex query context.
-   */
-  query(ctx: QueryCtx): GeospatialQueryBuilder<Key, Filters> {
-    return new GeospatialQueryBuilder(ctx, this.component, this.#config);
+    this.points = new PointsNamespace<PointKey, PointFilters>(
+      component,
+      this.#config,
+    );
+    this.polygons = new PolygonsNamespace<PolygonKey, PolygonFilters>(
+      component,
+      this.#config,
+    );
+    this.polylines = new PolylinesNamespace<PolylineKey, PolylineFilters>(
+      component,
+      this.#config,
+    );
   }
 }
 

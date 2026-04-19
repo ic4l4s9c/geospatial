@@ -7,7 +7,7 @@ export const addPoint = mutation({
   args: { point, name: v.string() },
   handler: async (ctx, { point, name }) => {
     const id = await ctx.db.insert("locations", { name });
-    await geospatial.insert(ctx, {
+    await geospatial.points.insert(ctx, {
       key: id,
       coordinates: point,
       filterKeys: { name },
@@ -22,7 +22,7 @@ export const nearestPoints = query({
     maxDistance: v.optional(v.number()),
   },
   handler: async (ctx, { point, maxRows, maxDistance }) => {
-    const results = await geospatial
+    const results = await geospatial.points
       .query(ctx)
       .nearest(point, { maxDistance })
       .limit(maxRows)
@@ -65,7 +65,7 @@ export const search = query({
     nextCursor: v.optional(v.string()),
   }),
   async handler(ctx, args) {
-    const { page, continueCursor } = await geospatial
+    const { page, continueCursor } = await geospatial.points
       .query(ctx)
       .within(args.rectangle)
       .filter((q) => {

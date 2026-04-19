@@ -12,7 +12,7 @@ export const addBatch = internalMutation({
       const id = await ctx.db.insert("locations", { name });
       const latitude = randomInRange(10, 60);
       const longitude = randomInRange(-100, -10);
-      await geospatial.insert(ctx, {
+      await geospatial.points.insert(ctx, {
         key: id,
         coordinates: { latitude, longitude },
         filterKeys: { name },

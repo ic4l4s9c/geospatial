@@ -1,7 +1,7 @@
 import { mutation, query } from "./_generated/server.js";
 import { v } from "convex/values";
 import { S2Bindings } from "./lib/s2Bindings.js";
-import { filterKeys, polygon, rectangle } from "./validators.js";
+import { config, filterKeys, polygon, rectangle } from "./validators.js";
 import type { Point, Polygon } from "./validators.js";
 import { validatePointBounds } from "./lib/geometry/points.js";
 import { computeBoundingBox } from "./lib/geometry/bbox.js";
@@ -40,29 +40,28 @@ const document = v.object({
 
 /**
  * Insert a polygon into the spatial index.
+ * @internal
  */
 export const insert = mutation({
   args: {
     document: document,
-    minLevel: v.optional(v.number()),
-    maxLevel: v.optional(v.number()),
-    levelMod: v.optional(v.number()),
-    maxCells: v.optional(v.number()),
+    config: v.optional(config),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
     const s2 = await S2Bindings.load();
 
-    const { maxCells, maxLevel, levelMod, minLevel } = args;
+    const maxCells = args.config?.maxCells;
+    const minLevel = args.config?.minLevel;
+    const maxLevel = args.config?.maxLevel;
+    const levelMod = args.config?.levelMod;
 
     const existing = await ctx.db
       .query("polygons")
       .withIndex("byKey", (q) => q.eq("key", args.document.key))
       .first();
     if (existing) {
-      throw new Error(
-        `Polygon with key "${args.document.key}" already exists`,
-      );
+      throw new Error(`Polygon with key "${args.document.key}" already exists`);
     }
 
     const points = validatePolygonCoordinates(args.document.coordinates);
@@ -100,6 +99,7 @@ export const insert = mutation({
 
 /**
  * Get a geometry by key.
+ * @internal
  */
 export const get = query({
   args: { key: v.string() },
@@ -136,20 +136,23 @@ export const get = query({
 
 /**
  * Update a polygon's coordinates or metadata.
+ * @internal
  */
 export const update = mutation({
   args: {
-    document: document.pick("key").extend(document.partial().fields),
-    minLevel: v.optional(v.number()),
-    maxLevel: v.optional(v.number()),
-    levelMod: v.optional(v.number()),
-    maxCells: v.optional(v.number()),
+    document: document.omit("key").partial().extend({
+      key: document.fields.key,
+    }),
+    config: v.optional(config),
   },
   returns: v.boolean(),
   handler: async (ctx, args) => {
     const s2 = await S2Bindings.load();
 
-    const { maxCells, maxLevel, levelMod, minLevel } = args;
+    const maxCells = args.config?.maxCells;
+    const minLevel = args.config?.minLevel;
+    const maxLevel = args.config?.maxLevel;
+    const levelMod = args.config?.levelMod;
 
     const existing = await ctx.db
       .query("polygons")
@@ -218,14 +221,12 @@ export const update = mutation({
 
 /**
  * Remove a polygon from the spatial index.
+ * @internal
  */
-export const remove = mutation({
+export const del = mutation({
   args: {
     key: v.string(),
-    minLevel: v.optional(v.number()),
-    maxLevel: v.optional(v.number()),
-    levelMod: v.optional(v.number()),
-    maxCells: v.optional(v.number()),
+    config: v.optional(config),
   },
   returns: v.boolean(),
   handler: async (ctx, args) => {

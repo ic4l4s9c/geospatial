@@ -47,6 +47,21 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
       >;
     };
     points: {
+      del: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          config: {
+            levelMod: number;
+            maxCells: number;
+            maxLevel: number;
+            minLevel: number;
+          };
+          key: string;
+        },
+        boolean,
+        Name
+      >;
       get: FunctionReference<
         "query",
         "internal",
@@ -71,6 +86,12 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "mutation",
         "internal",
         {
+          config: {
+            levelMod: number;
+            maxCells: number;
+            maxLevel: number;
+            minLevel: number;
+          };
           document: {
             coordinates: { latitude: number; longitude: number };
             filterKeys?: Record<
@@ -85,29 +106,55 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             key: string;
             sortKey: number;
           };
-          levelMod: number;
-          maxCells: number;
-          maxLevel: number;
-          minLevel: number;
         },
         null,
         Name
       >;
-      remove: FunctionReference<
+      update: FunctionReference<
         "mutation",
         "internal",
         {
-          key: string;
-          levelMod: number;
-          maxCells: number;
-          maxLevel: number;
-          minLevel: number;
+          config: {
+            levelMod: number;
+            maxCells: number;
+            maxLevel: number;
+            minLevel: number;
+          };
+          document: {
+            coordinates?: { latitude: number; longitude: number };
+            filterKeys?: Record<
+              string,
+              | string
+              | number
+              | boolean
+              | null
+              | bigint
+              | Array<string | number | boolean | null | bigint>
+            >;
+            key: string;
+            sortKey?: number;
+          };
         },
         boolean,
         Name
       >;
     };
     polygons: {
+      del: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          config?: {
+            levelMod: number;
+            maxCells: number;
+            maxLevel: number;
+            minLevel: number;
+          };
+          key: string;
+        },
+        boolean,
+        Name
+      >;
       get: FunctionReference<
         "query",
         "internal",
@@ -141,6 +188,12 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "mutation",
         "internal",
         {
+          config?: {
+            levelMod: number;
+            maxCells: number;
+            maxLevel: number;
+            minLevel: number;
+          };
           document: {
             coordinates: {
               exterior: Array<{ latitude: number; longitude: number }>;
@@ -158,31 +211,20 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             key: string;
             sortKey: number;
           };
-          levelMod?: number;
-          maxCells?: number;
-          maxLevel?: number;
-          minLevel?: number;
         },
         null,
-        Name
-      >;
-      remove: FunctionReference<
-        "mutation",
-        "internal",
-        {
-          key: string;
-          levelMod?: number;
-          maxCells?: number;
-          maxLevel?: number;
-          minLevel?: number;
-        },
-        boolean,
         Name
       >;
       update: FunctionReference<
         "mutation",
         "internal",
         {
+          config?: {
+            levelMod: number;
+            maxCells: number;
+            maxLevel: number;
+            minLevel: number;
+          };
           document: {
             coordinates?: {
               exterior: Array<{ latitude: number; longitude: number }>;
@@ -197,19 +239,30 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               | bigint
               | Array<string | number | boolean | null | bigint>
             >;
-            key?: string;
+            key: string;
             sortKey?: number;
           };
-          levelMod?: number;
-          maxCells?: number;
-          maxLevel?: number;
-          minLevel?: number;
         },
         boolean,
         Name
       >;
     };
     polylines: {
+      del: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          config?: {
+            levelMod: number;
+            maxCells: number;
+            maxLevel: number;
+            minLevel: number;
+          };
+          key: string;
+        },
+        boolean,
+        Name
+      >;
       get: FunctionReference<
         "query",
         "internal",
@@ -240,6 +293,12 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "mutation",
         "internal",
         {
+          config?: {
+            levelMod: number;
+            maxCells: number;
+            maxLevel: number;
+            minLevel: number;
+          };
           document: {
             coordinates: Array<{ latitude: number; longitude: number }>;
             filterKeys?: Record<
@@ -254,31 +313,20 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             key: string;
             sortKey: number;
           };
-          levelMod?: number;
-          maxCells?: number;
-          maxLevel?: number;
-          minLevel?: number;
         },
         null,
-        Name
-      >;
-      remove: FunctionReference<
-        "mutation",
-        "internal",
-        {
-          key: string;
-          levelMod?: number;
-          maxCells?: number;
-          maxLevel?: number;
-          minLevel?: number;
-        },
-        boolean,
         Name
       >;
       update: FunctionReference<
         "mutation",
         "internal",
         {
+          config?: {
+            levelMod: number;
+            maxCells: number;
+            maxLevel: number;
+            minLevel: number;
+          };
           document: {
             coordinates?: Array<{ latitude: number; longitude: number }>;
             filterKeys?: Record<
@@ -290,13 +338,9 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               | bigint
               | Array<string | number | boolean | null | bigint>
             >;
-            key?: string;
+            key: string;
             sortKey?: number;
           };
-          levelMod?: number;
-          maxCells?: number;
-          maxLevel?: number;
-          minLevel?: number;
         },
         boolean,
         Name

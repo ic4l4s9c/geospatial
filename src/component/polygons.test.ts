@@ -197,7 +197,7 @@ describe("polygon storage", () => {
         },
       });
 
-      const removed = await t.mutation(api.polygons.remove, {
+      const removed = await t.mutation(api.polygons.del, {
         key: "manhattan",
       });
       expect(removed).toBe(true);
@@ -209,7 +209,7 @@ describe("polygon storage", () => {
     test("returns false when the key does not exist", async () => {
       const t = convexTest(schema, modules);
 
-      const removed = await t.mutation(api.polygons.remove, {
+      const removed = await t.mutation(api.polygons.del, {
         key: "nonexistent",
       });
       expect(removed).toBe(false);

@@ -9,7 +9,7 @@ import { ClosestPointQuery } from "./closestPointQuery.js";
 import { createLogger } from "./logging.js";
 import { api } from "../_generated/api.js";
 
-const opts = {
+const config = {
   minLevel: 4,
   maxLevel: 16,
   levelMod: 2,
@@ -47,7 +47,7 @@ test("closest point query - basic functionality", async () => {
   for (const point of points) {
     await t.mutation(api.points.insert, {
       document: point,
-      ...opts,
+      config,
     });
   }
 
@@ -59,9 +59,9 @@ test("closest point query - basic functionality", async () => {
       { latitude: 0, longitude: 0 },
       1000, // maxDistance in meters
       1, // maxResults
-      opts.minLevel,
-      opts.maxLevel,
-      opts.levelMod,
+      config.minLevel,
+      config.maxLevel,
+      config.levelMod,
     );
     const result1 = await query1.execute(ctx);
     expect(result1.length).toBe(1);
@@ -75,9 +75,9 @@ test("closest point query - basic functionality", async () => {
       { latitude: 1, longitude: 1 },
       10000000,
       2,
-      opts.minLevel,
-      opts.maxLevel,
-      opts.levelMod,
+      config.minLevel,
+      config.maxLevel,
+      config.levelMod,
     );
     const result2 = await query2.execute(ctx);
     expect(result2.length).toBe(2);
@@ -92,9 +92,9 @@ test("closest point query - basic functionality", async () => {
       { latitude: 0, longitude: 0 },
       50, // Small radius in meters
       10,
-      opts.minLevel,
-      opts.maxLevel,
-      opts.levelMod,
+      config.minLevel,
+      config.maxLevel,
+      config.levelMod,
     );
     const result3 = await query3.execute(ctx);
     expect(result3.length).toBe(1);
@@ -107,9 +107,9 @@ test("closest point query - basic functionality", async () => {
       { latitude: 0, longitude: 0 },
       10000000,
       3,
-      opts.minLevel,
-      opts.maxLevel,
-      opts.levelMod,
+      config.minLevel,
+      config.maxLevel,
+      config.levelMod,
       [
         {
           occur: "must",
@@ -129,9 +129,9 @@ test("closest point query - basic functionality", async () => {
       { latitude: 0, longitude: 0 },
       10000000,
       3,
-      opts.minLevel,
-      opts.maxLevel,
-      opts.levelMod,
+      config.minLevel,
+      config.maxLevel,
+      config.levelMod,
       [
         {
           occur: "should",
@@ -151,9 +151,9 @@ test("closest point query - basic functionality", async () => {
       { latitude: 0, longitude: 0 },
       10000000,
       3,
-      opts.minLevel,
-      opts.maxLevel,
-      opts.levelMod,
+      config.minLevel,
+      config.maxLevel,
+      config.levelMod,
       [],
       { startInclusive: 3 },
     );
@@ -168,9 +168,9 @@ test("closest point query - basic functionality", async () => {
       { latitude: 0, longitude: 0 },
       10000000,
       3,
-      opts.minLevel,
-      opts.maxLevel,
-      opts.levelMod,
+      config.minLevel,
+      config.maxLevel,
+      config.levelMod,
       [
         {
           occur: "should",
@@ -203,7 +203,7 @@ fcTest.prop({ documents: arbitraryDocuments })(
     for (const document of documents) {
       await t.mutation(api.points.insert, {
         document,
-        ...opts,
+        config,
       });
     }
 
@@ -215,9 +215,9 @@ fcTest.prop({ documents: arbitraryDocuments })(
         testPoint,
         1000,
         documents.length,
-        opts.minLevel,
-        opts.maxLevel,
-        opts.levelMod,
+        config.minLevel,
+        config.maxLevel,
+        config.levelMod,
       );
       const results = await query.execute(ctx);
 

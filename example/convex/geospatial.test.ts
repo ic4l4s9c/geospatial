@@ -81,13 +81,13 @@ describe("insert + get", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "sf-city-hall",
         coordinates: SF_CITY_HALL,
         filterKeys: { name: "City Hall" },
         sortKey: 1,
       });
-      const doc = await geo.get(ctx, "sf-city-hall");
+      const doc = await geo.points.get(ctx, "sf-city-hall");
       expect(doc).not.toBeNull();
       expect(doc?.key).toBe("sf-city-hall");
       expect(doc?.coordinates.latitude).toBeCloseTo(SF_CITY_HALL.latitude);
@@ -101,7 +101,7 @@ describe("insert + get", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      expect(await geo.get(ctx, "does-not-exist")).toBeNull();
+      expect(await geo.points.get(ctx, "does-not-exist")).toBeNull();
     });
   });
 
@@ -109,12 +109,12 @@ describe("insert + get", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "no-sort",
         coordinates: SF_POINT,
         filterKeys: { name: "Test" },
       });
-      const doc = await geo.get(ctx, "no-sort");
+      const doc = await geo.points.get(ctx, "no-sort");
       expect(typeof doc?.sortKey).toBe("number");
       expect(doc?.sortKey).toBeGreaterThan(0);
     });
@@ -124,19 +124,19 @@ describe("insert + get", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "dup",
         coordinates: SF_CITY_HALL,
         filterKeys: { name: "Original" },
         sortKey: 1,
       });
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "dup",
         coordinates: SF_GOLDEN_GATE,
         filterKeys: { name: "Updated" },
         sortKey: 2,
       });
-      const doc = await geo.get(ctx, "dup");
+      const doc = await geo.points.get(ctx, "dup");
       expect(doc?.filterKeys).toEqual({ name: "Updated" });
       expect(doc?.coordinates.latitude).toBeCloseTo(SF_GOLDEN_GATE.latitude);
       expect(doc?.sortKey).toBe(2);
@@ -167,9 +167,9 @@ describe("insert + get", () => {
           sortKey: 3,
         },
       ];
-      for (const d of docs) await geo.insert(ctx, d);
+      for (const d of docs) await geo.points.insert(ctx, d);
       for (const d of docs) {
-        const result = await geo.get(ctx, d.key);
+        const result = await geo.points.get(ctx, d.key);
         expect(result?.key).toBe(d.key);
         expect(result?.filterKeys).toEqual(d.filterKeys);
       }
@@ -180,13 +180,13 @@ describe("insert + get", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "zero-sort",
         coordinates: SF_POINT,
         filterKeys: { name: "Zero" },
         sortKey: 0,
       });
-      const doc = await geo.get(ctx, "zero-sort");
+      const doc = await geo.points.get(ctx, "zero-sort");
       expect(doc?.sortKey).toBe(0);
     });
   });
@@ -195,13 +195,13 @@ describe("insert + get", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial<string, { tags: string[] }>();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "multi-tag",
         coordinates: SF_POINT,
         filterKeys: { tags: ["coffee", "wifi"] },
         sortKey: 1,
       });
-      const doc = await geo.get(ctx, "multi-tag");
+      const doc = await geo.points.get(ctx, "multi-tag");
       expect(doc?.filterKeys.tags).toEqual(["coffee", "wifi"]);
     });
   });
@@ -210,13 +210,13 @@ describe("insert + get", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "sydney",
         coordinates: SYDNEY_POINT,
         filterKeys: { name: "Sydney" },
         sortKey: 1,
       });
-      const doc = await geo.get(ctx, "sydney");
+      const doc = await geo.points.get(ctx, "sydney");
       expect(doc?.coordinates.latitude).toBeCloseTo(SYDNEY_POINT.latitude);
       expect(doc?.coordinates.longitude).toBeCloseTo(SYDNEY_POINT.longitude);
     });
@@ -226,13 +226,13 @@ describe("insert + get", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial<string, Record<string, never>>();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "no-filters",
         coordinates: SF_POINT,
         filterKeys: {},
         sortKey: 1,
       });
-      const doc = await geo.get(ctx, "no-filters");
+      const doc = await geo.points.get(ctx, "no-filters");
       expect(doc?.filterKeys).toEqual({});
     });
   });
@@ -241,13 +241,13 @@ describe("insert + get", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "neg-sort",
         coordinates: SF_POINT,
         filterKeys: { name: "Neg" },
         sortKey: -42,
       });
-      const doc = await geo.get(ctx, "neg-sort");
+      const doc = await geo.points.get(ctx, "neg-sort");
       expect(doc?.sortKey).toBe(-42);
     });
   });
@@ -257,13 +257,13 @@ describe("insert + get", () => {
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
       const ts = 1_700_000_000_000;
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "ts-sort",
         coordinates: SF_POINT,
         filterKeys: { name: "TS" },
         sortKey: ts,
       });
-      const doc = await geo.get(ctx, "ts-sort");
+      const doc = await geo.points.get(ctx, "ts-sort");
       expect(doc?.sortKey).toBe(ts);
     });
   });
@@ -272,13 +272,13 @@ describe("insert + get", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "float-sort",
         coordinates: SF_POINT,
         filterKeys: { name: "Float" },
         sortKey: 3.14,
       });
-      const doc = await geo.get(ctx, "float-sort");
+      const doc = await geo.points.get(ctx, "float-sort");
       expect(doc?.sortKey).toBeCloseTo(3.14);
     });
   });
@@ -290,13 +290,13 @@ describe("insert + get", () => {
         string,
         { score: number; active: boolean }
       >();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "mixed",
         coordinates: SF_POINT,
         filterKeys: { score: 99, active: true },
         sortKey: 1,
       });
-      const doc = await geo.get(ctx, "mixed");
+      const doc = await geo.points.get(ctx, "mixed");
       expect(doc?.filterKeys.score).toBe(99);
       expect(doc?.filterKeys.active).toBe(true);
     });
@@ -308,14 +308,14 @@ describe("delete", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "to-delete",
         coordinates: SF_POINT,
         filterKeys: { name: "Delete Me" },
         sortKey: 1,
       });
-      expect(await geo.delete(ctx, "to-delete")).toBe(true);
-      expect(await geo.get(ctx, "to-delete")).toBeNull();
+      expect(await geo.points.delete(ctx, "to-delete")).toBe(true);
+      expect(await geo.points.get(ctx, "to-delete")).toBeNull();
     });
   });
 
@@ -323,7 +323,7 @@ describe("delete", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      expect(await geo.delete(ctx, "ghost")).toBe(false);
+      expect(await geo.points.delete(ctx, "ghost")).toBe(false);
     });
   });
 
@@ -331,20 +331,20 @@ describe("delete", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "cycle",
         coordinates: SF_CITY_HALL,
         filterKeys: { name: "First" },
         sortKey: 1,
       });
-      await geo.delete(ctx, "cycle");
-      await geo.insert(ctx, {
+      await geo.points.delete(ctx, "cycle");
+      await geo.points.insert(ctx, {
         key: "cycle",
         coordinates: SF_GOLDEN_GATE,
         filterKeys: { name: "Second" },
         sortKey: 2,
       });
-      const doc = await geo.get(ctx, "cycle");
+      const doc = await geo.points.get(ctx, "cycle");
       expect(doc?.filterKeys).toEqual({ name: "Second" });
       expect(doc?.coordinates.latitude).toBeCloseTo(SF_GOLDEN_GATE.latitude);
     });
@@ -354,21 +354,21 @@ describe("delete", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "keep",
         coordinates: SF_CITY_HALL,
         filterKeys: { name: "Keep" },
         sortKey: 1,
       });
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "remove",
         coordinates: SF_GOLDEN_GATE,
         filterKeys: { name: "Remove" },
         sortKey: 2,
       });
-      await geo.delete(ctx, "remove");
-      expect(await geo.get(ctx, "keep")).not.toBeNull();
-      expect(await geo.get(ctx, "remove")).toBeNull();
+      await geo.points.delete(ctx, "remove");
+      expect(await geo.points.get(ctx, "keep")).not.toBeNull();
+      expect(await geo.points.get(ctx, "remove")).toBeNull();
     });
   });
 
@@ -376,14 +376,14 @@ describe("delete", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "once",
         coordinates: SF_POINT,
         filterKeys: { name: "Once" },
         sortKey: 1,
       });
-      expect(await geo.delete(ctx, "once")).toBe(true);
-      expect(await geo.delete(ctx, "once")).toBe(false);
+      expect(await geo.points.delete(ctx, "once")).toBe(true);
+      expect(await geo.points.delete(ctx, "once")).toBe(false);
     });
   });
 });
@@ -393,19 +393,19 @@ describe("query", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "inside",
         coordinates: SF_CITY_HALL,
         filterKeys: { name: "Inside" },
         sortKey: 1,
       });
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "outside",
         coordinates: LONDON_POINT,
         filterKeys: { name: "Outside" },
         sortKey: 2,
       });
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .within(SF_RECTANGLE)
         .limit(10)
@@ -420,7 +420,7 @@ describe("query", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .within(SF_RECTANGLE)
         .limit(10)
@@ -433,13 +433,13 @@ describe("query", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "london",
         coordinates: LONDON_POINT,
         filterKeys: { name: "London" },
         sortKey: 1,
       });
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .within(SF_RECTANGLE)
         .limit(10)
@@ -452,7 +452,7 @@ describe("query", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .within(SF_RECTANGLE)
         .limit(10)
@@ -468,13 +468,13 @@ describe("query", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "shape-test",
         coordinates: SF_CITY_HALL,
         filterKeys: { name: "Shape Test" },
         sortKey: 42,
       });
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .within(SF_RECTANGLE)
         .limit(10)
@@ -491,14 +491,14 @@ describe("query", () => {
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
       for (let i = 0; i < 5; i++) {
-        await geo.insert(ctx, {
+        await geo.points.insert(ctx, {
           key: `loc-${i}`,
           coordinates: { latitude: 37.75 + i * 0.001, longitude: -122.45 },
           filterKeys: { name: `Loc ${i}` },
           sortKey: i,
         });
       }
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .within(SF_RECTANGLE)
         .limit(2)
@@ -511,19 +511,19 @@ describe("query", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "cafe",
         coordinates: SF_CITY_HALL,
         filterKeys: { name: "Cafe" },
         sortKey: 1,
       });
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "park",
         coordinates: SF_POINT,
         filterKeys: { name: "Park" },
         sortKey: 2,
       });
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .within(SF_RECTANGLE)
         .filter((q) => q.eq("name", "Cafe"))
@@ -542,19 +542,19 @@ describe("query", () => {
         string,
         { name: string; category: string }
       >();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "italian-cafe",
         coordinates: SF_CITY_HALL,
         filterKeys: { name: "Cafe", category: "italian" },
         sortKey: 1,
       });
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "french-cafe",
         coordinates: SF_POINT,
         filterKeys: { name: "Cafe", category: "french" },
         sortKey: 2,
       });
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .within(SF_RECTANGLE)
         .filter((q) => q.eq("name", "Cafe").eq("category", "italian"))
@@ -570,25 +570,25 @@ describe("query", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "alpha",
         coordinates: SF_CITY_HALL,
         filterKeys: { name: "Alpha" },
         sortKey: 1,
       });
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "beta",
         coordinates: SF_POINT,
         filterKeys: { name: "Beta" },
         sortKey: 2,
       });
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "gamma",
         coordinates: SF_GOLDEN_GATE,
         filterKeys: { name: "Gamma" },
         sortKey: 3,
       });
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .within(SF_RECTANGLE)
         .filter((q) => q.in("name", ["Alpha", "Beta"]))
@@ -606,14 +606,14 @@ describe("query", () => {
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
       for (let i = 1; i <= 4; i++) {
-        await geo.insert(ctx, {
+        await geo.points.insert(ctx, {
           key: `item-${i}`,
           coordinates: { latitude: 37.75 + i * 0.001, longitude: -122.45 },
           filterKeys: { name: `Item ${i}` },
           sortKey: i,
         });
       }
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .within(SF_RECTANGLE)
         .filter((q) => q.gte("sortKey", 3))
@@ -632,14 +632,14 @@ describe("query", () => {
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
       for (let i = 1; i <= 4; i++) {
-        await geo.insert(ctx, {
+        await geo.points.insert(ctx, {
           key: `item-${i}`,
           coordinates: { latitude: 37.75 + i * 0.001, longitude: -122.45 },
           filterKeys: { name: `Item ${i}` },
           sortKey: i,
         });
       }
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .within(SF_RECTANGLE)
         .filter((q) => q.lt("sortKey", 3))
@@ -658,14 +658,14 @@ describe("query", () => {
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
       for (let i = 1; i <= 6; i++) {
-        await geo.insert(ctx, {
+        await geo.points.insert(ctx, {
           key: `item-${i}`,
           coordinates: { latitude: 37.75 + i * 0.001, longitude: -122.45 },
           filterKeys: { name: `Item ${i}` },
           sortKey: i,
         });
       }
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .within(SF_RECTANGLE)
         .filter((q) => q.gte("sortKey", 2).lt("sortKey", 5))
@@ -688,25 +688,25 @@ describe("query", () => {
         string,
         { name: string; category: string }
       >();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "italian-cafe",
         coordinates: SF_CITY_HALL,
         filterKeys: { name: "Cafe", category: "italian" },
         sortKey: 1,
       });
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "italian-restaurant",
         coordinates: SF_POINT,
         filterKeys: { name: "Restaurant", category: "italian" },
         sortKey: 2,
       });
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "french-cafe",
         coordinates: SF_GOLDEN_GATE,
         filterKeys: { name: "Cafe", category: "french" },
         sortKey: 3,
       });
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .within(SF_RECTANGLE)
         .filter((q) =>
@@ -726,14 +726,14 @@ describe("query", () => {
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
       for (let i = -2; i <= 3; i++) {
-        await geo.insert(ctx, {
+        await geo.points.insert(ctx, {
           key: `item-${i < 0 ? "neg" + Math.abs(i) : i}`,
           coordinates: { latitude: 37.75 + i * 0.001, longitude: -122.45 },
           filterKeys: { name: `Item ${i}` },
           sortKey: i,
         });
       }
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .within(SF_RECTANGLE)
         .filter((q) => q.gte("sortKey", 0).gte("sortKey", -1))
@@ -754,14 +754,14 @@ describe("query", () => {
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
       for (let i = -3; i <= 2; i++) {
-        await geo.insert(ctx, {
+        await geo.points.insert(ctx, {
           key: `item-${i < 0 ? "neg" + Math.abs(i) : i}`,
           coordinates: { latitude: 37.75 + i * 0.001, longitude: -122.45 },
           filterKeys: { name: `Item ${i}` },
           sortKey: i,
         });
       }
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .within(SF_RECTANGLE)
         .filter((q) => q.lt("sortKey", 0).lt("sortKey", 1))
@@ -781,25 +781,25 @@ describe("query", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "positive",
         coordinates: { latitude: 37.751, longitude: -122.45 },
         filterKeys: { name: "Positive" },
         sortKey: 1,
       });
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "zero",
         coordinates: { latitude: 37.752, longitude: -122.45 },
         filterKeys: { name: "Zero" },
         sortKey: 0,
       });
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "negative",
         coordinates: { latitude: 37.753, longitude: -122.45 },
         filterKeys: { name: "Negative" },
         sortKey: -1,
       });
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .within(SF_RECTANGLE)
         .filter((q) => q.gte("sortKey", 0))
@@ -816,25 +816,25 @@ describe("query", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "positive",
         coordinates: { latitude: 37.751, longitude: -122.45 },
         filterKeys: { name: "Positive" },
         sortKey: 1,
       });
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "zero",
         coordinates: { latitude: 37.752, longitude: -122.45 },
         filterKeys: { name: "Zero" },
         sortKey: 0,
       });
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "negative",
         coordinates: { latitude: 37.753, longitude: -122.45 },
         filterKeys: { name: "Negative" },
         sortKey: -1,
       });
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .within(SF_RECTANGLE)
         .filter((q) => q.lt("sortKey", 0))
@@ -852,21 +852,21 @@ describe("query", () => {
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
       for (let i = 0; i < 6; i++) {
-        await geo.insert(ctx, {
+        await geo.points.insert(ctx, {
           key: `page-loc-${i}`,
           coordinates: { latitude: 37.75 + i * 0.001, longitude: -122.45 },
           filterKeys: { name: `Loc ${i}` },
           sortKey: i,
         });
       }
-      const page1 = await geo
+      const page1 = await geo.points
         .query(ctx)
         .within(SF_RECTANGLE)
         .limit(3)
         .paginate();
       expect(page1.page.length).toBeGreaterThan(0);
       if (!page1.isDone) {
-        const page2 = await geo
+        const page2 = await geo.points
           .query(ctx)
           .within(SF_RECTANGLE)
           .limit(3)
@@ -897,8 +897,8 @@ describe("query", () => {
           sortKey: 2,
         },
       ];
-      for (const loc of locs) await geo.insert(ctx, loc);
-      const result = await geo
+      for (const loc of locs) await geo.points.insert(ctx, loc);
+      const result = await geo.points
         .query(ctx)
         .within(SF_RECTANGLE)
         .limit(10)
@@ -913,13 +913,13 @@ describe("query", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "only-one",
         coordinates: SF_CITY_HALL,
         filterKeys: { name: "Only" },
         sortKey: 1,
       });
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .within(SF_RECTANGLE)
         .limit(100)
@@ -932,13 +932,13 @@ describe("query", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "sf-doc",
         coordinates: SF_CITY_HALL,
         filterKeys: { name: "SF" },
         sortKey: 1,
       });
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .within(LONDON_RECTANGLE)
         .limit(10)
@@ -952,14 +952,14 @@ describe("query", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "del",
         coordinates: SF_CITY_HALL,
         filterKeys: { name: "Del" },
         sortKey: 1,
       });
-      await geo.delete(ctx, "del");
-      const result = await geo
+      await geo.points.delete(ctx, "del");
+      const result = await geo.points
         .query(ctx)
         .within(SF_RECTANGLE)
         .limit(10)
@@ -973,14 +973,14 @@ describe("query", () => {
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
       for (let i = 0; i < 10; i++) {
-        await geo.insert(ctx, {
+        await geo.points.insert(ctx, {
           key: `many-${i}`,
           coordinates: { latitude: 37.75 + i * 0.001, longitude: -122.45 },
           filterKeys: { name: `Many ${i}` },
           sortKey: i,
         });
       }
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .within(SF_RECTANGLE)
         .limit(2)
@@ -993,7 +993,7 @@ describe("query", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .within(SF_RECTANGLE)
         .limit(10)
@@ -1008,7 +1008,7 @@ describe("query", () => {
       const geo = await initGeospatial();
       const total = 7;
       for (let i = 0; i < total; i++) {
-        await geo.insert(ctx, {
+        await geo.points.insert(ctx, {
           key: `pg-${i}`,
           coordinates: { latitude: 37.75 + i * 0.001, longitude: -122.45 },
           filterKeys: { name: `Pg ${i}` },
@@ -1019,7 +1019,7 @@ describe("query", () => {
       let cursor: string | undefined;
       let done = false;
       while (!done) {
-        const result = await geo
+        const result = await geo.points
           .query(ctx)
           .within(SF_RECTANGLE)
           .limit(3)
@@ -1037,13 +1037,13 @@ describe("query", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "x",
         coordinates: SF_CITY_HALL,
         filterKeys: { name: "X" },
         sortKey: 1,
       });
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .within(SF_RECTANGLE)
         .filter((q) => q.eq("name", "NonExistent"))
@@ -1059,14 +1059,14 @@ describe("query - interval validation (sortKey bounds)", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "eq-bound",
         coordinates: SF_CITY_HALL,
         filterKeys: { name: "EqBound" },
         sortKey: 5,
       });
       // gte(5).lt(5) produces startInclusive === endExclusive === 5
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .within(SF_RECTANGLE)
         .filter((q) => q.gte("sortKey", 5).lt("sortKey", 5))
@@ -1082,7 +1082,7 @@ describe("query - interval validation (sortKey bounds)", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "bad-interval",
         coordinates: SF_CITY_HALL,
         filterKeys: { name: "BadInterval" },
@@ -1090,7 +1090,7 @@ describe("query - interval validation (sortKey bounds)", () => {
       });
       // gte(10).lt(5) produces startInclusive=10 > endExclusive=5
       await expect(
-        geo
+        geo.points
           .query(ctx)
           .within(SF_RECTANGLE)
           .filter((q) => q.gte("sortKey", 10).lt("sortKey", 5))
@@ -1106,14 +1106,14 @@ describe("query - nearest interval validation", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "eq-bound-nearest",
         coordinates: SF_CITY_HALL,
         filterKeys: { name: "EqBound" },
         sortKey: 5,
       });
       // gte(5).lt(5) => startInclusive === endExclusive
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .nearest(SF_POINT)
         .filter((q) => q.gte("sortKey", 5).lt("sortKey", 5))
@@ -1127,7 +1127,7 @@ describe("query - nearest interval validation", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "bad-interval-nearest",
         coordinates: SF_CITY_HALL,
         filterKeys: { name: "BadInterval" },
@@ -1135,7 +1135,7 @@ describe("query - nearest interval validation", () => {
       });
       // gte(10).lt(5) => startInclusive=10 > endExclusive=5
       // nearestPoints does not validate the interval, it simply finds no matches
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .nearest(SF_POINT)
         .filter((q) => q.gte("sortKey", 10).lt("sortKey", 5))
@@ -1157,7 +1157,7 @@ describe("query - 1024 row safety limit", () => {
         // Spread points across the rectangle to avoid S2 cell edge effects.
         const latitude = 37.71 + (i % 50) * 0.001;
         const longitude = -122.49 + Math.floor(i / 50) * 0.001;
-        await geo.insert(ctx, {
+        await geo.points.insert(ctx, {
           key: `bulk-${i}`,
           coordinates: { latitude, longitude },
           filterKeys: { name: `Bulk ${i}` },
@@ -1165,7 +1165,7 @@ describe("query - 1024 row safety limit", () => {
         });
       }
       // Request more than 1024 results so the row-read limit is hit first.
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .within(SF_RECTANGLE)
         .limit(2000)
@@ -1186,7 +1186,7 @@ describe("query - 1024 row safety limit", () => {
       for (let i = 0; i < total; i++) {
         const latitude = 37.71 + (i % 50) * 0.001;
         const longitude = -122.49 + Math.floor(i / 50) * 0.001;
-        await geo.insert(ctx, {
+        await geo.points.insert(ctx, {
           key: `bulk-${i}`,
           coordinates: { latitude, longitude },
           filterKeys: { name: `Bulk ${i}` },
@@ -1198,7 +1198,7 @@ describe("query - 1024 row safety limit", () => {
       let done = false;
       let pages = 0;
       while (!done) {
-        const result = await geo
+        const result = await geo.points
           .query(ctx)
           .within(SF_RECTANGLE)
           .limit(2000)
@@ -1221,19 +1221,23 @@ describe("nearest", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "very-close",
         coordinates: { latitude: 37.7501, longitude: -122.4501 },
         filterKeys: { name: "Very Close" },
         sortKey: 1,
       });
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "far-away",
         coordinates: LONDON_POINT,
         filterKeys: { name: "Far Away" },
         sortKey: 2,
       });
-      const result = await geo.query(ctx).nearest(SF_POINT).limit(2).collect();
+      const result = await geo.points
+        .query(ctx)
+        .nearest(SF_POINT)
+        .limit(2)
+        .collect();
       expect(result.length).toBeGreaterThan(0);
       expect(result[0].key).toBe("very-close");
     });
@@ -1261,9 +1265,13 @@ describe("nearest", () => {
         },
       ];
       for (const p of points) {
-        await geo.insert(ctx, { ...p, filterKeys: { name: p.key } });
+        await geo.points.insert(ctx, { ...p, filterKeys: { name: p.key } });
       }
-      const result = await geo.query(ctx).nearest(SF_POINT).limit(3).collect();
+      const result = await geo.points
+        .query(ctx)
+        .nearest(SF_POINT)
+        .limit(3)
+        .collect();
       expect(result).toHaveLength(3);
       for (let i = 1; i < result.length; i++) {
         const prevDistSq = Math.pow(
@@ -1283,13 +1291,17 @@ describe("nearest", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "nearby",
         coordinates: { latitude: 37.7501, longitude: -122.4501 },
         filterKeys: { name: "Nearby" },
         sortKey: 1,
       });
-      const result = await geo.query(ctx).nearest(SF_POINT).limit(1).collect();
+      const result = await geo.points
+        .query(ctx)
+        .nearest(SF_POINT)
+        .limit(1)
+        .collect();
       expect(result).toHaveLength(1);
       expect(result[0]).toHaveProperty("key");
       expect(result[0]).toHaveProperty("coordinates");
@@ -1303,7 +1315,7 @@ describe("nearest", () => {
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
       for (let i = 0; i < 5; i++) {
-        await geo.insert(ctx, {
+        await geo.points.insert(ctx, {
           key: `near-${i}`,
           coordinates: {
             latitude: 37.75 + i * 0.001,
@@ -1313,7 +1325,11 @@ describe("nearest", () => {
           sortKey: i,
         });
       }
-      const result = await geo.query(ctx).nearest(SF_POINT).limit(3).collect();
+      const result = await geo.points
+        .query(ctx)
+        .nearest(SF_POINT)
+        .limit(3)
+        .collect();
       expect(result.length).toBeLessThanOrEqual(3);
     });
   });
@@ -1322,7 +1338,11 @@ describe("nearest", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      const result = await geo.query(ctx).nearest(SF_POINT).limit(5).collect();
+      const result = await geo.points
+        .query(ctx)
+        .nearest(SF_POINT)
+        .limit(5)
+        .collect();
       expect(result).toEqual([]);
     });
   });
@@ -1331,19 +1351,19 @@ describe("nearest", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "close",
         coordinates: { latitude: 37.7501, longitude: -122.4501 },
         filterKeys: { name: "Close" },
         sortKey: 1,
       });
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "far",
         coordinates: LONDON_POINT,
         filterKeys: { name: "Far" },
         sortKey: 2,
       });
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .nearest(SF_POINT, { maxDistance: 1000 })
         .limit(10)
@@ -1358,13 +1378,13 @@ describe("nearest", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "somewhere",
         coordinates: SF_CITY_HALL,
         filterKeys: { name: "Somewhere" },
         sortKey: 1,
       });
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .nearest(SF_POINT, { maxDistance: 0 })
         .limit(10)
@@ -1377,19 +1397,19 @@ describe("nearest", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "restaurant",
         coordinates: { latitude: 37.7502, longitude: -122.4502 },
         filterKeys: { name: "Restaurant" },
         sortKey: 1,
       });
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "hotel",
         coordinates: { latitude: 37.7503, longitude: -122.4503 },
         filterKeys: { name: "Hotel" },
         sortKey: 2,
       });
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .nearest(SF_POINT)
         .filter((q) => q.eq("name", "Restaurant"))
@@ -1405,25 +1425,25 @@ describe("nearest", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "alpha",
         coordinates: { latitude: 37.7501, longitude: -122.4501 },
         filterKeys: { name: "Alpha" },
         sortKey: 1,
       });
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "beta",
         coordinates: { latitude: 37.7502, longitude: -122.4502 },
         filterKeys: { name: "Beta" },
         sortKey: 2,
       });
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "gamma",
         coordinates: { latitude: 37.7503, longitude: -122.4503 },
         filterKeys: { name: "Gamma" },
         sortKey: 3,
       });
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .nearest(SF_POINT)
         .filter((q) => q.in("name", ["Alpha", "Beta"]))
@@ -1441,14 +1461,14 @@ describe("nearest", () => {
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
       for (let i = 1; i <= 5; i++) {
-        await geo.insert(ctx, {
+        await geo.points.insert(ctx, {
           key: `item-${i}`,
           coordinates: { latitude: 37.75 + i * 0.0001, longitude: -122.45 },
           filterKeys: { name: `Item ${i}` },
           sortKey: i,
         });
       }
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .nearest(SF_POINT)
         .filter((q) => q.gte("sortKey", 2).lt("sortKey", 4))
@@ -1467,13 +1487,17 @@ describe("nearest", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "close",
         coordinates: { latitude: 37.7501, longitude: -122.4501 },
         filterKeys: { name: "Close" },
         sortKey: 1,
       });
-      const result = await geo.query(ctx).nearest(SF_POINT).limit(1).collect();
+      const result = await geo.points
+        .query(ctx)
+        .nearest(SF_POINT)
+        .limit(1)
+        .collect();
       expect(result[0]).toHaveProperty("distance");
       expect(typeof result[0].distance).toBe("number");
       expect(result[0].distance).toBeGreaterThanOrEqual(0);
@@ -1485,14 +1509,18 @@ describe("nearest", () => {
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
       for (let i = 1; i <= 4; i++) {
-        await geo.insert(ctx, {
+        await geo.points.insert(ctx, {
           key: `dist-${i}`,
           coordinates: { latitude: 37.75 + i * 0.01, longitude: -122.45 },
           filterKeys: { name: `Dist ${i}` },
           sortKey: i,
         });
       }
-      const result = await geo.query(ctx).nearest(SF_POINT).limit(4).collect();
+      const result = await geo.points
+        .query(ctx)
+        .nearest(SF_POINT)
+        .limit(4)
+        .collect();
       for (let i = 1; i < result.length; i++) {
         expect(result[i].distance).toBeGreaterThanOrEqual(
           result[i - 1].distance,
@@ -1505,13 +1533,13 @@ describe("nearest", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "only",
         coordinates: { latitude: 37.7501, longitude: -122.4501 },
         filterKeys: { name: "Only" },
         sortKey: 1,
       });
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .nearest(SF_POINT)
         .limit(100)
@@ -1524,14 +1552,18 @@ describe("nearest", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "gone",
         coordinates: { latitude: 37.7501, longitude: -122.4501 },
         filterKeys: { name: "Gone" },
         sortKey: 1,
       });
-      await geo.delete(ctx, "gone");
-      const result = await geo.query(ctx).nearest(SF_POINT).limit(10).collect();
+      await geo.points.delete(ctx, "gone");
+      const result = await geo.points
+        .query(ctx)
+        .nearest(SF_POINT)
+        .limit(10)
+        .collect();
       expect(result.map((d) => d.key)).not.toContain("gone");
     });
   });
@@ -1540,13 +1572,13 @@ describe("nearest", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "x",
         coordinates: SF_CITY_HALL,
         filterKeys: { name: "X" },
         sortKey: 1,
       });
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .nearest(SF_POINT)
         .filter((q) => q.eq("name", "NoMatch"))
@@ -1560,25 +1592,25 @@ describe("nearest", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial<string, { category: string }>();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "close-coffee",
         coordinates: { latitude: 37.7501, longitude: -122.4501 },
         filterKeys: { category: "coffee" },
         sortKey: 1,
       });
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "close-hotel",
         coordinates: { latitude: 37.7502, longitude: -122.4502 },
         filterKeys: { category: "hotel" },
         sortKey: 2,
       });
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "far-coffee",
         coordinates: LONDON_POINT,
         filterKeys: { category: "coffee" },
         sortKey: 3,
       });
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .nearest(SF_POINT, { maxDistance: 1000 })
         .filter((q) => q.eq("category", "coffee"))
@@ -1595,31 +1627,31 @@ describe("nearest", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial<string, { category: string }>();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "close-coffee",
         coordinates: { latitude: 37.7501, longitude: -122.4501 },
         filterKeys: { category: "coffee" },
         sortKey: 1,
       });
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "close-tea",
         coordinates: { latitude: 37.7502, longitude: -122.4502 },
         filterKeys: { category: "tea" },
         sortKey: 2,
       });
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "close-hotel",
         coordinates: { latitude: 37.7503, longitude: -122.4503 },
         filterKeys: { category: "hotel" },
         sortKey: 3,
       });
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "far-coffee",
         coordinates: LONDON_POINT,
         filterKeys: { category: "coffee" },
         sortKey: 4,
       });
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .nearest(SF_POINT, { maxDistance: 1000 })
         .filter((q) => q.in("category", ["coffee", "tea"]))
@@ -1637,25 +1669,25 @@ describe("nearest", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "close-in-range",
         coordinates: { latitude: 37.7501, longitude: -122.4501 },
         filterKeys: { name: "A" },
         sortKey: 15,
       });
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "close-out-of-range",
         coordinates: { latitude: 37.7502, longitude: -122.4502 },
         filterKeys: { name: "B" },
         sortKey: 5,
       });
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "far-in-range",
         coordinates: LONDON_POINT,
         filterKeys: { name: "C" },
         sortKey: 15,
       });
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .nearest(SF_POINT, { maxDistance: 1000 })
         .filter((q) => q.gte("sortKey", 10).lt("sortKey", 30))
@@ -1674,13 +1706,17 @@ describe("nearest - zero limit returns empty array immediately", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "some-point",
         coordinates: SF_CITY_HALL,
         filterKeys: { name: "SomePoint" },
         sortKey: 1,
       });
-      const result = await geo.query(ctx).nearest(SF_POINT).limit(0).collect();
+      const result = await geo.points
+        .query(ctx)
+        .nearest(SF_POINT)
+        .limit(0)
+        .collect();
       expect(result).toEqual([]);
     });
   });
@@ -1819,14 +1855,14 @@ describe("filter builder - multiple in() calls", () => {
         string,
         { name: string; category: string }
       >();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "x",
         coordinates: SF_CITY_HALL,
         filterKeys: { name: "X", category: "Y" },
         sortKey: 1,
       });
       await expect(
-        geo
+        geo.points
           .query(ctx)
           .within(SF_RECTANGLE)
           .filter((q) => (q.in("name", ["X"]) as any).in("category", ["Y"]))
@@ -1843,14 +1879,14 @@ describe("filter builder - multiple in() calls", () => {
         string,
         { name: string; category: string }
       >();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "x",
         coordinates: SF_CITY_HALL,
         filterKeys: { name: "X", category: "Y" },
         sortKey: 1,
       });
       await expect(
-        geo
+        geo.points
           .query(ctx)
           .nearest(SF_POINT)
           .filter((q) => (q.in("name", ["X"]) as any).in("category", ["Y"]))
@@ -1866,13 +1902,13 @@ describe("query - points on rectangle edges", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "north-edge",
         coordinates: { latitude: SF_RECTANGLE.north, longitude: -122.45 },
         filterKeys: { name: "NorthEdge" },
         sortKey: 1,
       });
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .within(SF_RECTANGLE)
         .limit(10)
@@ -1887,13 +1923,13 @@ describe("query - points on rectangle edges", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "south-edge",
         coordinates: { latitude: SF_RECTANGLE.south, longitude: -122.45 },
         filterKeys: { name: "SouthEdge" },
         sortKey: 1,
       });
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .within(SF_RECTANGLE)
         .limit(10)
@@ -1906,13 +1942,13 @@ describe("query - points on rectangle edges", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "west-edge",
         coordinates: { latitude: 37.75, longitude: SF_RECTANGLE.west },
         filterKeys: { name: "WestEdge" },
         sortKey: 1,
       });
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .within(SF_RECTANGLE)
         .limit(10)
@@ -1925,13 +1961,13 @@ describe("query - points on rectangle edges", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "east-edge",
         coordinates: { latitude: 37.75, longitude: SF_RECTANGLE.east },
         filterKeys: { name: "EastEdge" },
         sortKey: 1,
       });
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .within(SF_RECTANGLE)
         .limit(10)
@@ -1944,7 +1980,7 @@ describe("query - points on rectangle edges", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "just-outside-north",
         coordinates: {
           latitude: SF_RECTANGLE.north + 0.001,
@@ -1953,7 +1989,7 @@ describe("query - points on rectangle edges", () => {
         filterKeys: { name: "JustOutsideNorth" },
         sortKey: 1,
       });
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .within(SF_RECTANGLE)
         .limit(10)
@@ -1966,7 +2002,7 @@ describe("query - points on rectangle edges", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "just-outside-south",
         coordinates: {
           latitude: SF_RECTANGLE.south - 0.001,
@@ -1975,7 +2011,7 @@ describe("query - points on rectangle edges", () => {
         filterKeys: { name: "JustOutsideSouth" },
         sortKey: 1,
       });
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .within(SF_RECTANGLE)
         .limit(10)
@@ -1991,13 +2027,13 @@ describe("nearest - maxDistance with documents in index but none in range", () =
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
       // London is ~8700 km from SF
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "london",
         coordinates: LONDON_POINT,
         filterKeys: { name: "London" },
         sortKey: 1,
       });
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .nearest(SF_POINT, { maxDistance: 1000 })
         .limit(10)
@@ -2010,19 +2046,19 @@ describe("nearest - maxDistance with documents in index but none in range", () =
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "very-close",
         coordinates: { latitude: 37.7501, longitude: -122.4501 },
         filterKeys: { name: "VeryClose" },
         sortKey: 1,
       });
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "london",
         coordinates: LONDON_POINT,
         filterKeys: { name: "London" },
         sortKey: 2,
       });
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .nearest(SF_POINT, { maxDistance: 1000 })
         .limit(10)
@@ -2038,7 +2074,7 @@ describe("nearest - maxDistance with documents in index but none in range", () =
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
       // ~111m per 0.001 degree latitude - insert at roughly 100m away
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "boundary",
         coordinates: { latitude: 37.7509, longitude: -122.45 },
         filterKeys: { name: "Boundary" },
@@ -2046,7 +2082,7 @@ describe("nearest - maxDistance with documents in index but none in range", () =
       });
       // Query with maxDistance that may or may not include this point.
       // We just assert the result is consistent and doesn't throw.
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .nearest(SF_POINT, { maxDistance: 100 })
         .limit(10)
@@ -2062,13 +2098,17 @@ describe("nearest - distance field accuracy", () => {
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
       // ~0.009 degrees latitude ≈ 1 km
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "one-km",
         coordinates: { latitude: 37.759, longitude: -122.45 },
         filterKeys: { name: "OneKm" },
         sortKey: 1,
       });
-      const result = await geo.query(ctx).nearest(SF_POINT).limit(1).collect();
+      const result = await geo.points
+        .query(ctx)
+        .nearest(SF_POINT)
+        .limit(1)
+        .collect();
       expect(result).toHaveLength(1);
       // Allow ±20% tolerance for spherical approximation
       expect(result[0].distance).toBeGreaterThan(800);
@@ -2080,13 +2120,17 @@ describe("nearest - distance field accuracy", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "exact",
         coordinates: SF_POINT,
         filterKeys: { name: "Exact" },
         sortKey: 1,
       });
-      const result = await geo.query(ctx).nearest(SF_POINT).limit(1).collect();
+      const result = await geo.points
+        .query(ctx)
+        .nearest(SF_POINT)
+        .limit(1)
+        .collect();
       expect(result).toHaveLength(1);
       expect(result[0].distance).toBeCloseTo(0, 0);
     });
@@ -2100,14 +2144,14 @@ describe("query - result sort order", () => {
       const geo = await initGeospatial();
       const keys = ["tie-a", "tie-b", "tie-c"];
       for (const key of keys) {
-        await geo.insert(ctx, {
+        await geo.points.insert(ctx, {
           key,
           coordinates: { latitude: 37.751, longitude: -122.45 },
           filterKeys: { name: key },
           sortKey: 42,
         });
       }
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .within(SF_RECTANGLE)
         .limit(10)
@@ -2125,14 +2169,14 @@ describe("query - cursor stability", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      const first = await geo
+      const first = await geo.points
         .query(ctx)
         .within(SF_RECTANGLE)
         .limit(10)
         .paginate();
       expect(first.page).toHaveLength(0);
       // Continue from the cursor of an exhausted result
-      const second = await geo
+      const second = await geo.points
         .query(ctx)
         .within(SF_RECTANGLE)
         .limit(10)
@@ -2148,7 +2192,7 @@ describe("query - cursor stability", () => {
       const geo = await initGeospatial();
       const total = 4;
       for (let i = 0; i < total; i++) {
-        await geo.insert(ctx, {
+        await geo.points.insert(ctx, {
           key: `one-by-one-${i}`,
           coordinates: { latitude: 37.751 + i * 0.001, longitude: -122.45 },
           filterKeys: { name: `OneByone ${i}` },
@@ -2160,7 +2204,7 @@ describe("query - cursor stability", () => {
       let pages = 0;
       let done = false;
       while (!done) {
-        const result = await geo
+        const result = await geo.points
           .query(ctx)
           .within(SF_RECTANGLE)
           .limit(1)
@@ -2184,13 +2228,13 @@ describe("insert - coordinate precision", () => {
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
       const precise = { latitude: 37.123456789, longitude: -122.987654321 };
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "precise",
         coordinates: precise,
         filterKeys: { name: "Precise" },
         sortKey: 1,
       });
-      const doc = await geo.get(ctx, "precise");
+      const doc = await geo.points.get(ctx, "precise");
       // Tolerate floating point rounding but not large drift
       expect(doc?.coordinates.latitude).toBeCloseTo(precise.latitude, 5);
       expect(doc?.coordinates.longitude).toBeCloseTo(precise.longitude, 5);
@@ -2201,13 +2245,13 @@ describe("insert - coordinate precision", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "null-island",
         coordinates: { latitude: 0, longitude: 0 },
         filterKeys: { name: "NullIsland" },
         sortKey: 1,
       });
-      const doc = await geo.get(ctx, "null-island");
+      const doc = await geo.points.get(ctx, "null-island");
       expect(doc?.coordinates.latitude).toBeCloseTo(0);
       expect(doc?.coordinates.longitude).toBeCloseTo(0);
     });
@@ -2217,13 +2261,13 @@ describe("insert - coordinate precision", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "south-pole",
         coordinates: { latitude: -90, longitude: 0 },
         filterKeys: { name: "SouthPole" },
         sortKey: 1,
       });
-      const doc = await geo.get(ctx, "south-pole");
+      const doc = await geo.points.get(ctx, "south-pole");
       expect(doc?.coordinates.latitude).toBeCloseTo(-90);
     });
   });
@@ -2232,13 +2276,13 @@ describe("insert - coordinate precision", () => {
     const t = initConvexTest();
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "north-pole",
         coordinates: { latitude: 90, longitude: 0 },
         filterKeys: { name: "NorthPole" },
         sortKey: 1,
       });
-      const doc = await geo.get(ctx, "north-pole");
+      const doc = await geo.points.get(ctx, "north-pole");
       expect(doc?.coordinates.latitude).toBeCloseTo(90);
     });
   });
@@ -2250,27 +2294,27 @@ describe("get - overwrite consistency", () => {
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
       // Insert in SF, then move to London
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "mover",
         coordinates: SF_CITY_HALL,
         filterKeys: { name: "Mover" },
         sortKey: 1,
       });
-      await geo.insert(ctx, {
+      await geo.points.insert(ctx, {
         key: "mover",
         coordinates: LONDON_POINT,
         filterKeys: { name: "Mover" },
         sortKey: 2,
       });
       // Should appear in London query
-      const londonResult = await geo
+      const londonResult = await geo.points
         .query(ctx)
         .within(LONDON_RECTANGLE)
         .limit(10)
         .paginate();
       expect(londonResult.page.map((d) => d.key)).toContain("mover");
       // Should NOT appear in SF query anymore
-      const sfResult = await geo
+      const sfResult = await geo.points
         .query(ctx)
         .within(SF_RECTANGLE)
         .limit(10)
@@ -2287,7 +2331,7 @@ describe("query - filter correctness at scale", () => {
       const geo = await initGeospatial<string, { category: string }>();
       const categories = ["A", "B", "C"];
       for (let i = 0; i < 99; i++) {
-        await geo.insert(ctx, {
+        await geo.points.insert(ctx, {
           key: `bulk-filter-${i}`,
           coordinates: {
             latitude: 37.71 + (i % 30) * 0.002,
@@ -2297,7 +2341,7 @@ describe("query - filter correctness at scale", () => {
           sortKey: i,
         });
       }
-      const result = await geo
+      const result = await geo.points
         .query(ctx)
         .within(SF_RECTANGLE)
         .filter((q) => q.eq("category", "A"))
@@ -2315,7 +2359,7 @@ describe("nearest - ordering with many documents", () => {
     await t.run(async (ctx) => {
       const geo = await initGeospatial();
       for (let i = 0; i < 20; i++) {
-        await geo.insert(ctx, {
+        await geo.points.insert(ctx, {
           key: `near-many-${i}`,
           coordinates: {
             latitude: 37.75 + i * 0.01,
@@ -2325,7 +2369,11 @@ describe("nearest - ordering with many documents", () => {
           sortKey: i,
         });
       }
-      const result = await geo.query(ctx).nearest(SF_POINT).limit(20).collect();
+      const result = await geo.points
+        .query(ctx)
+        .nearest(SF_POINT)
+        .limit(20)
+        .collect();
       expect(result.length).toBeGreaterThan(1);
       for (let i = 1; i < result.length; i++) {
         expect(result[i].distance).toBeGreaterThanOrEqual(

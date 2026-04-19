@@ -141,7 +141,7 @@ describe("polyline storage", () => {
         },
       });
 
-      await t.mutation(api.polylines.remove, { key: "manhattan-street" });
+      await t.mutation(api.polylines.del, { key: "manhattan-street" });
 
       const polyline = await t.query(api.polylines.get, {
         key: "manhattan-street",
@@ -152,7 +152,7 @@ describe("polyline storage", () => {
     test("returns false when removing a polyline that does not exist", async () => {
       const t = convexTest(schema, modules);
 
-      const result = await t.mutation(api.polylines.remove, {
+      const result = await t.mutation(api.polylines.del, {
         key: "nonexistent",
       });
 
@@ -170,7 +170,7 @@ describe("polyline storage", () => {
         },
       });
 
-      const result = await t.mutation(api.polylines.remove, {
+      const result = await t.mutation(api.polylines.del, {
         key: "manhattan-street",
       });
 

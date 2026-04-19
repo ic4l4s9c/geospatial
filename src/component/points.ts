@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query, type MutationCtx } from "./_generated/server.js";
-import { point, type Point, filterKeys } from "./validators.js";
+import { point, type Point, filterKeys, config } from "./validators.js";
 import { encodeTupleKey } from "./lib/tupleKey.js";
 import { filterCounterKey } from "./streams/filterKeyRange.js";
 import { cellCounterKey } from "./streams/cellRange.js";
@@ -17,17 +17,14 @@ const document = v.object({
 export const insert = mutation({
   args: {
     document: document,
-    minLevel: v.number(),
-    maxLevel: v.number(),
-    levelMod: v.number(),
-    maxCells: v.number(),
+    config: config,
   },
   returns: v.null(),
   handler: async (ctx, args) => {
     const s2 = await S2Bindings.load();
-    await removePointByKey(ctx, s2, args.document.key, args);
+    await removePointByKey(ctx, s2, args.document.key, args.config);
     const pointId = await ctx.db.insert("points", args.document);
-    const cells = s2Cells(s2, args.document.coordinates, args);
+    const cells = s2Cells(s2, args.document.coordinates, args.config);
     const tupleKey = encodeTupleKey(args.document.sortKey, pointId);
     for (const cell of cells) {
       await ctx.db.insert("pointsByCell", { cell, tupleKey });
@@ -53,6 +50,66 @@ export const insert = mutation({
   },
 });
 
+export const update = mutation({
+  args: {
+    document: document.omit("key").partial().extend({
+      key: document.fields.key,
+    }),
+    config: config,
+  },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    const s2 = await S2Bindings.load();
+
+    const existing = await ctx.db
+      .query("points")
+      .withIndex("key", (q) => q.eq("key", args.document.key))
+      .first();
+    if (!existing) {
+      return false;
+    }
+
+    // Merge partial updates over the existing document.
+    const merged = {
+      key: existing.key,
+      coordinates: args.document.coordinates ?? existing.coordinates,
+      sortKey: args.document.sortKey ?? existing.sortKey,
+      filterKeys: args.document.filterKeys ?? existing.filterKeys,
+    };
+
+    // Remove old index entries and the document itself.
+    await removePointByKey(ctx, s2, existing.key, args.config);
+
+    // Reinsert with merged data, mirroring insert handler exactly.
+    const pointId = await ctx.db.insert("points", merged);
+    const cells = s2Cells(s2, merged.coordinates, args.config);
+    const tupleKey = encodeTupleKey(merged.sortKey, pointId);
+    for (const cell of cells) {
+      await ctx.db.insert("pointsByCell", { cell, tupleKey });
+      await approximateCounter.increment(ctx, pointId, cellCounterKey(cell));
+    }
+    for (const [filterKey, filterDoc] of Object.entries(
+      merged.filterKeys ?? {},
+    )) {
+      const valueArray = Array.isArray(filterDoc) ? filterDoc : [filterDoc];
+      for (const filterValue of valueArray) {
+        await ctx.db.insert("pointsByFilterKey", {
+          filterKey,
+          filterValue,
+          tupleKey,
+        });
+        await approximateCounter.increment(
+          ctx,
+          pointId,
+          filterCounterKey(filterKey, filterValue),
+        );
+      }
+    }
+
+    return true;
+  },
+});
+
 export const get = query({
   args: {
     key: v.string(),
@@ -71,18 +128,15 @@ export const get = query({
   },
 });
 
-export const remove = mutation({
+export const del = mutation({
   args: {
     key: v.string(),
-    minLevel: v.number(),
-    maxLevel: v.number(),
-    levelMod: v.number(),
-    maxCells: v.number(),
+    config: config,
   },
   returns: v.boolean(),
   handler: async (ctx, args) => {
     const s2 = await S2Bindings.load();
-    return await removePointByKey(ctx, s2, args.key, args);
+    return await removePointByKey(ctx, s2, args.key, args.config);
   },
 });
 
