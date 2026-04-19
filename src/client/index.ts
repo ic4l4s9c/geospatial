@@ -238,7 +238,7 @@ class NearestQueryBuilder<
     if (this.#filter) {
       this.#filter(filterBuilder);
     }
-    const result = await this.ctx.runQuery(this.component.query.nearestPoints, {
+    const result = await this.ctx.runQuery(this.component.query.nearest, {
       point: this.point,
       maxDistance: this.maxDistance,
       maxResults: this.#limit ?? 64,

@@ -235,7 +235,7 @@ export const execute = query({
   },
 });
 
-export const nearestPoints = query({
+export const nearest = query({
   args: {
     point,
     maxDistance: v.optional(v.number()),

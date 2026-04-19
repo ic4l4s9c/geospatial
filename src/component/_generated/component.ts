@@ -156,7 +156,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         },
         Name
       >;
-      nearestPoints: FunctionReference<
+      nearest: FunctionReference<
         "query",
         "internal",
         {
