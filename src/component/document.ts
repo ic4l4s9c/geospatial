@@ -36,7 +36,7 @@ export const insert = mutation({
     for (const [filterKey, filterDoc] of Object.entries(
       args.document.filterKeys,
     )) {
-      const valueArray = filterDoc instanceof Array ? filterDoc : [filterDoc];
+      const valueArray = Array.isArray(filterDoc) ? filterDoc : [filterDoc];
       for (const filterValue of valueArray) {
         await ctx.db.insert("pointsByFilterKey", {
           filterKey,
@@ -139,7 +139,7 @@ async function removePointByKey(
     await approximateCounter.decrement(ctx, existing._id, cellCounterKey(cell));
   }
   for (const [filterKey, filterDoc] of Object.entries(existing.filterKeys)) {
-    const valueArray = filterDoc instanceof Array ? filterDoc : [filterDoc];
+    const valueArray = Array.isArray(filterDoc) ? filterDoc : [filterDoc];
     for (const filterValue of valueArray) {
       const existingFilterKey = await ctx.db
         .query("pointsByFilterKey")
