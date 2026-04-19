@@ -179,7 +179,7 @@ export const execute = query({
       logger.debug("Producer shutting down");
     };
     const page: { key: string; coordinates: Point }[] = [];
-    let continueCursor: TupleKey | undefined = undefined;
+    let continueCursor: TupleKey = "";
     const consumer = async () => {
       try {
         for await (const { tupleKey, docPromise } of channel) {
@@ -213,7 +213,7 @@ export const execute = query({
           }
         }
         logger.debug(`Consumer reached end of stream`);
-        continueCursor = undefined;
+        continueCursor = "";
         return;
       } finally {
         if (!channel.closed) {
@@ -229,8 +229,8 @@ export const execute = query({
 
     return {
       page,
-      continueCursor: continueCursor ?? "",
-      isDone: continueCursor === undefined,
+      continueCursor,
+      isDone: continueCursor === "",
     };
   },
 });
