@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query, type MutationCtx } from "./_generated/server.js";
-import { point, primitive, type Point } from "./validators.js";
+import { point, type Point, filterKeys } from "./validators.js";
 import { encodeTupleKey } from "./lib/tupleKey.js";
 import { filterCounterKey } from "./streams/filterKeyRange.js";
 import { cellCounterKey } from "./streams/cellRange.js";
@@ -11,7 +11,7 @@ const geoDocument = v.object({
   key: v.string(),
   coordinates: point,
   sortKey: v.number(),
-  filterKeys: v.record(v.string(), v.union(primitive, v.array(primitive))),
+  filterKeys: filterKeys,
 });
 
 export const insert = mutation({
@@ -34,7 +34,7 @@ export const insert = mutation({
       await approximateCounter.increment(ctx, pointId, cellCounterKey(cell));
     }
     for (const [filterKey, filterDoc] of Object.entries(
-      args.document.filterKeys,
+      args.document.filterKeys ?? {},
     )) {
       const valueArray = Array.isArray(filterDoc) ? filterDoc : [filterDoc];
       for (const filterValue of valueArray) {
@@ -138,7 +138,9 @@ async function removePointByKey(
     await ctx.db.delete(existingCell._id);
     await approximateCounter.decrement(ctx, existing._id, cellCounterKey(cell));
   }
-  for (const [filterKey, filterDoc] of Object.entries(existing.filterKeys)) {
+  for (const [filterKey, filterDoc] of Object.entries(
+    existing.filterKeys ?? {},
+  )) {
     const valueArray = Array.isArray(filterDoc) ? filterDoc : [filterDoc];
     for (const filterValue of valueArray) {
       const existingFilterKey = await ctx.db

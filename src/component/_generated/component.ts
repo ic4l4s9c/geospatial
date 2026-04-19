@@ -53,7 +53,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         { key: string },
         {
           coordinates: { latitude: number; longitude: number };
-          filterKeys: Record<
+          filterKeys?: Record<
             string,
             | string
             | number
@@ -73,7 +73,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         {
           document: {
             coordinates: { latitude: number; longitude: number };
-            filterKeys: Record<
+            filterKeys?: Record<
               string,
               | string
               | number
@@ -102,6 +102,201 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           maxCells: number;
           maxLevel: number;
           minLevel: number;
+        },
+        boolean,
+        Name
+      >;
+    };
+    polygons: {
+      get: FunctionReference<
+        "query",
+        "internal",
+        { key: string },
+        {
+          boundingBox: {
+            east: number;
+            north: number;
+            south: number;
+            west: number;
+          };
+          coordinates: {
+            exterior: Array<{ latitude: number; longitude: number }>;
+            holes?: Array<Array<{ latitude: number; longitude: number }>>;
+          };
+          filterKeys?: Record<
+            string,
+            | string
+            | number
+            | boolean
+            | null
+            | bigint
+            | Array<string | number | boolean | null | bigint>
+          >;
+          key: string;
+          sortKey: number;
+        } | null,
+        Name
+      >;
+      insert: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          document: {
+            coordinates: {
+              exterior: Array<{ latitude: number; longitude: number }>;
+              holes?: Array<Array<{ latitude: number; longitude: number }>>;
+            };
+            filterKeys?: Record<
+              string,
+              | string
+              | number
+              | boolean
+              | null
+              | bigint
+              | Array<string | number | boolean | null | bigint>
+            >;
+            key: string;
+            sortKey: number;
+          };
+          levelMod?: number;
+          maxCells?: number;
+          maxLevel?: number;
+          minLevel?: number;
+        },
+        null,
+        Name
+      >;
+      remove: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          key: string;
+          levelMod?: number;
+          maxCells?: number;
+          maxLevel?: number;
+          minLevel?: number;
+        },
+        boolean,
+        Name
+      >;
+      update: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          document: {
+            coordinates?: {
+              exterior: Array<{ latitude: number; longitude: number }>;
+              holes?: Array<Array<{ latitude: number; longitude: number }>>;
+            };
+            filterKeys?: Record<
+              string,
+              | string
+              | number
+              | boolean
+              | null
+              | bigint
+              | Array<string | number | boolean | null | bigint>
+            >;
+            key?: string;
+            sortKey?: number;
+          };
+          levelMod?: number;
+          maxCells?: number;
+          maxLevel?: number;
+          minLevel?: number;
+        },
+        boolean,
+        Name
+      >;
+    };
+    polylines: {
+      get: FunctionReference<
+        "query",
+        "internal",
+        { key: string },
+        {
+          boundingBox: {
+            east: number;
+            north: number;
+            south: number;
+            west: number;
+          };
+          coordinates: Array<{ latitude: number; longitude: number }>;
+          filterKeys?: Record<
+            string,
+            | string
+            | number
+            | boolean
+            | null
+            | bigint
+            | Array<string | number | boolean | null | bigint>
+          >;
+          key: string;
+          sortKey: number;
+        } | null,
+        Name
+      >;
+      insert: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          document: {
+            coordinates: Array<{ latitude: number; longitude: number }>;
+            filterKeys?: Record<
+              string,
+              | string
+              | number
+              | boolean
+              | null
+              | bigint
+              | Array<string | number | boolean | null | bigint>
+            >;
+            key: string;
+            sortKey: number;
+          };
+          levelMod?: number;
+          maxCells?: number;
+          maxLevel?: number;
+          minLevel?: number;
+        },
+        null,
+        Name
+      >;
+      remove: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          key: string;
+          levelMod?: number;
+          maxCells?: number;
+          maxLevel?: number;
+          minLevel?: number;
+        },
+        boolean,
+        Name
+      >;
+      update: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          document: {
+            coordinates?: Array<{ latitude: number; longitude: number }>;
+            filterKeys?: Record<
+              string,
+              | string
+              | number
+              | boolean
+              | null
+              | bigint
+              | Array<string | number | boolean | null | bigint>
+            >;
+            key?: string;
+            sortKey?: number;
+          };
+          levelMod?: number;
+          maxCells?: number;
+          maxLevel?: number;
+          minLevel?: number;
         },
         boolean,
         Name
