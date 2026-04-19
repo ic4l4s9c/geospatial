@@ -279,11 +279,6 @@ export class Geospatial<
   }
 }
 
-export type FilterValue<
-  Doc extends GeospatialDocument,
-  FieldName extends keyof Doc["filterKeys"],
-> = ExtractArray<Doc["filterKeys"][FieldName]>;
-
 type QueryCtx = Pick<GenericQueryCtx<GenericDataModel>, "runQuery">;
 type MutationCtx = Pick<
   GenericMutationCtx<GenericDataModel>,
@@ -293,9 +288,14 @@ type MutationCtx = Pick<
 export type FilterObject<Doc extends GeospatialDocument> = {
   [K in keyof Doc["filterKeys"] & string]: {
     filterKey: K;
-    filterValue: ExtractArray<Doc["filterKeys"][K]>;
+    filterValue: FilterValue<Doc, K>;
     occur: "should" | "must";
   };
 }[keyof Doc["filterKeys"] & string];
 
-type ExtractArray<T> = T extends (infer U)[] ? U : T;
+export type FilterValue<
+  Doc extends GeospatialDocument,
+  FieldName extends keyof Doc["filterKeys"],
+> = FlattenArray<Doc["filterKeys"][FieldName]>;
+
+type FlattenArray<T> = T extends (infer U)[] ? U : T;
