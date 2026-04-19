@@ -36,29 +36,21 @@ export const GEOSPATIAL_DEFAULTS = {
 
 export type GeospatialFilters = Record<string, Primitive | Primitive[]>;
 
-type GeospatialBase<Key extends string = string> = {
-  key: Key;
-  coordinates: Point;
-};
-
-type WithOptional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
-
 export type GeospatialDocument<
   Key extends string = string,
   Filters extends GeospatialFilters = GeospatialFilters,
-> = GeospatialBase<Key> & {
+> = {
+  key: Key;
+  coordinates: Point;
   filterKeys: Filters;
   sortKey: number;
 };
 
-export type InsertDocument<
-  Key extends string = string,
-  Filters extends GeospatialFilters = GeospatialFilters,
-> = WithOptional<GeospatialDocument<Key, Filters>, "sortKey">;
-
-export type NearestResult<Key extends string = string> = GeospatialBase<Key> & {
+export type WithDistance<Type> = Type & {
   distance: number;
 };
+
+type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
 
 type Narrow<T, Overrides extends Partial<T>> = Omit<T, keyof Overrides> &
   Overrides;
@@ -171,7 +163,9 @@ class WithinQueryBuilder<
    */
   async paginate(
     cursor?: string,
-  ): Promise<PaginationResult<GeospatialBase<Key>>> {
+  ): Promise<
+    PaginationResult<Omit<GeospatialDocument<Key>, "filterKeys" | "sortKey">>
+  > {
     const filterBuilder = new FilterBuilder<GeospatialDocument<Key, Filters>>();
     if (this.#filter) {
       this.#filter(filterBuilder);
@@ -233,7 +227,9 @@ class NearestQueryBuilder<
   /**
    * Execute the query and return all results.
    */
-  async collect(): Promise<NearestResult<Key>[]> {
+  async collect(): Promise<
+    WithDistance<Omit<GeospatialDocument<Key>, "filterKeys" | "sortKey">>[]
+  > {
     const filterBuilder = new FilterBuilder<GeospatialDocument<Key, Filters>>();
     if (this.#filter) {
       this.#filter(filterBuilder);
@@ -328,7 +324,12 @@ export class Geospatial<
    */
   async insert(
     ctx: MutationCtx,
-    { key, coordinates, filterKeys, sortKey }: InsertDocument<Key, Filters>,
+    {
+      key,
+      coordinates,
+      filterKeys,
+      sortKey,
+    }: Optional<GeospatialDocument<Key, Filters>, "sortKey">,
   ): Promise<void> {
     await ctx.runMutation(this.component.document.insert, {
       document: {
