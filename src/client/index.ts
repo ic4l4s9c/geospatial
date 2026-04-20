@@ -270,6 +270,88 @@ class GeospatialQueryBuilder<
 }
 
 /**
+ * Measurement operations for polygon geometries.
+ * All distances are in meters; areas are in square meters.
+ *
+ * Access via `geospatial.polygons.measure`.
+ */
+class PolygonMeasureNamespace {
+  constructor(private component: ComponentApi) {}
+
+  /**
+   * Calculate the perimeter of a polygon in meters.
+   * Uses great-circle distance on Earth's surface.
+   *
+   * @param ctx - The Convex query context.
+   * @param polygon - The polygon to measure.
+   * @returns The perimeter length in meters.
+   */
+  async perimeter(ctx: QueryCtx, polygon: Polygon): Promise<number> {
+    return ctx.runQuery(this.component.polygons.measure.perimeter, { polygon });
+  }
+
+  /**
+   * Calculate the area of a polygon in square meters.
+   * Uses spherical geometry on Earth's surface.
+   *
+   * @param ctx - The Convex query context.
+   * @param polygon - The polygon to measure.
+   * @returns The area in square meters.
+   */
+  async area(ctx: QueryCtx, polygon: Polygon): Promise<number> {
+    return ctx.runQuery(this.component.polygons.measure.area, { polygon });
+  }
+
+  /**
+   * Calculate the centroid of a polygon.
+   * Returns the geographic center point.
+   *
+   * @param ctx - The Convex query context.
+   * @param polygon - The polygon to measure.
+   * @returns The centroid `{ latitude, longitude }`.
+   */
+  async centroid(ctx: QueryCtx, polygon: Polygon): Promise<Point> {
+    return ctx.runQuery(this.component.polygons.measure.centroid, { polygon });
+  }
+}
+
+/**
+ * Measurement operations for polyline geometries.
+ * All distances are in meters.
+ *
+ * Access via `geospatial.polylines.measure`.
+ */
+class PolylineMeasureNamespace {
+  constructor(private component: ComponentApi) {}
+
+  /**
+   * Calculate the length of a polyline in meters.
+   * Uses great-circle distance on Earth's surface.
+   *
+   * @param ctx - The Convex query context.
+   * @param polyline - The polyline to measure.
+   * @returns The length in meters.
+   */
+  async length(ctx: QueryCtx, polyline: Polyline): Promise<number> {
+    return ctx.runQuery(this.component.polylines.measure.length, { polyline });
+  }
+
+  /**
+   * Calculate the centroid of a polyline.
+   * Returns the weighted center point along the line.
+   *
+   * @param ctx - The Convex query context.
+   * @param polyline - The polyline to measure.
+   * @returns The centroid `{ latitude, longitude }`.
+   */
+  async centroid(ctx: QueryCtx, polyline: Polyline): Promise<Point> {
+    return ctx.runQuery(this.component.polylines.measure.centroid, {
+      polyline,
+    });
+  }
+}
+
+/**
  * Namespace for point geometry operations: insert, get, delete, query.
  */
 class PointsNamespace<Key extends string, Filters extends GeospatialFilters> {
@@ -367,16 +449,27 @@ class PointsNamespace<Key extends string, Filters extends GeospatialFilters> {
 }
 
 /**
- * Namespace for polygon geometry operations.
- *
- * Placeholder — wire up to `component.polygons.*` once the component exposes
- * those handlers.
+ * Namespace for polygon geometry operations: insert, get, update, delete, measure.
  */
 class PolygonsNamespace<Key extends string, Filters extends GeospatialFilters> {
+  /**
+   * Measurement operations for polygon geometries.
+   *
+   * @example
+   * ```ts
+   * const perimeterM = await geospatial.polygons.measure.perimeter(ctx, myPolygon);
+   * const areaM2     = await geospatial.polygons.measure.area(ctx, myPolygon);
+   * const center     = await geospatial.polygons.measure.centroid(ctx, myPolygon);
+   * ```
+   */
+  readonly measure: PolygonMeasureNamespace;
+
   constructor(
     private component: ComponentApi,
     private config: GeospatialConfig,
-  ) {}
+  ) {
+    this.measure = new PolygonMeasureNamespace(component);
+  }
 
   async insert(
     ctx: MutationCtx,
@@ -428,19 +521,29 @@ class PolygonsNamespace<Key extends string, Filters extends GeospatialFilters> {
 }
 
 /**
- * Namespace for polyline geometry operations.
- *
- * Placeholder — wire up to `component.polylines.*` once the component exposes
- * those handlers.
+ * Namespace for polyline geometry operations: insert, get, update, delete, measure.
  */
 class PolylinesNamespace<
   Key extends string,
   Filters extends GeospatialFilters,
 > {
+  /**
+   * Measurement operations for polyline geometries.
+   *
+   * @example
+   * ```ts
+   * const lengthM = await geospatial.polylines.measure.length(ctx, myPolyline);
+   * const center  = await geospatial.polylines.measure.centroid(ctx, myPolyline);
+   * ```
+   */
+  readonly measure: PolylineMeasureNamespace;
+
   constructor(
     private component: ComponentApi,
     private config: GeospatialConfig,
-  ) {}
+  ) {
+    this.measure = new PolylineMeasureNamespace(component);
+  }
 
   async insert(
     ctx: MutationCtx,

@@ -52,35 +52,34 @@ const SF_GOLDEN_GATE = { latitude: 37.8199, longitude: -122.4783 };
 const LONDON_POINT = { latitude: 51.5074, longitude: -0.1278 };
 const SYDNEY_POINT = { latitude: -33.8688, longitude: 151.2093 };
 
-
 const SF_QUAD: Polygon = {
-  exterior:  [
+  exterior: [
     { latitude: 37.5, longitude: -123.0 },
     { latitude: 38.0, longitude: -123.0 },
     { latitude: 38.0, longitude: -122.0 },
     { latitude: 37.5, longitude: -122.0 },
     { latitude: 37.5, longitude: -123.0 },
-  ]
-}
+  ],
+};
 
 const LONDON_QUAD: Polygon = {
   exterior: [
     { latitude: 51.3, longitude: -0.5 },
     { latitude: 51.7, longitude: -0.5 },
-    { latitude: 51.7, longitude:  0.3 },
-    { latitude: 51.3, longitude:  0.3 },
+    { latitude: 51.7, longitude: 0.3 },
+    { latitude: 51.3, longitude: 0.3 },
     { latitude: 51.3, longitude: -0.5 },
-  ]
-}
+  ],
+};
 
 const SF_STREET: Polyline = [
-  { latitude: 37.7750, longitude: -122.4180 },
-  { latitude: 37.7760, longitude: -122.4170 },
-  { latitude: 37.7770, longitude: -122.4160 },
+  { latitude: 37.775, longitude: -122.418 },
+  { latitude: 37.776, longitude: -122.417 },
+  { latitude: 37.777, longitude: -122.416 },
 ];
 
 const LONDON_STREET: Polyline = [
-  { latitude: 51.505, longitude: -0.130 },
+  { latitude: 51.505, longitude: -0.13 },
   { latitude: 51.506, longitude: -0.128 },
   { latitude: 51.507, longitude: -0.126 },
 ];

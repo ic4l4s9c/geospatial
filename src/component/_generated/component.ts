@@ -215,6 +215,44 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         null,
         Name
       >;
+      measure: {
+        area: FunctionReference<
+          "query",
+          "internal",
+          {
+            polygon: {
+              exterior: Array<{ latitude: number; longitude: number }>;
+              holes?: Array<Array<{ latitude: number; longitude: number }>>;
+            };
+          },
+          number,
+          Name
+        >;
+        centroid: FunctionReference<
+          "query",
+          "internal",
+          {
+            polygon: {
+              exterior: Array<{ latitude: number; longitude: number }>;
+              holes?: Array<Array<{ latitude: number; longitude: number }>>;
+            };
+          },
+          { latitude: number; longitude: number },
+          Name
+        >;
+        perimeter: FunctionReference<
+          "query",
+          "internal",
+          {
+            polygon: {
+              exterior: Array<{ latitude: number; longitude: number }>;
+              holes?: Array<Array<{ latitude: number; longitude: number }>>;
+            };
+          },
+          number,
+          Name
+        >;
+      };
       update: FunctionReference<
         "mutation",
         "internal",
@@ -317,6 +355,22 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         null,
         Name
       >;
+      measure: {
+        centroid: FunctionReference<
+          "query",
+          "internal",
+          { polyline: Array<{ latitude: number; longitude: number }> },
+          { latitude: number; longitude: number },
+          Name
+        >;
+        length: FunctionReference<
+          "query",
+          "internal",
+          { polyline: Array<{ latitude: number; longitude: number }> },
+          number,
+          Name
+        >;
+      };
       update: FunctionReference<
         "mutation",
         "internal",
