@@ -51,10 +51,16 @@ export const insert = mutation({
   handler: async (ctx, args) => {
     const s2 = await S2Bindings.load();
 
-    const maxCells = args.config?.maxCells;
-    const minLevel = args.config?.minLevel;
-    const maxLevel = args.config?.maxLevel;
-    const levelMod = args.config?.levelMod;
+    const config = args.config ?? {
+      minLevel: 4,
+      maxLevel: 16,
+      levelMod: 2,
+      maxCells: 30,
+    };
+    const maxCells = config.maxCells;
+    const minLevel = config.minLevel;
+    const maxLevel = config.maxLevel;
+    const levelMod = config.levelMod;
 
     const existing = await ctx.db
       .query("polygons")

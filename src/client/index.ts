@@ -10,6 +10,7 @@ import type {
   Polyline,
   Primitive,
   Rectangle,
+  QueryShape,
 } from "../component/validators.js";
 import { LOG_LEVELS, type LogLevel } from "../component/lib/logging.js";
 import {
@@ -17,7 +18,6 @@ import {
   type GeospatialQuery,
   type GeospatialFilterBuilder,
   type GeospatialFilterExpression,
-  type QueryShape,
 } from "./query.js";
 import type { ComponentApi } from "../component/_generated/component.js";
 
@@ -155,7 +155,10 @@ class WithinQueryBuilder<
     if (this.#filter) {
       this.#filter(filterBuilder);
     }
-    const result = await this.ctx.runQuery(this.component.query.execute, {
+    if (this.shape.type !== "rectangle") {
+      throw new Error("unsupported shape (WIP)");
+    }
+    const result = await this.ctx.runQuery(this.component.points.spatial.execute, {
       query: {
         rectangle: this.shape.rectangle,
         filtering: filterBuilder.filterConditions,
@@ -220,7 +223,7 @@ class NearestQueryBuilder<
     if (this.#filter) {
       this.#filter(filterBuilder);
     }
-    const result = await this.ctx.runQuery(this.component.query.nearest, {
+    const result = await this.ctx.runQuery(this.component.points.spatial.nearest, {
       point: this.point,
       maxDistance: this.maxDistance,
       maxResults: this.#limit ?? 64,

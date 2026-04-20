@@ -4,7 +4,7 @@ import * as d64 from "./d64.js";
 
 test("encodeTupleKey and decodeTupleKey", () => {
   const sortKey = 123456789;
-  const pointId = "1234567890"
+  const pointId = "1234567890";
   const tupleKey = encodeCursor(sortKey, pointId);
   const decoded = decodeCursor(tupleKey);
   expect(decoded.sortKey).toEqual(sortKey);
@@ -60,10 +60,10 @@ describe("tupleKey ordering", () => {
 
   test("encodeTupleKey roundtrip", () => {
     const testCases = [
-      { sortKey: 0, pointId: "abc123"},
-      { sortKey: 1140, pointId: "xyz789"},
-      { sortKey: -100, pointId: "neg456"},
-      { sortKey: 999999, pointId: "big000"},
+      { sortKey: 0, pointId: "abc123" },
+      { sortKey: 1140, pointId: "xyz789" },
+      { sortKey: -100, pointId: "neg456" },
+      { sortKey: 999999, pointId: "big000" },
     ];
 
     for (const testCase of testCases) {

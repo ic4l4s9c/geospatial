@@ -5,24 +5,24 @@ import {
   type Point,
   point,
   rectangle,
-} from "./validators.js";
-import { query } from "./_generated/server.js";
-import type { PointSet, Stats } from "./streams/zigzag.js";
-import { Intersection } from "./streams/intersection.js";
-import { Union } from "./streams/union.js";
-import { FilterKeyRange } from "./streams/filterKeyRange.js";
-import { CellRange } from "./streams/cellRange.js";
-import { interval } from "./lib/interval.js";
-import { decodeCursor, type Cursor } from "./lib/cursor.js";
+} from "../validators.js";
+import { query } from "../_generated/server.js";
+import type { PointSet, Stats } from "../streams/zigzag.js";
+import { Intersection } from "../streams/intersection.js";
+import { Union } from "../streams/union.js";
+import { FilterKeyRange } from "../streams/filterKeyRange.js";
+import { CellRange } from "../streams/cellRange.js";
+import { interval } from "../lib/interval.js";
+import { decodeCursor, type Cursor } from "../lib/cursor.js";
 import { Channel, ChannelClosedError } from "async-channel";
-import type { Doc, Id } from "./_generated/dataModel.js";
-import { createLogger, logLevel } from "./lib/logging.js";
-import { S2Bindings } from "./lib/s2Bindings.js";
-import { ClosestPointQuery } from "./lib/closestPointQuery.js";
-import { PREFETCH_SIZE } from "./streams/constants.js";
+import type { Doc, Id } from "../_generated/dataModel.js";
+import { createLogger, logLevel } from "../lib/logging.js";
+import { S2Bindings } from "../lib/s2Bindings.js";
+import { ClosestPointQuery } from "../lib/closestPointQuery.js";
+import { PREFETCH_SIZE } from "../streams/constants.js";
 import { paginationResultValidator } from "convex/server";
 
-export { PREFETCH_SIZE } from "./streams/constants.js";
+export { PREFETCH_SIZE } from "../streams/constants.js";
 
 const geospatialQuery = v.object({
   rectangle,

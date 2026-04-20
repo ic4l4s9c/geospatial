@@ -1,5 +1,5 @@
-import type { Rectangle } from "../component/validators.js";
 import type { GeospatialDocument, FilterValue, FilterObject } from "./index.js";
+import type { QueryShape } from "../component/validators.js";
 
 /**
  * A query for keys within a given shape.
@@ -132,5 +132,3 @@ export class FilterBuilder<Doc extends GeospatialDocument> {
     return this;
   }
 }
-
-export type QueryShape = { type: "rectangle"; rectangle: Rectangle };

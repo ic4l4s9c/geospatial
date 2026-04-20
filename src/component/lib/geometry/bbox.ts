@@ -1,4 +1,4 @@
-import type { Point, Rectangle } from "../../validators.js";
+import type { Point, Polygon, Rectangle } from "../../validators.js";
 
 export function computeBoundingBox(points: Point[]): Rectangle {
   if (points.length === 0) {
@@ -17,4 +17,61 @@ export function computeBoundingBox(points: Point[]): Rectangle {
   }
 
   return { south, north, west, east };
+}
+
+export function boundingBoxContainsPoint(
+  bbox: Rectangle,
+  point: Point,
+): boolean {
+  const { south, north, west, east } = bbox;
+  const { latitude, longitude } = point;
+
+  if (west <= east) {
+    return (
+      latitude >= south &&
+      latitude <= north &&
+      longitude >= west &&
+      longitude <= east
+    );
+  }
+  if (west > east) {
+    return (
+      latitude >= south &&
+      latitude <= north &&
+      (longitude >= west || longitude <= east)
+    );
+  }
+  return false;
+}
+
+export function boundingBoxContainsPolygon(
+  bbox: Rectangle,
+  polygon: Polygon,
+): boolean {
+  const exterior = polygon.exterior;
+  if (exterior.length === 0) {
+    return false;
+  }
+  for (const point of exterior) {
+    if (!boundingBoxContainsPoint(bbox, point)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+export function boundingBoxesIntersect(a: Rectangle, b: Rectangle): boolean {
+  if (a.south > b.north || a.north < b.south) {
+    return false;
+  }
+  if (a.west <= a.east && b.west <= b.east) {
+    return a.east >= b.west && a.west <= b.east;
+  }
+  if (a.west > a.east && b.west > b.east) {
+    return true;
+  }
+  if (a.west <= a.east) {
+    return a.east >= b.west || a.west <= b.east;
+  }
+  return b.east >= a.west || b.west <= a.east;
 }

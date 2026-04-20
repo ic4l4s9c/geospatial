@@ -37,6 +37,13 @@ export const rectangle = v.object({
 });
 export type Rectangle = Infer<typeof rectangle>;
 
+export const queryShape = v.union(
+  v.object({ type: v.literal("rectangle"), rectangle }),
+  v.object({ type: v.literal("polygon"), polygon }),
+  v.object({ type: v.literal("point"), point }),
+);
+export type QueryShape = Infer<typeof queryShape>;
+
 export const filterKeys = v.optional(
   v.record(v.string(), v.union(primitive, v.array(primitive))),
 );
