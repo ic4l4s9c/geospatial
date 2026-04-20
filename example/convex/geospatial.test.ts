@@ -3,6 +3,7 @@ import { expect, test, describe, vi } from "vitest";
 import { convexTest } from "convex-test";
 import schema from "./schema";
 import type { GeospatialFilters } from "@convex-dev/geospatial";
+import { Polyline, Polygon } from "@convex-dev/geospatial/validators";
 
 const modules = import.meta.glob("./**/*.ts");
 
@@ -13,12 +14,23 @@ function initConvexTest() {
 }
 
 async function initGeospatial<
-  K extends string = string,
-  F extends GeospatialFilters = GeospatialFilters,
+  PointKey extends string = string,
+  PointFilters extends GeospatialFilters = GeospatialFilters,
+  PolygonKey extends string = string,
+  PolygonFilters extends GeospatialFilters = GeospatialFilters,
+  PolylineKey extends string = string,
+  PolylineFilters extends GeospatialFilters = GeospatialFilters,
 >() {
   const { Geospatial } = await import("@convex-dev/geospatial");
   const { components } = await import("./_generated/api");
-  return new Geospatial<K, F>(components.geospatial);
+  return new Geospatial<
+    PointKey,
+    PointFilters,
+    PolygonKey,
+    PolygonFilters,
+    PolylineKey,
+    PolylineFilters
+  >(components.geospatial);
 }
 
 const SF_RECTANGLE = {
@@ -39,6 +51,39 @@ const SF_CITY_HALL = { latitude: 37.7793, longitude: -122.4193 };
 const SF_GOLDEN_GATE = { latitude: 37.8199, longitude: -122.4783 };
 const LONDON_POINT = { latitude: 51.5074, longitude: -0.1278 };
 const SYDNEY_POINT = { latitude: -33.8688, longitude: 151.2093 };
+
+
+const SF_QUAD: Polygon = {
+  exterior:  [
+    { latitude: 37.5, longitude: -123.0 },
+    { latitude: 38.0, longitude: -123.0 },
+    { latitude: 38.0, longitude: -122.0 },
+    { latitude: 37.5, longitude: -122.0 },
+    { latitude: 37.5, longitude: -123.0 },
+  ]
+}
+
+const LONDON_QUAD: Polygon = {
+  exterior: [
+    { latitude: 51.3, longitude: -0.5 },
+    { latitude: 51.7, longitude: -0.5 },
+    { latitude: 51.7, longitude:  0.3 },
+    { latitude: 51.3, longitude:  0.3 },
+    { latitude: 51.3, longitude: -0.5 },
+  ]
+}
+
+const SF_STREET: Polyline = [
+  { latitude: 37.7750, longitude: -122.4180 },
+  { latitude: 37.7760, longitude: -122.4170 },
+  { latitude: 37.7770, longitude: -122.4160 },
+];
+
+const LONDON_STREET: Polyline = [
+  { latitude: 51.505, longitude: -0.130 },
+  { latitude: 51.506, longitude: -0.128 },
+  { latitude: 51.507, longitude: -0.126 },
+];
 
 describe("Geospatial constructor()", () => {
   test("falls back to INFO log level and warns when GEOSPATIAL_LOG_LEVEL is invalid", async () => {
@@ -2358,6 +2403,817 @@ describe("points.query().nearest()", () => {
           .collect();
         expect(result).toHaveLength(1);
         expect(result[0].distance).toBeCloseTo(0, 0);
+      });
+    });
+  });
+});
+
+describe("geo.polygons", () => {
+  describe("insert and get", () => {
+    describe("basic retrieval", () => {
+      test("get returns all stored fields after a successful insert", async () => {
+        const t = initConvexTest();
+        await t.run(async (ctx) => {
+          const geo = await initGeospatial();
+          await geo.polygons.insert(ctx, {
+            key: "sf-quad",
+            coordinates: SF_QUAD,
+            filterKeys: { name: "SF Quad" },
+            sortKey: 1,
+          });
+          const doc = await geo.polygons.get(ctx, "sf-quad");
+          expect(doc).not.toBeNull();
+          expect(doc?.key).toBe("sf-quad");
+          expect(doc?.coordinates).toEqual(SF_QUAD);
+          expect(doc?.filterKeys).toEqual({ name: "SF Quad" });
+          expect(doc?.sortKey).toBe(1);
+        });
+      });
+
+      test("get returns null for a key that was never inserted", async () => {
+        const t = initConvexTest();
+        await t.run(async (ctx) => {
+          const geo = await initGeospatial();
+          expect(await geo.polygons.get(ctx, "does-not-exist")).toBeNull();
+        });
+      });
+
+      test("multiple documents are each independently retrievable by key", async () => {
+        const t = initConvexTest();
+        await t.run(async (ctx) => {
+          const geo = await initGeospatial();
+          const docs = [
+            {
+              key: "poly-a",
+              coordinates: SF_QUAD,
+              filterKeys: { name: "A" },
+              sortKey: 1,
+            },
+            {
+              key: "poly-b",
+              coordinates: LONDON_QUAD,
+              filterKeys: { name: "B" },
+              sortKey: 2,
+            },
+          ];
+          for (const d of docs) await geo.polygons.insert(ctx, d);
+          for (const d of docs) {
+            const result = await geo.polygons.get(ctx, d.key);
+            expect(result?.key).toBe(d.key);
+            expect(result?.filterKeys).toEqual(d.filterKeys);
+            expect(result?.coordinates).toEqual(d.coordinates);
+          }
+        });
+      });
+
+      test("get returns the boundingBox field alongside coordinates", async () => {
+        const t = initConvexTest();
+        await t.run(async (ctx) => {
+          const geo = await initGeospatial();
+          await geo.polygons.insert(ctx, {
+            key: "bbox-check",
+            coordinates: SF_QUAD,
+            filterKeys: { name: "BBoxCheck" },
+            sortKey: 1,
+          });
+          const doc = await geo.polygons.get(ctx, "bbox-check");
+          expect(doc).not.toBeNull();
+          expect(doc).toHaveProperty("boundingBox");
+          const bb = doc?.boundingBox;
+          expect(bb).toHaveProperty("north");
+          expect(bb).toHaveProperty("south");
+          expect(bb).toHaveProperty("east");
+          expect(bb).toHaveProperty("west");
+        });
+      });
+
+      test("boundingBox north is greater than or equal to south and east >= west", async () => {
+        const t = initConvexTest();
+        await t.run(async (ctx) => {
+          const geo = await initGeospatial();
+          await geo.polygons.insert(ctx, {
+            key: "bbox-validity",
+            coordinates: SF_QUAD,
+            filterKeys: { name: "BBoxValidity" },
+            sortKey: 1,
+          });
+          const doc = await geo.polygons.get(ctx, "bbox-validity");
+          const bb = doc?.boundingBox;
+          expect(bb?.north).toBeGreaterThanOrEqual(bb?.south as number);
+          expect(bb?.east).toBeGreaterThanOrEqual(bb?.west as number);
+        });
+      });
+    });
+
+    describe("sortKey handling", () => {
+      test("omitting sortKey stores a positive number by default", async () => {
+        const t = initConvexTest();
+        await t.run(async (ctx) => {
+          const geo = await initGeospatial();
+          await geo.polygons.insert(ctx, {
+            key: "no-sort",
+            coordinates: SF_QUAD,
+            filterKeys: { name: "Test" },
+          });
+          const doc = await geo.polygons.get(ctx, "no-sort");
+          expect(typeof doc?.sortKey).toBe("number");
+          expect(doc?.sortKey).toBeGreaterThan(0);
+        });
+      });
+
+      test("sortKey of 0 is stored and returned exactly as 0", async () => {
+        const t = initConvexTest();
+        await t.run(async (ctx) => {
+          const geo = await initGeospatial();
+          await geo.polygons.insert(ctx, {
+            key: "zero-sort",
+            coordinates: SF_QUAD,
+            filterKeys: { name: "Zero" },
+            sortKey: 0,
+          });
+          const doc = await geo.polygons.get(ctx, "zero-sort");
+          expect(doc?.sortKey).toBe(0);
+        });
+      });
+
+      test("negative sortKey is stored and returned exactly", async () => {
+        const t = initConvexTest();
+        await t.run(async (ctx) => {
+          const geo = await initGeospatial();
+          await geo.polygons.insert(ctx, {
+            key: "neg-sort",
+            coordinates: SF_QUAD,
+            filterKeys: { name: "Neg" },
+            sortKey: -42,
+          });
+          const doc = await geo.polygons.get(ctx, "neg-sort");
+          expect(doc?.sortKey).toBe(-42);
+        });
+      });
+    });
+
+    describe("filterKeys handling", () => {
+      test("empty filterKeys object is stored and returned correctly", async () => {
+        const t = initConvexTest();
+        await t.run(async (ctx) => {
+          const geo = await initGeospatial();
+          await geo.polygons.insert(ctx, {
+            key: "no-filters",
+            coordinates: SF_QUAD,
+            filterKeys: {},
+            sortKey: 1,
+          });
+          const doc = await geo.polygons.get(ctx, "no-filters");
+          expect(doc?.filterKeys).toEqual({});
+        });
+      });
+
+      test("array-valued filterKeys are stored and returned correctly", async () => {
+        const t = initConvexTest();
+        await t.run(async (ctx) => {
+          const geo = await initGeospatial<
+            string,
+            GeospatialFilters,
+            string,
+            { tags: string[] }
+          >();
+          await geo.polygons.insert(ctx, {
+            key: "multi-tag",
+            coordinates: SF_QUAD,
+            filterKeys: { tags: ["park", "green"] },
+            sortKey: 1,
+          });
+          const doc = await geo.polygons.get(ctx, "multi-tag");
+          expect(doc?.filterKeys.tags).toEqual(["park", "green"]);
+        });
+      });
+
+      test("filterKeys with mixed primitive types are stored and returned correctly", async () => {
+        const t = initConvexTest();
+        await t.run(async (ctx) => {
+          const geo = await initGeospatial<
+            string,
+            GeospatialFilters,
+            string,
+            { score: number; active: boolean }
+          >();
+          await geo.polygons.insert(ctx, {
+            key: "mixed",
+            coordinates: SF_QUAD,
+            filterKeys: { score: 99, active: true },
+            sortKey: 1,
+          });
+          const doc = await geo.polygons.get(ctx, "mixed");
+          expect(doc?.filterKeys.score).toBe(99);
+          expect(doc?.filterKeys.active).toBe(true);
+        });
+      });
+    });
+
+    describe("insert uniqueness", () => {
+      test("inserting the same key twice throws a duplicate-key error", async () => {
+        const t = initConvexTest();
+        await t.run(async (ctx) => {
+          const geo = await initGeospatial();
+          await geo.polygons.insert(ctx, {
+            key: "dup",
+            coordinates: SF_QUAD,
+            filterKeys: { name: "Original" },
+            sortKey: 1,
+          });
+          await expect(
+            geo.polygons.insert(ctx, {
+              key: "dup",
+              coordinates: LONDON_QUAD,
+              filterKeys: { name: "Duplicate" },
+              sortKey: 2,
+            }),
+          ).rejects.toThrow();
+        });
+      });
+    });
+  });
+
+  describe("delete", () => {
+    test("returns true and makes the document unretrievable", async () => {
+      const t = initConvexTest();
+      await t.run(async (ctx) => {
+        const geo = await initGeospatial();
+        await geo.polygons.insert(ctx, {
+          key: "to-delete",
+          coordinates: SF_QUAD,
+          filterKeys: { name: "Delete Me" },
+          sortKey: 1,
+        });
+        expect(await geo.polygons.delete(ctx, "to-delete")).toBe(true);
+        expect(await geo.polygons.get(ctx, "to-delete")).toBeNull();
+      });
+    });
+
+    test("returns false when the key does not exist", async () => {
+      const t = initConvexTest();
+      await t.run(async (ctx) => {
+        const geo = await initGeospatial();
+        expect(await geo.polygons.delete(ctx, "ghost")).toBe(false);
+      });
+    });
+
+    test("returns false on a second delete of the same key", async () => {
+      const t = initConvexTest();
+      await t.run(async (ctx) => {
+        const geo = await initGeospatial();
+        await geo.polygons.insert(ctx, {
+          key: "once",
+          coordinates: SF_QUAD,
+          filterKeys: { name: "Once" },
+          sortKey: 1,
+        });
+        expect(await geo.polygons.delete(ctx, "once")).toBe(true);
+        expect(await geo.polygons.delete(ctx, "once")).toBe(false);
+      });
+    });
+
+    test("deleting one key leaves sibling keys unaffected", async () => {
+      const t = initConvexTest();
+      await t.run(async (ctx) => {
+        const geo = await initGeospatial();
+        await geo.polygons.insert(ctx, {
+          key: "keep",
+          coordinates: SF_QUAD,
+          filterKeys: { name: "Keep" },
+          sortKey: 1,
+        });
+        await geo.polygons.insert(ctx, {
+          key: "remove",
+          coordinates: LONDON_QUAD,
+          filterKeys: { name: "Remove" },
+          sortKey: 2,
+        });
+        await geo.polygons.delete(ctx, "remove");
+        expect(await geo.polygons.get(ctx, "keep")).not.toBeNull();
+        expect(await geo.polygons.get(ctx, "remove")).toBeNull();
+      });
+    });
+
+    test("re-inserting after delete reflects the new data", async () => {
+      const t = initConvexTest();
+      await t.run(async (ctx) => {
+        const geo = await initGeospatial();
+        await geo.polygons.insert(ctx, {
+          key: "cycle",
+          coordinates: SF_QUAD,
+          filterKeys: { name: "First" },
+          sortKey: 1,
+        });
+        await geo.polygons.delete(ctx, "cycle");
+        await geo.polygons.insert(ctx, {
+          key: "cycle",
+          coordinates: LONDON_QUAD,
+          filterKeys: { name: "Second" },
+          sortKey: 2,
+        });
+        const doc = await geo.polygons.get(ctx, "cycle");
+        expect(doc?.filterKeys).toEqual({ name: "Second" });
+        expect(doc?.coordinates).toEqual(LONDON_QUAD);
+      });
+    });
+  });
+
+  describe("update", () => {
+    test("returns true and get reflects the updated fields", async () => {
+      const t = initConvexTest();
+      await t.run(async (ctx) => {
+        const geo = await initGeospatial();
+        await geo.polygons.insert(ctx, {
+          key: "upd",
+          coordinates: SF_QUAD,
+          filterKeys: { name: "Before" },
+          sortKey: 1,
+        });
+        const ok = await geo.polygons.update(ctx, {
+          key: "upd",
+          coordinates: LONDON_QUAD,
+          filterKeys: { name: "After" },
+          sortKey: 99,
+        });
+        expect(ok).toBe(true);
+        const doc = await geo.polygons.get(ctx, "upd");
+        expect(doc?.coordinates).toEqual(LONDON_QUAD);
+        expect(doc?.filterKeys).toEqual({ name: "After" });
+        expect(doc?.sortKey).toBe(99);
+      });
+    });
+
+    test("returns false when the key does not exist", async () => {
+      const t = initConvexTest();
+      await t.run(async (ctx) => {
+        const geo = await initGeospatial();
+        const ok = await geo.polygons.update(ctx, {
+          key: "no-such-key",
+          coordinates: SF_QUAD,
+          filterKeys: { name: "X" },
+          sortKey: 1,
+        });
+        expect(ok).toBe(false);
+      });
+    });
+
+    test("partial update — only coordinates — leaves filterKeys and sortKey unchanged", async () => {
+      const t = initConvexTest();
+      await t.run(async (ctx) => {
+        const geo = await initGeospatial();
+        await geo.polygons.insert(ctx, {
+          key: "partial",
+          coordinates: SF_QUAD,
+          filterKeys: { name: "Original" },
+          sortKey: 5,
+        });
+        await geo.polygons.update(ctx, {
+          key: "partial",
+          coordinates: LONDON_QUAD,
+        });
+        const doc = await geo.polygons.get(ctx, "partial");
+        expect(doc?.coordinates).toEqual(LONDON_QUAD);
+        expect(doc?.filterKeys).toEqual({ name: "Original" });
+        expect(doc?.sortKey).toBe(5);
+      });
+    });
+
+    test("updating a deleted key returns false", async () => {
+      const t = initConvexTest();
+      await t.run(async (ctx) => {
+        const geo = await initGeospatial();
+        await geo.polygons.insert(ctx, {
+          key: "gone",
+          coordinates: SF_QUAD,
+          filterKeys: { name: "Gone" },
+          sortKey: 1,
+        });
+        await geo.polygons.delete(ctx, "gone");
+        const ok = await geo.polygons.update(ctx, {
+          key: "gone",
+          coordinates: LONDON_QUAD,
+          filterKeys: { name: "Gone" },
+          sortKey: 2,
+        });
+        expect(ok).toBe(false);
+      });
+    });
+  });
+});
+
+describe("geo.polylines", () => {
+  describe("insert and get", () => {
+    describe("basic retrieval", () => {
+      test("get returns all stored fields after a successful insert", async () => {
+        const t = initConvexTest();
+        await t.run(async (ctx) => {
+          const geo = await initGeospatial();
+          await geo.polylines.insert(ctx, {
+            key: "sf-street",
+            coordinates: SF_STREET,
+            filterKeys: { name: "SF Street" },
+            sortKey: 1,
+          });
+          const doc = await geo.polylines.get(ctx, "sf-street");
+          expect(doc).not.toBeNull();
+          expect(doc?.key).toBe("sf-street");
+          expect(doc?.coordinates).toEqual(SF_STREET);
+          expect(doc?.filterKeys).toEqual({ name: "SF Street" });
+          expect(doc?.sortKey).toBe(1);
+        });
+      });
+
+      test("get returns null for a key that was never inserted", async () => {
+        const t = initConvexTest();
+        await t.run(async (ctx) => {
+          const geo = await initGeospatial();
+          expect(await geo.polylines.get(ctx, "does-not-exist")).toBeNull();
+        });
+      });
+
+      test("multiple documents are each independently retrievable by key", async () => {
+        const t = initConvexTest();
+        await t.run(async (ctx) => {
+          const geo = await initGeospatial();
+          const docs = [
+            {
+              key: "line-a",
+              coordinates: SF_STREET,
+              filterKeys: { name: "A" },
+              sortKey: 1,
+            },
+            {
+              key: "line-b",
+              coordinates: LONDON_STREET,
+              filterKeys: { name: "B" },
+              sortKey: 2,
+            },
+          ];
+          for (const d of docs) await geo.polylines.insert(ctx, d);
+          for (const d of docs) {
+            const result = await geo.polylines.get(ctx, d.key);
+            expect(result?.key).toBe(d.key);
+            expect(result?.filterKeys).toEqual(d.filterKeys);
+            expect(result?.coordinates).toEqual(d.coordinates);
+          }
+        });
+      });
+
+      test("get returns the boundingBox field alongside coordinates", async () => {
+        const t = initConvexTest();
+        await t.run(async (ctx) => {
+          const geo = await initGeospatial();
+          await geo.polylines.insert(ctx, {
+            key: "bbox-check",
+            coordinates: SF_STREET,
+            filterKeys: { name: "BBoxCheck" },
+            sortKey: 1,
+          });
+          const doc = await geo.polylines.get(ctx, "bbox-check");
+          expect(doc).not.toBeNull();
+          expect(doc).toHaveProperty("boundingBox");
+          const bb = doc?.boundingBox;
+          expect(bb).toHaveProperty("north");
+          expect(bb).toHaveProperty("south");
+          expect(bb).toHaveProperty("east");
+          expect(bb).toHaveProperty("west");
+        });
+      });
+
+      test("boundingBox north is greater than or equal to south and east >= west", async () => {
+        const t = initConvexTest();
+        await t.run(async (ctx) => {
+          const geo = await initGeospatial();
+          await geo.polylines.insert(ctx, {
+            key: "bbox-validity",
+            coordinates: SF_STREET,
+            filterKeys: { name: "BBoxValidity" },
+            sortKey: 1,
+          });
+          const doc = await geo.polylines.get(ctx, "bbox-validity");
+          const bb = doc?.boundingBox;
+          expect(bb?.north).toBeGreaterThanOrEqual(bb?.south as number);
+          expect(bb?.east).toBeGreaterThanOrEqual(bb?.west as number);
+        });
+      });
+
+      test("a single-segment polyline (two points) is stored and returned correctly", async () => {
+        const t = initConvexTest();
+        await t.run(async (ctx) => {
+          const geo = await initGeospatial();
+          const segment: Polyline = [
+            { latitude: 37.775, longitude: -122.418 },
+            { latitude: 37.776, longitude: -122.417 },
+          ];
+          await geo.polylines.insert(ctx, {
+            key: "segment",
+            coordinates: segment,
+            filterKeys: { name: "Segment" },
+            sortKey: 1,
+          });
+          const doc = await geo.polylines.get(ctx, "segment");
+          expect(doc?.coordinates).toEqual(segment);
+        });
+      });
+    });
+
+    describe("sortKey handling", () => {
+      test("omitting sortKey stores a positive number by default", async () => {
+        const t = initConvexTest();
+        await t.run(async (ctx) => {
+          const geo = await initGeospatial();
+          await geo.polylines.insert(ctx, {
+            key: "no-sort",
+            coordinates: SF_STREET,
+            filterKeys: { name: "Test" },
+          });
+          const doc = await geo.polylines.get(ctx, "no-sort");
+          expect(typeof doc?.sortKey).toBe("number");
+          expect(doc?.sortKey).toBeGreaterThan(0);
+        });
+      });
+
+      test("sortKey of 0 is stored and returned exactly as 0", async () => {
+        const t = initConvexTest();
+        await t.run(async (ctx) => {
+          const geo = await initGeospatial();
+          await geo.polylines.insert(ctx, {
+            key: "zero-sort",
+            coordinates: SF_STREET,
+            filterKeys: { name: "Zero" },
+            sortKey: 0,
+          });
+          const doc = await geo.polylines.get(ctx, "zero-sort");
+          expect(doc?.sortKey).toBe(0);
+        });
+      });
+
+      test("negative sortKey is stored and returned exactly", async () => {
+        const t = initConvexTest();
+        await t.run(async (ctx) => {
+          const geo = await initGeospatial();
+          await geo.polylines.insert(ctx, {
+            key: "neg-sort",
+            coordinates: SF_STREET,
+            filterKeys: { name: "Neg" },
+            sortKey: -42,
+          });
+          const doc = await geo.polylines.get(ctx, "neg-sort");
+          expect(doc?.sortKey).toBe(-42);
+        });
+      });
+    });
+
+    describe("filterKeys handling", () => {
+      test("empty filterKeys object is stored and returned correctly", async () => {
+        const t = initConvexTest();
+        await t.run(async (ctx) => {
+          const geo = await initGeospatial();
+          await geo.polylines.insert(ctx, {
+            key: "no-filters",
+            coordinates: SF_STREET,
+            filterKeys: {},
+            sortKey: 1,
+          });
+          const doc = await geo.polylines.get(ctx, "no-filters");
+          expect(doc?.filterKeys).toEqual({});
+        });
+      });
+
+      test("array-valued filterKeys are stored and returned correctly", async () => {
+        const t = initConvexTest();
+        await t.run(async (ctx) => {
+          const geo = await initGeospatial<
+            string,
+            GeospatialFilters,
+            string,
+            GeospatialFilters,
+            string,
+            { tags: string[] }
+          >();
+          await geo.polylines.insert(ctx, {
+            key: "multi-tag",
+            coordinates: SF_STREET,
+            filterKeys: { tags: ["road", "paved"] },
+            sortKey: 1,
+          });
+          const doc = await geo.polylines.get(ctx, "multi-tag");
+          expect(doc?.filterKeys.tags).toEqual(["road", "paved"]);
+        });
+      });
+
+      test("filterKeys with mixed primitive types are stored and returned correctly", async () => {
+        const t = initConvexTest();
+        await t.run(async (ctx) => {
+          const geo = await initGeospatial<
+            string,
+            GeospatialFilters,
+            string,
+            GeospatialFilters,
+            string,
+            { speed: number; oneway: boolean }
+          >();
+          await geo.polylines.insert(ctx, {
+            key: "mixed",
+            coordinates: SF_STREET,
+            filterKeys: { speed: 50, oneway: true },
+            sortKey: 1,
+          });
+          const doc = await geo.polylines.get(ctx, "mixed");
+          expect(doc?.filterKeys.speed).toBe(50);
+          expect(doc?.filterKeys.oneway).toBe(true);
+        });
+      });
+    });
+
+    describe("insert uniqueness", () => {
+      test("inserting the same key twice throws a duplicate-key error", async () => {
+        const t = initConvexTest();
+        await t.run(async (ctx) => {
+          const geo = await initGeospatial();
+          await geo.polylines.insert(ctx, {
+            key: "dup",
+            coordinates: SF_STREET,
+            filterKeys: { name: "Original" },
+            sortKey: 1,
+          });
+          await expect(
+            geo.polylines.insert(ctx, {
+              key: "dup",
+              coordinates: LONDON_STREET,
+              filterKeys: { name: "Duplicate" },
+              sortKey: 2,
+            }),
+          ).rejects.toThrow();
+        });
+      });
+    });
+  });
+
+  describe("delete", () => {
+    test("returns true and makes the document unretrievable", async () => {
+      const t = initConvexTest();
+      await t.run(async (ctx) => {
+        const geo = await initGeospatial();
+        await geo.polylines.insert(ctx, {
+          key: "to-delete",
+          coordinates: SF_STREET,
+          filterKeys: { name: "Delete Me" },
+          sortKey: 1,
+        });
+        expect(await geo.polylines.delete(ctx, "to-delete")).toBe(true);
+        expect(await geo.polylines.get(ctx, "to-delete")).toBeNull();
+      });
+    });
+
+    test("returns false when the key does not exist", async () => {
+      const t = initConvexTest();
+      await t.run(async (ctx) => {
+        const geo = await initGeospatial();
+        expect(await geo.polylines.delete(ctx, "ghost")).toBe(false);
+      });
+    });
+
+    test("returns false on a second delete of the same key", async () => {
+      const t = initConvexTest();
+      await t.run(async (ctx) => {
+        const geo = await initGeospatial();
+        await geo.polylines.insert(ctx, {
+          key: "once",
+          coordinates: SF_STREET,
+          filterKeys: { name: "Once" },
+          sortKey: 1,
+        });
+        expect(await geo.polylines.delete(ctx, "once")).toBe(true);
+        expect(await geo.polylines.delete(ctx, "once")).toBe(false);
+      });
+    });
+
+    test("deleting one key leaves sibling keys unaffected", async () => {
+      const t = initConvexTest();
+      await t.run(async (ctx) => {
+        const geo = await initGeospatial();
+        await geo.polylines.insert(ctx, {
+          key: "keep",
+          coordinates: SF_STREET,
+          filterKeys: { name: "Keep" },
+          sortKey: 1,
+        });
+        await geo.polylines.insert(ctx, {
+          key: "remove",
+          coordinates: LONDON_STREET,
+          filterKeys: { name: "Remove" },
+          sortKey: 2,
+        });
+        await geo.polylines.delete(ctx, "remove");
+        expect(await geo.polylines.get(ctx, "keep")).not.toBeNull();
+        expect(await geo.polylines.get(ctx, "remove")).toBeNull();
+      });
+    });
+
+    test("re-inserting after delete reflects the new data", async () => {
+      const t = initConvexTest();
+      await t.run(async (ctx) => {
+        const geo = await initGeospatial();
+        await geo.polylines.insert(ctx, {
+          key: "cycle",
+          coordinates: SF_STREET,
+          filterKeys: { name: "First" },
+          sortKey: 1,
+        });
+        await geo.polylines.delete(ctx, "cycle");
+        await geo.polylines.insert(ctx, {
+          key: "cycle",
+          coordinates: LONDON_STREET,
+          filterKeys: { name: "Second" },
+          sortKey: 2,
+        });
+        const doc = await geo.polylines.get(ctx, "cycle");
+        expect(doc?.filterKeys).toEqual({ name: "Second" });
+        expect(doc?.coordinates).toEqual(LONDON_STREET);
+      });
+    });
+  });
+
+  describe("update", () => {
+    test("returns true and get reflects the updated fields", async () => {
+      const t = initConvexTest();
+      await t.run(async (ctx) => {
+        const geo = await initGeospatial();
+        await geo.polylines.insert(ctx, {
+          key: "upd",
+          coordinates: SF_STREET,
+          filterKeys: { name: "Before" },
+          sortKey: 1,
+        });
+        const ok = await geo.polylines.update(ctx, {
+          key: "upd",
+          coordinates: LONDON_STREET,
+          filterKeys: { name: "After" },
+          sortKey: 99,
+        });
+        expect(ok).toBe(true);
+        const doc = await geo.polylines.get(ctx, "upd");
+        expect(doc?.coordinates).toEqual(LONDON_STREET);
+        expect(doc?.filterKeys).toEqual({ name: "After" });
+        expect(doc?.sortKey).toBe(99);
+      });
+    });
+
+    test("returns false when the key does not exist", async () => {
+      const t = initConvexTest();
+      await t.run(async (ctx) => {
+        const geo = await initGeospatial();
+        const ok = await geo.polylines.update(ctx, {
+          key: "no-such-key",
+          coordinates: SF_STREET,
+          filterKeys: { name: "X" },
+          sortKey: 1,
+        });
+        expect(ok).toBe(false);
+      });
+    });
+
+    test("partial update — only coordinates — leaves filterKeys and sortKey unchanged", async () => {
+      const t = initConvexTest();
+      await t.run(async (ctx) => {
+        const geo = await initGeospatial();
+        await geo.polylines.insert(ctx, {
+          key: "partial",
+          coordinates: SF_STREET,
+          filterKeys: { name: "Original" },
+          sortKey: 5,
+        });
+        await geo.polylines.update(ctx, {
+          key: "partial",
+          coordinates: LONDON_STREET,
+        });
+        const doc = await geo.polylines.get(ctx, "partial");
+        expect(doc?.coordinates).toEqual(LONDON_STREET);
+        expect(doc?.filterKeys).toEqual({ name: "Original" });
+        expect(doc?.sortKey).toBe(5);
+      });
+    });
+
+    test("updating a deleted key returns false", async () => {
+      const t = initConvexTest();
+      await t.run(async (ctx) => {
+        const geo = await initGeospatial();
+        await geo.polylines.insert(ctx, {
+          key: "gone",
+          coordinates: SF_STREET,
+          filterKeys: { name: "Gone" },
+          sortKey: 1,
+        });
+        await geo.polylines.delete(ctx, "gone");
+        const ok = await geo.polylines.update(ctx, {
+          key: "gone",
+          coordinates: LONDON_STREET,
+          filterKeys: { name: "Gone" },
+          sortKey: 2,
+        });
+        expect(ok).toBe(false);
       });
     });
   });
