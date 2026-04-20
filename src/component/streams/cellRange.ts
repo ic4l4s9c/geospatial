@@ -1,7 +1,7 @@
 import type { QueryCtx } from "../_generated/server.js";
 import type { Interval } from "../lib/interval.js";
 import type { Logger } from "../lib/logging.js";
-import { encodeBound, type TupleKey } from "../lib/tupleKey.js";
+import { encodeBound, type Cursor } from "../lib/cursor.js";
 import { DatabaseRange } from "./databaseRange.js";
 import type { Stats } from "./zigzag.js";
 
@@ -10,7 +10,7 @@ export class CellRange extends DatabaseRange {
     ctx: QueryCtx,
     logger: Logger,
     private cell: string,
-    cursor: TupleKey | undefined,
+    cursor: Cursor | undefined,
     interval: Interval,
     prefetchSize: number,
     stats: Stats,
@@ -18,7 +18,7 @@ export class CellRange extends DatabaseRange {
     super(ctx, logger, cursor, interval, prefetchSize, stats);
   }
 
-  async initialQuery(): Promise<TupleKey[]> {
+  async initialQuery(): Promise<Cursor[]> {
     const docs = await this.ctx.db
       .query("pointsByCell")
       .withIndex("cell", (q) => {
@@ -49,7 +49,7 @@ export class CellRange extends DatabaseRange {
     return docs.map((doc) => doc.tupleKey);
   }
 
-  async advanceQuery(lastKey: TupleKey): Promise<TupleKey[]> {
+  async advanceQuery(lastKey: Cursor): Promise<Cursor[]> {
     const docs = await this.ctx.db
       .query("pointsByCell")
       .withIndex("cell", (q) => {
@@ -71,7 +71,7 @@ export class CellRange extends DatabaseRange {
     return docs.map((doc) => doc.tupleKey);
   }
 
-  async seekQuery(tuple: TupleKey): Promise<TupleKey[]> {
+  async seekQuery(tuple: Cursor): Promise<Cursor[]> {
     const docs = await this.ctx.db
       .query("pointsByCell")
       .withIndex("cell", (q) => {

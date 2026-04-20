@@ -11,6 +11,7 @@
 import type * as debug from "../debug.js";
 import type * as lib_approximateCounter from "../lib/approximateCounter.js";
 import type * as lib_closestPointQuery from "../lib/closestPointQuery.js";
+import type * as lib_cursor from "../lib/cursor.js";
 import type * as lib_d64 from "../lib/d64.js";
 import type * as lib_geometry_bbox from "../lib/geometry/bbox.js";
 import type * as lib_geometry_points from "../lib/geometry/points.js";
@@ -19,7 +20,6 @@ import type * as lib_interval from "../lib/interval.js";
 import type * as lib_logging from "../lib/logging.js";
 import type * as lib_s2Bindings from "../lib/s2Bindings.js";
 import type * as lib_s2wasm from "../lib/s2wasm.js";
-import type * as lib_tupleKey from "../lib/tupleKey.js";
 import type * as lib_xxHash32 from "../lib/xxHash32.js";
 import type * as points from "../points.js";
 import type * as polygons from "../polygons.js";
@@ -48,6 +48,7 @@ const fullApi: ApiFromModules<{
   debug: typeof debug;
   "lib/approximateCounter": typeof lib_approximateCounter;
   "lib/closestPointQuery": typeof lib_closestPointQuery;
+  "lib/cursor": typeof lib_cursor;
   "lib/d64": typeof lib_d64;
   "lib/geometry/bbox": typeof lib_geometry_bbox;
   "lib/geometry/points": typeof lib_geometry_points;
@@ -56,7 +57,6 @@ const fullApi: ApiFromModules<{
   "lib/logging": typeof lib_logging;
   "lib/s2Bindings": typeof lib_s2Bindings;
   "lib/s2wasm": typeof lib_s2wasm;
-  "lib/tupleKey": typeof lib_tupleKey;
   "lib/xxHash32": typeof lib_xxHash32;
   points: typeof points;
   polygons: typeof polygons;

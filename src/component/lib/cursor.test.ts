@@ -1,15 +1,15 @@
 import { expect, test, describe } from "vitest";
-import { encodeTupleKey, decodeTupleKey, encodeBound } from "./tupleKey.js";
+import { encodeCursor, decodeCursor, encodeBound } from "./cursor.js";
 import * as d64 from "./d64.js";
 import type { Id } from "../_generated/dataModel.js";
 
 test("encodeTupleKey and decodeTupleKey", () => {
   const sortKey = 123456789;
   const pointId = "1234567890" as Id<"points">;
-  const tupleKey = encodeTupleKey(sortKey, pointId);
-  const decoded = decodeTupleKey(tupleKey);
+  const tupleKey = encodeCursor(sortKey, pointId);
+  const decoded = decodeCursor(tupleKey);
   expect(decoded.sortKey).toEqual(sortKey);
-  expect(decoded.pointId).toEqual(pointId);
+  expect(decoded.id).toEqual(pointId);
 });
 
 describe("tupleKey ordering", () => {
@@ -68,18 +68,18 @@ describe("tupleKey ordering", () => {
     ];
 
     for (const testCase of testCases) {
-      const encoded = encodeTupleKey(testCase.sortKey, testCase.pointId);
-      const decoded = decodeTupleKey(encoded);
+      const encoded = encodeCursor(testCase.sortKey, testCase.pointId);
+      const decoded = decodeCursor(encoded);
       expect(decoded.sortKey).toBe(testCase.sortKey);
-      expect(decoded.pointId).toBe(testCase.pointId);
+      expect(decoded.id).toBe(testCase.pointId);
     }
   });
 
   test("encodeTupleKey maintains order with same sortKey", () => {
     // Tuples with the same sortKey should be ordered by pointId
-    const tuple1 = encodeTupleKey(1140, "aaa" as Id<"points">);
-    const tuple2 = encodeTupleKey(1140, "bbb" as Id<"points">);
-    const tuple3 = encodeTupleKey(1140, "zzz" as Id<"points">);
+    const tuple1 = encodeCursor(1140, "aaa" as Id<"points">);
+    const tuple2 = encodeCursor(1140, "bbb" as Id<"points">);
+    const tuple3 = encodeCursor(1140, "zzz" as Id<"points">);
 
     expect(tuple1 < tuple2).toBe(true);
     expect(tuple2 < tuple3).toBe(true);
@@ -88,8 +88,8 @@ describe("tupleKey ordering", () => {
 
   test("encodeTupleKey maintains order with different sortKeys", () => {
     // Tuples with different sortKeys should be ordered by sortKey first
-    const tuple1 = encodeTupleKey(1140, "zzz" as Id<"points">);
-    const tuple2 = encodeTupleKey(1150, "aaa" as Id<"points">);
+    const tuple1 = encodeCursor(1140, "zzz" as Id<"points">);
+    const tuple2 = encodeCursor(1150, "aaa" as Id<"points">);
 
     // Even though "zzz" > "aaa", sortKey takes precedence
     expect(tuple1 < tuple2).toBe(true);
@@ -98,9 +98,9 @@ describe("tupleKey ordering", () => {
   test("bound should be minimum tuple for that sortKey", () => {
     // The bound for a sortKey should be less than or equal to any tuple with that sortKey
     const bound = encodeBound(1140);
-    const tuple1 = encodeTupleKey(1140, "" as Id<"points">);
-    const tuple2 = encodeTupleKey(1140, "aaa" as Id<"points">);
-    const tuple3 = encodeTupleKey(1140, "zzz" as Id<"points">);
+    const tuple1 = encodeCursor(1140, "" as Id<"points">);
+    const tuple2 = encodeCursor(1140, "aaa" as Id<"points">);
+    const tuple3 = encodeCursor(1140, "zzz" as Id<"points">);
 
     expect(bound <= tuple1).toBe(true);
     expect(bound <= tuple2).toBe(true);
@@ -116,14 +116,14 @@ describe("tupleKey ordering", () => {
 
 describe("decodeTupleKey error cases", () => {
   test("throws when key has no colon separator", () => {
-    expect(() => decodeTupleKey("invalidkeynocolon")).toThrow(
-      "Invalid tuple key invalidkeynocolon: Expected two parts separated by a colon",
+    expect(() => decodeCursor("invalidkeynocolon")).toThrow(
+      "Invalid cursor invalidkeynocolon: Expected two parts separated by a colon",
     );
   });
 
   test("throws when key has more than one colon", () => {
-    expect(() => decodeTupleKey("part1:part2:part3")).toThrow(
-      "Invalid tuple key part1:part2:part3: Expected two parts separated by a colon",
+    expect(() => decodeCursor("part1:part2:part3")).toThrow(
+      "Invalid cursor part1:part2:part3: Expected two parts separated by a colon",
     );
   });
 
@@ -131,7 +131,7 @@ describe("decodeTupleKey error cases", () => {
     const shortBuf = new ArrayBuffer(4);
     const shortEncoded = d64.encode(shortBuf);
     const key = `${shortEncoded}:somePointId`;
-    expect(() => decodeTupleKey(key)).toThrow(/Expected 9 bytes, got \d+/);
+    expect(() => decodeCursor(key)).toThrow(/Expected 9 bytes, got \d+/);
   });
 
   test("throws when header byte is not 0x0D", () => {
@@ -140,6 +140,6 @@ describe("decodeTupleKey error cases", () => {
     view.setUint8(0, 0xff);
     const encoded = d64.encode(buf);
     const key = `${encoded}:somePointId`;
-    expect(() => decodeTupleKey(key)).toThrow(/Expected header 0x0D, got 255/);
+    expect(() => decodeCursor(key)).toThrow(/Expected header 0x0D, got 255/);
   });
 });

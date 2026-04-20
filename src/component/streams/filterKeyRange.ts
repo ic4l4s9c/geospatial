@@ -2,7 +2,7 @@ import type { QueryCtx } from "../_generated/server.js";
 import type { Interval } from "../lib/interval.js";
 import type { Logger } from "../lib/logging.js";
 import { serialize, type Primitive } from "../validators/primitive.js";
-import { encodeBound, type TupleKey } from "../lib/tupleKey.js";
+import { encodeBound, type Cursor } from "../lib/cursor.js";
 import { DatabaseRange } from "./databaseRange.js";
 import type { Stats } from "./zigzag.js";
 
@@ -12,7 +12,7 @@ export class FilterKeyRange extends DatabaseRange {
     logger: Logger,
     private filterKey: string,
     private filterValue: Primitive,
-    cursor: TupleKey | undefined,
+    cursor: Cursor | undefined,
     interval: Interval,
     prefetchSize: number,
     stats: Stats,
@@ -20,7 +20,7 @@ export class FilterKeyRange extends DatabaseRange {
     super(ctx, logger, cursor, interval, prefetchSize, stats);
   }
 
-  async initialQuery(): Promise<TupleKey[]> {
+  async initialQuery(): Promise<Cursor[]> {
     const docs = await this.ctx.db
       .query("pointsByFilterKey")
       .withIndex("filterKey", (q) => {
@@ -52,7 +52,7 @@ export class FilterKeyRange extends DatabaseRange {
     return docs.map((doc) => doc.tupleKey);
   }
 
-  async advanceQuery(lastKey: TupleKey): Promise<TupleKey[]> {
+  async advanceQuery(lastKey: Cursor): Promise<Cursor[]> {
     const docs = await this.ctx.db
       .query("pointsByFilterKey")
       .withIndex("filterKey", (q) => {
@@ -76,7 +76,7 @@ export class FilterKeyRange extends DatabaseRange {
     return docs.map((doc) => doc.tupleKey);
   }
 
-  async seekQuery(tuple: TupleKey): Promise<TupleKey[]> {
+  async seekQuery(tuple: Cursor): Promise<Cursor[]> {
     const docs = await this.ctx.db
       .query("pointsByFilterKey")
       .withIndex("filterKey", (q) => {

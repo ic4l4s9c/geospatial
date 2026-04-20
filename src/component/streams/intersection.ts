@@ -1,4 +1,4 @@
-import type { TupleKey } from "../lib/tupleKey.js";
+import type { Cursor } from "../lib/cursor.js";
 import { PREFETCH_SIZE } from "./constants.js";
 import type { PointSet } from "./zigzag.js";
 
@@ -29,14 +29,14 @@ export class Intersection implements PointSet {
     this.initialized = true;
   }
 
-  async goToFirstDoc(): Promise<TupleKey | null> {
+  async goToFirstDoc(): Promise<Cursor | null> {
     if (this.streams.length === 0) {
       return null;
     }
     const currentPromises = this.streams.map((stream) => stream.current());
     const currentResults = await Promise.all(currentPromises);
 
-    let candidate: null | TupleKey = null;
+    let candidate: null | Cursor = null;
     for (const result of currentResults) {
       if (result === null) {
         this.streams = [];
@@ -77,12 +77,12 @@ export class Intersection implements PointSet {
     }
   }
 
-  async current(): Promise<TupleKey | null> {
+  async current(): Promise<Cursor | null> {
     await this.initialize();
     return this.streams.length > 0 ? this.streams[0].current() : null;
   }
 
-  async advance(): Promise<TupleKey | null> {
+  async advance(): Promise<Cursor | null> {
     await this.initialize();
     if (this.streams.length === 0) {
       return null;
@@ -91,7 +91,7 @@ export class Intersection implements PointSet {
     return this.goToFirstDoc();
   }
 
-  async seek(tuple: TupleKey): Promise<void> {
+  async seek(tuple: Cursor): Promise<void> {
     await this.initialize();
     if (this.streams.length === 0) {
       return;

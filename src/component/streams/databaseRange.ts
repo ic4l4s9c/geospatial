@@ -2,30 +2,30 @@ import type { QueryCtx } from "../_generated/server.js";
 import * as approximateCounter from "../lib/approximateCounter.js";
 import type { Interval } from "../lib/interval.js";
 import type { Logger } from "../lib/logging.js";
-import { encodeBound, type TupleKey } from "../lib/tupleKey.js";
+import { encodeBound, type Cursor } from "../lib/cursor.js";
 import type { PointSet, Stats } from "./zigzag.js";
 
 export abstract class DatabaseRange implements PointSet {
   private state:
     | { type: "init" }
-    | { type: "buffered"; buffer: TupleKey[]; pos: number }
+    | { type: "buffered"; buffer: Cursor[]; pos: number }
     | { type: "done" } = { type: "init" };
 
   protected constructor(
     protected ctx: QueryCtx,
     protected logger: Logger,
-    protected cursor: TupleKey | undefined,
+    protected cursor: Cursor | undefined,
     protected interval: Interval,
     protected prefetchSize: number,
     protected stats: Stats,
   ) {}
 
-  abstract initialQuery(): Promise<TupleKey[]>;
-  abstract advanceQuery(lastKey: TupleKey): Promise<TupleKey[]>;
-  abstract seekQuery(tuple: TupleKey): Promise<TupleKey[]>;
+  abstract initialQuery(): Promise<Cursor[]>;
+  abstract advanceQuery(lastKey: Cursor): Promise<Cursor[]>;
+  abstract seekQuery(tuple: Cursor): Promise<Cursor[]>;
   abstract getCounterKey(): string;
 
-  async current(): Promise<TupleKey | null> {
+  async current(): Promise<Cursor | null> {
     if (this.state.type === "done") {
       return null;
     }
@@ -45,7 +45,7 @@ export abstract class DatabaseRange implements PointSet {
     return this.state.buffer[0];
   }
 
-  async advance(): Promise<TupleKey | null> {
+  async advance(): Promise<Cursor | null> {
     if (this.state.type === "done") {
       return null;
     }
@@ -70,7 +70,7 @@ export abstract class DatabaseRange implements PointSet {
     return this.state.buffer[0];
   }
 
-  async seek(tuple: TupleKey): Promise<void> {
+  async seek(tuple: Cursor): Promise<void> {
     if (this.state.type === "init") {
       await this.current();
       return await this.seek(tuple);

@@ -1,13 +1,14 @@
-import type { Id } from "../_generated/dataModel.js";
 import * as d64 from "./d64.js";
 
-export type TupleKey = string;
+export type Cursor<
+  _SortKey extends number = number,
+  _Id extends string = string,
+> = string;
 
-// Encode (sortKey: number, pointId: Id<"points">) as an order preserving string.
-export function encodeTupleKey(
-  sortKey: number,
-  pointId: Id<"points">,
-): TupleKey {
+export function encodeCursor<SortKey extends number, Id extends string>(
+  sortKey: SortKey,
+  id: Id,
+): Cursor<SortKey, Id> {
   const buf = new ArrayBuffer(9);
   const view = new DataView(buf);
 
@@ -30,32 +31,32 @@ export function encodeTupleKey(
   }
   view.setBigUint64(1, sortKeyUint64, littleEndian);
 
-  let out = d64.encode(buf);
-  out += `:${pointId}`;
-  return out;
+  return `${d64.encode(buf)}:${id}`;
 }
 
-export function decodeTupleKey(key: TupleKey): {
-  sortKey: number;
-  pointId: Id<"points">;
+export function decodeCursor<SortKey extends number, Id extends string>(
+  cursor: Cursor<SortKey, Id>,
+): {
+  sortKey: SortKey;
+  id: Id;
 } {
-  const pieces = key.split(":");
+  const pieces = cursor.split(":");
   if (pieces.length !== 2) {
     throw new Error(
-      `Invalid tuple key ${key}: Expected two parts separated by a colon`,
+      `Invalid cursor ${cursor}: Expected two parts separated by a colon`,
     );
   }
-  const [encodedSortKey, pointId] = pieces;
+  const [encodedSortKey, id] = pieces;
   const buf = d64.decode(encodedSortKey);
   if (buf.byteLength !== 9) {
     throw new Error(
-      `Invalid tuple key ${key}: Expected 9 bytes, got ${buf.byteLength}`,
+      `Invalid cursor ${cursor}: Expected 9 bytes, got ${buf.byteLength}`,
     );
   }
   const view = new DataView(buf);
   if (view.getUint8(0) !== 0x0d) {
     throw new Error(
-      `Invalid tuple key ${key}: Expected header 0x0D, got ${view.getUint8(0)}`,
+      `Invalid cursor ${cursor}: Expected header 0x0D, got ${view.getUint8(0)}`,
     );
   }
   // Use big-endian encoding to match encoding
@@ -71,9 +72,12 @@ export function decodeTupleKey(key: TupleKey): {
   }
   view.setBigUint64(1, encodedUint64, littleEndian);
   const sortKey = view.getFloat64(1, littleEndian);
-  return { sortKey, pointId: pointId as Id<"points"> };
+
+  return { sortKey: sortKey as SortKey, id: id as Id };
 }
 
-export function encodeBound(sortKey: number): string {
-  return encodeTupleKey(sortKey, "" as Id<"points">);
+export function encodeBound<SortKey extends number>(
+  sortKey: SortKey,
+): Cursor<SortKey, ""> {
+  return encodeCursor<SortKey, "">(sortKey, "");
 }

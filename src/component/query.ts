@@ -13,9 +13,9 @@ import { Union } from "./streams/union.js";
 import { FilterKeyRange } from "./streams/filterKeyRange.js";
 import { CellRange } from "./streams/cellRange.js";
 import { interval } from "./lib/interval.js";
-import { decodeTupleKey, type TupleKey } from "./lib/tupleKey.js";
+import { decodeCursor, type Cursor } from "./lib/cursor.js";
 import { Channel, ChannelClosedError } from "async-channel";
-import type { Doc } from "./_generated/dataModel.js";
+import type { Doc, Id } from "./_generated/dataModel.js";
 import { createLogger, logLevel } from "./lib/logging.js";
 import { S2Bindings } from "./lib/s2Bindings.js";
 import { ClosestPointQuery } from "./lib/closestPointQuery.js";
@@ -140,7 +140,7 @@ export const execute = query({
 
     // Finally, consume the stream and fetch the resulting IDs.
     const channel = new Channel<{
-      tupleKey: TupleKey;
+      tupleKey: Cursor<number, Id<"points">>;
       docPromise: Promise<Doc<"points"> | null>;
     }>(8);
     const producer = async () => {
@@ -151,9 +151,9 @@ export const execute = query({
           if (tupleKey === null) {
             break;
           }
-          const { pointId } = decodeTupleKey(tupleKey);
+          const { id } = decodeCursor<number, Id<"points">>(tupleKey);
           try {
-            await channel.push({ tupleKey, docPromise: ctx.db.get(pointId) });
+            await channel.push({ tupleKey, docPromise: ctx.db.get(id) });
           } catch (e) {
             if (e instanceof ChannelClosedError) {
               break;
@@ -172,7 +172,7 @@ export const execute = query({
       logger.debug("Producer shutting down");
     };
     const page: { key: string; coordinates: Point }[] = [];
-    let continueCursor: TupleKey = "";
+    let continueCursor: Cursor = "";
     const consumer = async () => {
       try {
         for await (const { tupleKey, docPromise } of channel) {

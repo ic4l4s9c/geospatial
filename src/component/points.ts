@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query, type MutationCtx } from "./_generated/server.js";
 import { point, type Point, filterKeys, config } from "./validators.js";
-import { encodeTupleKey } from "./lib/tupleKey.js";
+import { encodeCursor } from "./lib/cursor.js";
 import { filterCounterKey } from "./streams/filterKeyRange.js";
 import { cellCounterKey } from "./streams/cellRange.js";
 import * as approximateCounter from "./lib/approximateCounter.js";
@@ -25,7 +25,7 @@ export const insert = mutation({
     await removePointByKey(ctx, s2, args.document.key, args.config);
     const pointId = await ctx.db.insert("points", args.document);
     const cells = s2Cells(s2, args.document.coordinates, args.config);
-    const tupleKey = encodeTupleKey(args.document.sortKey, pointId);
+    const tupleKey = encodeCursor(args.document.sortKey, pointId);
     for (const cell of cells) {
       await ctx.db.insert("pointsByCell", { cell, tupleKey });
       await approximateCounter.increment(ctx, pointId, cellCounterKey(cell));
@@ -83,7 +83,7 @@ export const update = mutation({
     // Reinsert with merged data, mirroring insert handler exactly.
     const pointId = await ctx.db.insert("points", merged);
     const cells = s2Cells(s2, merged.coordinates, args.config);
-    const tupleKey = encodeTupleKey(merged.sortKey, pointId);
+    const tupleKey = encodeCursor(merged.sortKey, pointId);
     for (const cell of cells) {
       await ctx.db.insert("pointsByCell", { cell, tupleKey });
       await approximateCounter.increment(ctx, pointId, cellCounterKey(cell));
@@ -159,7 +159,7 @@ async function removePointByKey(
     return false;
   }
   const cells = s2Cells(s2, existing.coordinates, opts);
-  const tupleKey = encodeTupleKey(existing.sortKey, existing._id);
+  const tupleKey = encodeCursor(existing.sortKey, existing._id);
   for (const cell of cells) {
     const existingCell = await ctx.db
       .query("pointsByCell")

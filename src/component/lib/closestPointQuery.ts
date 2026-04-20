@@ -10,7 +10,7 @@ import { Union } from "../streams/union.js";
 import { Intersection } from "../streams/intersection.js";
 import type { PointSet, Stats } from "../streams/zigzag.js";
 import { PREFETCH_SIZE } from "../streams/constants.js";
-import { decodeTupleKey } from "./tupleKey.js";
+import { decodeCursor } from "./cursor.js";
 import type { Logger } from "./logging.js";
 import type { Interval } from "./interval.js";
 
@@ -115,7 +115,7 @@ export class ClosestPointQuery {
             streamState.done = true;
             break;
           }
-          const { pointId, sortKey } = decodeTupleKey(tupleKey);
+          const { id, sortKey } = decodeCursor<number, Id<"points">>(tupleKey);
           if (!this.withinSortInterval(sortKey)) {
             const next = await streamState.stream.advance();
             if (next === null) {
@@ -123,7 +123,7 @@ export class ClosestPointQuery {
             }
             continue;
           }
-          const point = await ctx.db.get(pointId);
+          const point = await ctx.db.get(id);
           if (!point) {
             throw new Error("Point not found");
           }
