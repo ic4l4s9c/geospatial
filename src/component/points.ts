@@ -140,25 +140,6 @@ export const del = mutation({
   },
 });
 
-function s2Cells(
-  s2: S2Bindings,
-  point: Point,
-  opts: {
-    minLevel: number;
-    maxLevel: number;
-    levelMod: number;
-    maxCells: number;
-  },
-): string[] {
-  const leafCellID = s2.cellIDFromPoint(point);
-  const cells = [];
-  for (let i = opts.minLevel; i <= opts.maxLevel; i += opts.levelMod) {
-    const parentCellID = s2.cellIDParent(leafCellID, i);
-    cells.push(s2.cellIDToken(parentCellID));
-  }
-  return cells;
-}
-
 async function removePointByKey(
   ctx: MutationCtx,
   s2: S2Bindings,
@@ -221,4 +202,23 @@ async function removePointByKey(
   }
   await ctx.db.delete(existing._id);
   return true;
+}
+
+function s2Cells(
+  s2: S2Bindings,
+  point: Point,
+  opts: {
+    minLevel: number;
+    maxLevel: number;
+    levelMod: number;
+    maxCells: number;
+  },
+): string[] {
+  const leafCellID = s2.cellIDFromPoint(point);
+  const cells = [];
+  for (let i = opts.minLevel; i <= opts.maxLevel; i += opts.levelMod) {
+    const parentCellID = s2.cellIDParent(leafCellID, i);
+    cells.push(s2.cellIDToken(parentCellID));
+  }
+  return cells;
 }

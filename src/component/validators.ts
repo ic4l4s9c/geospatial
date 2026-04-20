@@ -41,6 +41,12 @@ export const filterKeys = v.optional(
   v.record(v.string(), v.union(primitive, v.array(primitive))),
 );
 
+export const equalityCondition = v.object({
+  occur: v.union(v.literal("should"), v.literal("must")),
+  filterKey: v.string(),
+  filterValue: primitive,
+});
+
 export const config = v.object({
   minLevel: v.number(),
   maxLevel: v.number(),

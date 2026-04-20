@@ -163,10 +163,7 @@ class WithinQueryBuilder<
         maxResults: this.#limit ?? 64,
       },
       cursor,
-      minLevel: this.config.minLevel,
-      maxLevel: this.config.maxLevel,
-      levelMod: this.config.levelMod,
-      maxCells: this.config.maxCells,
+      config: this.config,
       logLevel: this.config.logLevel,
     });
     return result as PaginationResult<

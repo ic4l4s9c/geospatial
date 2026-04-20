@@ -405,8 +405,13 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "query",
         "internal",
         {
+          config: {
+            levelMod: number;
+            maxCells: number;
+            maxLevel: number;
+            minLevel: number;
+          };
           cursor?: string;
-          levelMod: number;
           logLevel?:
             | "EMERGENCY"
             | "ALERT"
@@ -416,9 +421,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             | "NOTICE"
             | "INFO"
             | "DEBUG";
-          maxCells: number;
-          maxLevel: number;
-          minLevel: number;
           query: {
             filtering: Array<{
               filterKey: string;

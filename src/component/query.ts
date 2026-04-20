@@ -1,5 +1,11 @@
 import { v } from "convex/values";
-import { type Point, point, primitive, rectangle } from "./validators.js";
+import {
+  config,
+  equalityCondition,
+  type Point,
+  point,
+  rectangle,
+} from "./validators.js";
 import { query } from "./_generated/server.js";
 import type { PointSet, Stats } from "./streams/zigzag.js";
 import { Intersection } from "./streams/intersection.js";
@@ -18,12 +24,6 @@ import { paginationResultValidator } from "convex/server";
 
 export { PREFETCH_SIZE } from "./streams/constants.js";
 
-const equalityCondition = v.object({
-  occur: v.union(v.literal("should"), v.literal("must")),
-  filterKey: v.string(),
-  filterValue: primitive,
-});
-
 const geospatialQuery = v.object({
   rectangle,
   filtering: v.array(equalityCondition),
@@ -35,30 +35,23 @@ const geospatialQuery = v.object({
   maxResults: v.number(),
 });
 
-const queryResult = v.object({
+const pointDoc = v.object({
   key: v.string(),
   coordinates: point,
 });
 
-const queryResultWithDistance = v.object({
-  key: v.string(),
-  coordinates: point,
+const pointDocWithDistance = pointDoc.extend({
   distance: v.number(),
 });
-
-const executePaginationResult = paginationResultValidator(queryResult);
 
 export const execute = query({
   args: {
     query: geospatialQuery,
     cursor: v.optional(v.string()),
-    minLevel: v.number(),
-    maxLevel: v.number(),
-    levelMod: v.number(),
-    maxCells: v.number(),
+    config: config,
     logLevel: v.optional(logLevel),
   },
-  returns: executePaginationResult,
+  returns: paginationResultValidator(pointDoc),
   handler: async (ctx, args) => {
     const logger = createLogger(args.logLevel);
 
@@ -83,10 +76,10 @@ export const execute = query({
     const cells = s2
       .coverRectangle(
         rectangle,
-        args.minLevel,
-        args.maxLevel,
-        args.levelMod,
-        args.maxCells,
+        args.config.minLevel,
+        args.config.maxLevel,
+        args.config.levelMod,
+        args.config.maxCells,
       )
       .map((cellID) => s2.cellIDToken(cellID));
     logger.debug("S2 cells", args, cells);
@@ -250,7 +243,7 @@ export const nearest = query({
     }),
     logLevel: v.optional(logLevel),
   },
-  returns: v.array(queryResultWithDistance),
+  returns: v.array(pointDocWithDistance),
   handler: async (ctx, args) => {
     const logger = createLogger(args.logLevel);
     const s2 = await S2Bindings.load();
