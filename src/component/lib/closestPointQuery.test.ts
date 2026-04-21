@@ -58,7 +58,7 @@ test("closest point query - basic functionality", async () => {
       logger,
       { latitude: 0, longitude: 0 },
       1000, // maxDistance in meters
-      1, // maxResults
+      1, // limit
       config.minLevel,
       config.maxLevel,
       config.levelMod,

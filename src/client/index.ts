@@ -163,7 +163,7 @@ class WithinQueryBuilder<
         rectangle: this.shape.rectangle,
         filtering: filterBuilder.filterConditions,
         sorting: { interval: filterBuilder.interval ?? {} },
-        maxResults: this.#limit ?? 64,
+        limit: this.#limit ?? 64,
       },
       cursor,
       config: this.config,
@@ -226,7 +226,7 @@ class NearestQueryBuilder<
     const result = await this.ctx.runQuery(this.component.points.spatial.nearest, {
       point: this.point,
       maxDistance: this.maxDistance,
-      maxResults: this.#limit ?? 64,
+      limit: this.#limit ?? 64,
       minLevel: this.config.minLevel,
       maxLevel: this.config.maxLevel,
       levelMod: this.config.levelMod,

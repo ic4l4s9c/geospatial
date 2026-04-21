@@ -40,7 +40,7 @@ export class ClosestPointQuery {
     private logger: Logger,
     private point: Point,
     private maxDistance: Meters | undefined,
-    private maxResults: number,
+    private limit: number,
     private minLevel: number,
     private maxLevel: number,
     private levelMod: number,
@@ -167,7 +167,7 @@ export class ClosestPointQuery {
   }
 
   private shouldStopProcessingCell(candidateDistance: ChordAngle): boolean {
-    if (this.results.size() < this.maxResults) {
+    if (this.results.size() < this.limit) {
       return false;
     }
     const threshold = this.distanceThreshold();
@@ -334,7 +334,7 @@ export class ClosestPointQuery {
     if (threshold !== undefined && distance >= threshold) {
       return;
     }
-    while (this.results.size() >= this.maxResults) {
+    while (this.results.size() >= this.limit) {
       this.results.pop();
     }
     this.results.push({ pointID, distance });
@@ -342,7 +342,7 @@ export class ClosestPointQuery {
 
   private distanceThreshold(): ChordAngle | undefined {
     const worstEntry = this.results.peek();
-    if (worstEntry && this.results.size() >= this.maxResults) {
+    if (worstEntry && this.results.size() >= this.limit) {
       if (
         this.maxDistanceChordAngle &&
         worstEntry.distance > this.maxDistanceChordAngle

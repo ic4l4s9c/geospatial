@@ -32,7 +32,7 @@ const geospatialQuery = v.object({
     // order: v.union(v.literal("asc"), v.literal("desc")),
     interval,
   }),
-  maxResults: v.number(),
+  limit: v.number(),
 });
 
 const pointDoc = v.object({
@@ -190,9 +190,9 @@ export const execute = query({
             key: doc.key,
             coordinates: doc.coordinates,
           });
-          if (page.length >= args.query.maxResults) {
+          if (page.length >= args.query.limit) {
             logger.debug(
-              `Consumer reached max results of ${args.query.maxResults} at ${tupleKey}`,
+              `Consumer reached max results of ${args.query.limit} at ${tupleKey}`,
             );
             continueCursor = tupleKey;
             return;
@@ -232,7 +232,7 @@ export const nearest = query({
   args: {
     point,
     maxDistance: v.optional(v.number()),
-    maxResults: v.number(),
+    limit: v.number(),
     minLevel: v.number(),
     maxLevel: v.number(),
     levelMod: v.number(),
@@ -247,7 +247,7 @@ export const nearest = query({
   handler: async (ctx, args) => {
     const logger = createLogger(args.logLevel);
     const s2 = await S2Bindings.load();
-    if (args.maxResults === 0) {
+    if (args.limit === 0) {
       return [];
     }
     const query = new ClosestPointQuery(
@@ -255,7 +255,7 @@ export const nearest = query({
       logger,
       args.point,
       args.maxDistance,
-      args.maxResults,
+      args.limit,
       args.minLevel,
       args.maxLevel,
       args.levelMod,

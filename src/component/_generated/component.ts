@@ -137,7 +137,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                 filterValue: string | number | boolean | null | bigint;
                 occur: "should" | "must";
               }>;
-              maxResults: number;
+              limit: number;
               rectangle: {
                 east: number;
                 north: number;
@@ -171,6 +171,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               occur: "should" | "must";
             }>;
             levelMod: number;
+            limit: number;
             logLevel?:
               | "EMERGENCY"
               | "ALERT"
@@ -182,7 +183,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               | "DEBUG";
             maxDistance?: number;
             maxLevel: number;
-            maxResults: number;
             minLevel: number;
             nextCursor?: string;
             point: { latitude: number; longitude: number };
