@@ -1,11 +1,10 @@
 import { expect, test, describe } from "vitest";
 import { encodeCursor, decodeCursor, encodeBound } from "./cursor.js";
 import * as d64 from "./d64.js";
-import type { Id } from "../_generated/dataModel.js";
 
 test("encodeTupleKey and decodeTupleKey", () => {
   const sortKey = 123456789;
-  const pointId = "1234567890" as Id<"points">;
+  const pointId = "1234567890"
   const tupleKey = encodeCursor(sortKey, pointId);
   const decoded = decodeCursor(tupleKey);
   expect(decoded.sortKey).toEqual(sortKey);
@@ -61,10 +60,10 @@ describe("tupleKey ordering", () => {
 
   test("encodeTupleKey roundtrip", () => {
     const testCases = [
-      { sortKey: 0, pointId: "abc123" as Id<"points"> },
-      { sortKey: 1140, pointId: "xyz789" as Id<"points"> },
-      { sortKey: -100, pointId: "neg456" as Id<"points"> },
-      { sortKey: 999999, pointId: "big000" as Id<"points"> },
+      { sortKey: 0, pointId: "abc123"},
+      { sortKey: 1140, pointId: "xyz789"},
+      { sortKey: -100, pointId: "neg456"},
+      { sortKey: 999999, pointId: "big000"},
     ];
 
     for (const testCase of testCases) {
@@ -77,9 +76,9 @@ describe("tupleKey ordering", () => {
 
   test("encodeTupleKey maintains order with same sortKey", () => {
     // Tuples with the same sortKey should be ordered by pointId
-    const tuple1 = encodeCursor(1140, "aaa" as Id<"points">);
-    const tuple2 = encodeCursor(1140, "bbb" as Id<"points">);
-    const tuple3 = encodeCursor(1140, "zzz" as Id<"points">);
+    const tuple1 = encodeCursor(1140, "aaa");
+    const tuple2 = encodeCursor(1140, "bbb");
+    const tuple3 = encodeCursor(1140, "zzz");
 
     expect(tuple1 < tuple2).toBe(true);
     expect(tuple2 < tuple3).toBe(true);
@@ -88,8 +87,8 @@ describe("tupleKey ordering", () => {
 
   test("encodeTupleKey maintains order with different sortKeys", () => {
     // Tuples with different sortKeys should be ordered by sortKey first
-    const tuple1 = encodeCursor(1140, "zzz" as Id<"points">);
-    const tuple2 = encodeCursor(1150, "aaa" as Id<"points">);
+    const tuple1 = encodeCursor(1140, "zzz");
+    const tuple2 = encodeCursor(1150, "aaa");
 
     // Even though "zzz" > "aaa", sortKey takes precedence
     expect(tuple1 < tuple2).toBe(true);
@@ -98,9 +97,9 @@ describe("tupleKey ordering", () => {
   test("bound should be minimum tuple for that sortKey", () => {
     // The bound for a sortKey should be less than or equal to any tuple with that sortKey
     const bound = encodeBound(1140);
-    const tuple1 = encodeCursor(1140, "" as Id<"points">);
-    const tuple2 = encodeCursor(1140, "aaa" as Id<"points">);
-    const tuple3 = encodeCursor(1140, "zzz" as Id<"points">);
+    const tuple1 = encodeCursor(1140, "");
+    const tuple2 = encodeCursor(1140, "aaa");
+    const tuple3 = encodeCursor(1140, "zzz");
 
     expect(bound <= tuple1).toBe(true);
     expect(bound <= tuple2).toBe(true);
