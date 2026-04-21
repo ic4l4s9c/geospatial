@@ -10,7 +10,7 @@ import { Union } from "../streams/union.js";
 import { Intersection } from "../streams/intersection.js";
 import type { PointSet, Stats } from "../streams/zigzag.js";
 import { PREFETCH_SIZE } from "../streams/constants.js";
-import { decodeCursor } from "./cursor.js";
+import { type Cursor, decodeCursor, encodeCursor } from "./cursor.js";
 import type { Logger } from "./logging.js";
 import type { Interval } from "./interval.js";
 
@@ -34,6 +34,7 @@ export class ClosestPointQuery {
   private readonly checkFilters: boolean;
   private static readonly FILTER_SUBDIVIDE_THRESHOLD = 8;
   private cellStreams = new Map<string, CellStreamState>();
+  private readonly cursorData?: { sortKey: number; id: Id<"points"> };
 
   constructor(
     private s2: S2Bindings,
@@ -46,6 +47,7 @@ export class ClosestPointQuery {
     private levelMod: number,
     filtering: FilterCondition[] = [],
     interval: Interval = {},
+    cursor?: Cursor,
   ) {
     this.toProcess = new Heap<CellCandidate>((a, b) => a.distance - b.distance);
     this.results = new Heap<Result>((a, b) => b.distance - a.distance);
@@ -58,6 +60,18 @@ export class ClosestPointQuery {
     this.sortInterval = interval;
     this.checkFilters =
       this.mustFilters.length > 0 || this.shouldFilters.length > 0;
+
+    if (cursor) {
+      this.cursorData = decodeCursor(cursor);
+      if (this.sortInterval.startInclusive === undefined) {
+        this.sortInterval.startInclusive = this.cursorData.sortKey;
+      } else {
+        this.sortInterval.startInclusive = Math.max(
+          this.sortInterval.startInclusive,
+          this.cursorData.sortKey,
+        );
+      }
+    }
 
     for (const cellID of this.s2.initialCells(this.minLevel)) {
       const distance = this.s2.minDistanceToCell(this.point, cellID);
@@ -115,7 +129,19 @@ export class ClosestPointQuery {
             streamState.done = true;
             break;
           }
-          const { id, sortKey } = decodeCursor<number, Id<"points">>(tupleKey);
+          const { sortKey, id } = decodeCursor<number, Id<"points">>(tupleKey);
+          if (this.cursorData) {
+            if (
+              sortKey < this.cursorData.sortKey ||
+              (sortKey === this.cursorData.sortKey && id <= this.cursorData.id)
+            ) {
+              const next = await streamState.stream.advance();
+              if (next === null) {
+                streamState.done = true;
+              }
+              continue;
+            }
+          }
           if (!this.withinSortInterval(sortKey)) {
             const next = await streamState.stream.advance();
             if (next === null) {
@@ -137,33 +163,38 @@ export class ClosestPointQuery {
         }
       }
     }
-
-    const points = await Promise.all(
-      this.results
-        .toArray()
-        .sort((a, b) => a.distance - b.distance)
-        .map(async ({ pointID, distance }) => {
-          const point = await ctx.db.get(pointID);
-          return { point, distance };
-        }),
-    );
-
-    const results = [];
-    for (const { point, distance } of points) {
+    const entries = this.results
+      .toArray()
+      .sort((a, b) => a.distance - b.distance);
+    const points = await Promise.all(entries.map((r) => ctx.db.get(r.pointID)));
+    const page = [];
+    let lastSortKey: number | undefined;
+    let lastId: Id<"points"> | undefined;
+    for (let i = 0; i < entries.length; i++) {
+      const point = points[i];
       if (!point) {
         throw new Error("Point not found");
       }
       if (!this.matchesFilters(point)) {
         continue;
       }
-      results.push({
+      lastSortKey = point.sortKey;
+      lastId = point._id;
+      page.push({
         key: point.key,
         coordinates: point.coordinates,
-        distance: this.s2.chordAngleToMeters(distance),
+        distance: this.s2.chordAngleToMeters(entries[i].distance),
       });
     }
+    const continueCursor: Cursor =
+      page.length === this.limit &&
+      lastSortKey !== undefined &&
+      lastId !== undefined
+        ? encodeCursor(lastSortKey, lastId)
+        : "";
     this.cellStreams.clear();
-    return results;
+
+    return { page, continueCursor, isDone: continueCursor === "" };
   }
 
   private shouldStopProcessingCell(candidateDistance: ChordAngle): boolean {

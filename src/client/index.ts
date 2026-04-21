@@ -158,17 +158,20 @@ class WithinQueryBuilder<
     if (this.shape.type !== "rectangle") {
       throw new Error("unsupported shape (WIP)");
     }
-    const result = await this.ctx.runQuery(this.component.points.spatial.execute, {
-      query: {
-        rectangle: this.shape.rectangle,
-        filtering: filterBuilder.filterConditions,
-        sorting: { interval: filterBuilder.interval ?? {} },
-        limit: this.#limit ?? 64,
+    const result = await this.ctx.runQuery(
+      this.component.points.spatial.execute,
+      {
+        query: {
+          rectangle: this.shape.rectangle,
+          filtering: filterBuilder.filterConditions,
+          sorting: { interval: filterBuilder.interval ?? {} },
+          limit: this.#limit ?? 64,
+        },
+        cursor,
+        config: this.config,
+        logLevel: this.config.logLevel,
       },
-      cursor,
-      config: this.config,
-      logLevel: this.config.logLevel,
-    });
+    );
     return result as PaginationResult<
       Narrow<(typeof result.page)[number], { key: Key }>
     >;
@@ -223,18 +226,21 @@ class NearestQueryBuilder<
     if (this.#filter) {
       this.#filter(filterBuilder);
     }
-    const result = await this.ctx.runQuery(this.component.points.spatial.nearest, {
-      point: this.point,
-      maxDistance: this.maxDistance,
-      limit: this.#limit ?? 64,
-      minLevel: this.config.minLevel,
-      maxLevel: this.config.maxLevel,
-      levelMod: this.config.levelMod,
-      logLevel: this.config.logLevel,
-      filtering: filterBuilder.filterConditions,
-      sorting: { interval: filterBuilder.interval ?? {} },
-    });
-    return result as Narrow<(typeof result)[number], { key: Key }>[];
+    const result = await this.ctx.runQuery(
+      this.component.points.spatial.nearest,
+      {
+        point: this.point,
+        maxDistance: this.maxDistance,
+        limit: this.#limit ?? 64,
+        minLevel: this.config.minLevel,
+        maxLevel: this.config.maxLevel,
+        levelMod: this.config.levelMod,
+        logLevel: this.config.logLevel,
+        filtering: filterBuilder.filterConditions,
+        sorting: { interval: filterBuilder.interval ?? {} },
+      },
+    );
+    return result.page as Narrow<(typeof result.page)[number], { key: Key }>[];
   }
 }
 

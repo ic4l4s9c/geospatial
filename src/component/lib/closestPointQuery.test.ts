@@ -64,9 +64,9 @@ test("closest point query - basic functionality", async () => {
       config.levelMod,
     );
     const result1 = await query1.execute(ctx);
-    expect(result1.length).toBe(1);
-    expect(result1[0].key).toBe("point1");
-    expect(result1[0].distance).toBeLessThan(1); // Should be very close to 0
+    expect(result1.page.length).toBe(1);
+    expect(result1.page[0].key).toBe("point1");
+    expect(result1.page[0].distance).toBeLessThan(1);
 
     // Test finding closest points to (1,1)
     const query2 = new ClosestPointQuery(
@@ -80,10 +80,10 @@ test("closest point query - basic functionality", async () => {
       config.levelMod,
     );
     const result2 = await query2.execute(ctx);
-    expect(result2.length).toBe(2);
-    expect(result2[0].key).toBe("point2");
-    expect(result2[1].key).toBe("point1");
-    expect(result2[0].distance).toBeLessThan(result2[1].distance);
+    expect(result2.page.length).toBe(2);
+    expect(result2.page[0].key).toBe("point2");
+    expect(result2.page[1].key).toBe("point1");
+    expect(result2.page[0].distance).toBeLessThan(result2.page[1].distance);
 
     // Test maxDistance constraint
     const query3 = new ClosestPointQuery(
@@ -97,8 +97,8 @@ test("closest point query - basic functionality", async () => {
       config.levelMod,
     );
     const result3 = await query3.execute(ctx);
-    expect(result3.length).toBe(1);
-    expect(result3[0].key).toBe("point1");
+    expect(result3.page.length).toBe(1);
+    expect(result3.page[0].key).toBe("point1");
 
     // Test 'must' filter
     const query4 = new ClosestPointQuery(
@@ -119,8 +119,8 @@ test("closest point query - basic functionality", async () => {
       ],
     );
     const result4 = await query4.execute(ctx);
-    expect(result4.length).toBe(2);
-    expect(result4.map((r) => r.key).sort()).toEqual(["point1", "point3"]);
+    expect(result4.page.length).toBe(2);
+    expect(result4.page.map((r) => r.key).sort()).toEqual(["point1", "point3"]);
 
     // Test 'should' filter (must match at least one)
     const query5 = new ClosestPointQuery(
@@ -141,8 +141,8 @@ test("closest point query - basic functionality", async () => {
       ],
     );
     const result5 = await query5.execute(ctx);
-    expect(result5.length).toBe(1);
-    expect(result5[0].key).toBe("point2");
+    expect(result5.page.length).toBe(1);
+    expect(result5.page[0].key).toBe("point2");
 
     // Test sort key interval
     const query6 = new ClosestPointQuery(
@@ -158,8 +158,8 @@ test("closest point query - basic functionality", async () => {
       { startInclusive: 3 },
     );
     const result6 = await query6.execute(ctx);
-    expect(result6.length).toBe(1);
-    expect(result6[0].key).toBe("point3");
+    expect(result6.page.length).toBe(1);
+    expect(result6.page[0].key).toBe("point3");
 
     // Test multiple 'should' filters
     const query7 = new ClosestPointQuery(
@@ -185,10 +185,94 @@ test("closest point query - basic functionality", async () => {
       ],
     );
     const result7 = await query7.execute(ctx);
-    expect(result7.length).toBe(3);
-    expect(new Set(result7.map((r) => r.key))).toEqual(
+    expect(result7.page.length).toBe(3);
+    expect(new Set(result7.page.map((r) => r.key))).toEqual(
       new Set(["point1", "point2", "point3"]),
     );
+  });
+});
+
+test("closest point query - cursor pagination", async () => {
+  const t = convexTest(schema, modules);
+  const s2 = await S2Bindings.load();
+  const logger = createLogger("INFO");
+
+  const points = [
+    {
+      key: "p0",
+      coordinates: { latitude: 0, longitude: 0 },
+      sortKey: 1,
+      filterKeys: { category: "a" },
+    },
+    {
+      key: "p1",
+      coordinates: { latitude: 0.01, longitude: 0 },
+      sortKey: 2,
+      filterKeys: { category: "a" },
+    },
+    {
+      key: "p2",
+      coordinates: { latitude: 0.02, longitude: 0 },
+      sortKey: 3,
+      filterKeys: { category: "a" },
+    },
+    {
+      key: "p3",
+      coordinates: { latitude: 0.03, longitude: 0 },
+      sortKey: 4,
+      filterKeys: { category: "a" },
+    },
+    {
+      key: "p4",
+      coordinates: { latitude: 0.04, longitude: 0 },
+      sortKey: 5,
+      filterKeys: { category: "a" },
+    },
+  ];
+
+  for (const point of points) {
+    await t.mutation(api.points.insert, { document: point, config });
+  }
+
+  await t.run(async (ctx) => {
+    const query1 = new ClosestPointQuery(
+      s2,
+      logger,
+      { latitude: 0, longitude: 0 },
+      10000000,
+      3,
+      config.minLevel,
+      config.maxLevel,
+      config.levelMod,
+    );
+    const result1 = await query1.execute(ctx);
+    expect(result1.page.length).toBe(3);
+    expect(result1.page[0].key).toBe("p0");
+    expect(result1.page[1].key).toBe("p1");
+    expect(result1.page[2].key).toBe("p2");
+    expect(result1.continueCursor).toBeDefined();
+
+    const query2 = new ClosestPointQuery(
+      s2,
+      logger,
+      { latitude: 0, longitude: 0 },
+      10000000,
+      3,
+      config.minLevel,
+      config.maxLevel,
+      config.levelMod,
+      [],
+      {},
+      result1.continueCursor,
+    );
+    const result2 = await query2.execute(ctx);
+    expect(result2.page.length).toBe(2);
+    expect(result2.page[0].key).toBe("p3");
+    expect(result2.page[1].key).toBe("p4");
+    expect(result2.continueCursor).toBe("");
+
+    const allKeys = [...result1.page, ...result2.page].map((p) => p.key);
+    expect(new Set(allKeys)).toEqual(new Set(["p0", "p1", "p2", "p3", "p4"]));
   });
 });
 
@@ -221,15 +305,13 @@ fcTest.prop({ documents: arbitraryDocuments })(
       );
       const results = await query.execute(ctx);
 
-      // Verify results are ordered by distance
-      for (let i = 1; i < results.length; i++) {
-        expect(results[i - 1].distance).toBeLessThanOrEqual(
-          results[i].distance,
+      for (let i = 1; i < results.page.length; i++) {
+        expect(results.page[i - 1].distance).toBeLessThanOrEqual(
+          results.page[i].distance,
         );
       }
 
-      // Verify all distances are within maxDistance
-      for (const result of results) {
+      for (const result of results.page) {
         expect(result.distance).toBeLessThanOrEqual(1000);
       }
     });

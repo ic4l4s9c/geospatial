@@ -165,6 +165,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           "query",
           "internal",
           {
+            cursor?: string;
             filtering: Array<{
               filterKey: string;
               filterValue: string | number | boolean | null | bigint;
@@ -184,17 +185,22 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             maxDistance?: number;
             maxLevel: number;
             minLevel: number;
-            nextCursor?: string;
             point: { latitude: number; longitude: number };
             sorting: {
               interval: { endExclusive?: number; startInclusive?: number };
             };
           },
-          Array<{
-            coordinates: { latitude: number; longitude: number };
-            distance: number;
-            key: string;
-          }>,
+          {
+            continueCursor: string;
+            isDone: boolean;
+            page: Array<{
+              coordinates: { latitude: number; longitude: number };
+              distance: number;
+              key: string;
+            }>;
+            pageStatus?: "SplitRecommended" | "SplitRequired" | null;
+            splitCursor?: string | null;
+          },
           Name
         >;
       };

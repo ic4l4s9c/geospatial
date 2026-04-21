@@ -236,19 +236,19 @@ export const nearest = query({
     minLevel: v.number(),
     maxLevel: v.number(),
     levelMod: v.number(),
-    nextCursor: v.optional(v.string()),
+    cursor: v.optional(v.string()),
     filtering: v.array(equalityCondition),
     sorting: v.object({
       interval,
     }),
     logLevel: v.optional(logLevel),
   },
-  returns: v.array(pointDocWithDistance),
+  returns: paginationResultValidator(pointDocWithDistance),
   handler: async (ctx, args) => {
     const logger = createLogger(args.logLevel);
     const s2 = await S2Bindings.load();
     if (args.limit === 0) {
-      return [];
+      return { page: [], isDone: true, continueCursor: "" };
     }
     const query = new ClosestPointQuery(
       s2,
@@ -261,8 +261,8 @@ export const nearest = query({
       args.levelMod,
       args.filtering,
       args.sorting.interval,
+      args.cursor,
     );
-    const results = await query.execute(ctx);
-    return results;
+    return await query.execute(ctx);
   },
 });
