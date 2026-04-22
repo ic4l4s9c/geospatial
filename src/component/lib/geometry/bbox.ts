@@ -52,12 +52,7 @@ export function boundingBoxContainsPolygon(
   if (exterior.length === 0) {
     return false;
   }
-  for (const point of exterior) {
-    if (!boundingBoxContainsPoint(bbox, point)) {
-      return false;
-    }
-  }
-  return true;
+  return exterior.every((point) => boundingBoxContainsPoint(bbox, point));
 }
 
 export function boundingBoxesIntersect(a: Rectangle, b: Rectangle): boolean {
