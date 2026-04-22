@@ -44,7 +44,7 @@ const pointDocWithDistance = pointDoc.extend({
   distance: v.number(),
 });
 
-export const execute = query({
+export const within = query({
   args: {
     query: geospatialQuery,
     cursor: v.optional(v.string()),

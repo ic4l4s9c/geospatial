@@ -159,7 +159,7 @@ class WithinQueryBuilder<
       throw new Error("unsupported shape (WIP)");
     }
     const result = await this.ctx.runQuery(
-      this.component.points.spatial.execute,
+      this.component.points.spatial.within,
       {
         query: {
           rectangle: this.shape.rectangle,

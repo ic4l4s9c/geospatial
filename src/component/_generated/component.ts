@@ -111,7 +111,49 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         Name
       >;
       spatial: {
-        execute: FunctionReference<
+        nearest: FunctionReference<
+          "query",
+          "internal",
+          {
+            cursor?: string;
+            filtering: Array<{
+              filterKey: string;
+              filterValue: string | number | boolean | null | bigint;
+              occur: "should" | "must";
+            }>;
+            levelMod: number;
+            limit: number;
+            logLevel?:
+              | "EMERGENCY"
+              | "ALERT"
+              | "CRITICAL"
+              | "ERROR"
+              | "WARNING"
+              | "NOTICE"
+              | "INFO"
+              | "DEBUG";
+            maxDistance?: number;
+            maxLevel: number;
+            minLevel: number;
+            point: { latitude: number; longitude: number };
+            sorting: {
+              interval: { endExclusive?: number; startInclusive?: number };
+            };
+          },
+          {
+            continueCursor: string;
+            isDone: boolean;
+            page: Array<{
+              coordinates: { latitude: number; longitude: number };
+              distance: number;
+              key: string;
+            }>;
+            pageStatus?: "SplitRecommended" | "SplitRequired" | null;
+            splitCursor?: string | null;
+          },
+          Name
+        >;
+        within: FunctionReference<
           "query",
           "internal",
           {
@@ -154,48 +196,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             isDone: boolean;
             page: Array<{
               coordinates: { latitude: number; longitude: number };
-              key: string;
-            }>;
-            pageStatus?: "SplitRecommended" | "SplitRequired" | null;
-            splitCursor?: string | null;
-          },
-          Name
-        >;
-        nearest: FunctionReference<
-          "query",
-          "internal",
-          {
-            cursor?: string;
-            filtering: Array<{
-              filterKey: string;
-              filterValue: string | number | boolean | null | bigint;
-              occur: "should" | "must";
-            }>;
-            levelMod: number;
-            limit: number;
-            logLevel?:
-              | "EMERGENCY"
-              | "ALERT"
-              | "CRITICAL"
-              | "ERROR"
-              | "WARNING"
-              | "NOTICE"
-              | "INFO"
-              | "DEBUG";
-            maxDistance?: number;
-            maxLevel: number;
-            minLevel: number;
-            point: { latitude: number; longitude: number };
-            sorting: {
-              interval: { endExclusive?: number; startInclusive?: number };
-            };
-          },
-          {
-            continueCursor: string;
-            isDone: boolean;
-            page: Array<{
-              coordinates: { latitude: number; longitude: number };
-              distance: number;
               key: string;
             }>;
             pageStatus?: "SplitRecommended" | "SplitRequired" | null;
