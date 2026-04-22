@@ -116,7 +116,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           "internal",
           {
             cursor?: string;
-            filtering: Array<{
+            filtering?: Array<{
               filterKey: string;
               filterValue: string | number | boolean | null | bigint;
               occur: "should" | "must";
@@ -174,7 +174,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               | "INFO"
               | "DEBUG";
             query: {
-              filtering: Array<{
+              filtering?: Array<{
                 filterKey: string;
                 filterValue: string | number | boolean | null | bigint;
                 occur: "should" | "must";

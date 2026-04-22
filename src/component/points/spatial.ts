@@ -26,7 +26,7 @@ export { PREFETCH_SIZE } from "../streams/constants.js";
 
 const geospatialQuery = v.object({
   rectangle,
-  filtering: v.array(equalityCondition),
+  filtering: v.optional(v.array(equalityCondition)),
   sorting: v.object({
     // TODO: Support reverse order.
     // order: v.union(v.literal("asc"), v.literal("desc")),
@@ -107,7 +107,7 @@ export const within = query({
     // Third, build up the streams for filter keys.
     const mustRanges: FilterKeyRange[] = [];
     const shouldRanges: FilterKeyRange[] = [];
-    for (const filter of args.query.filtering) {
+    for (const filter of args.query.filtering ?? []) {
       const ranges = filter.occur === "must" ? mustRanges : shouldRanges;
       ranges.push(
         new FilterKeyRange(
@@ -237,7 +237,7 @@ export const nearest = query({
     maxLevel: v.number(),
     levelMod: v.number(),
     cursor: v.optional(v.string()),
-    filtering: v.array(equalityCondition),
+    filtering: v.optional(v.array(equalityCondition)),
     sorting: v.object({
       interval,
     }),
