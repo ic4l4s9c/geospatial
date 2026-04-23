@@ -2,11 +2,12 @@ import { v } from "convex/values";
 import { query, type QueryCtx } from "../_generated/server.js";
 import {
   queryShape,
-  equalityCondition,
+  filterCondition,
   polyline,
   rectangle,
   point,
   config,
+  type FilterCondition,
 } from "../validators.js";
 import { createLogger, logLevel } from "../lib/logging.js";
 import { S2Bindings } from "../lib/s2Bindings.js";
@@ -17,7 +18,8 @@ import {
   boundingBoxContainsPolygon,
 } from "../lib/geometry/bbox.js";
 import { paginationResultValidator } from "convex/server";
-import type { Doc, Id } from "../_generated/dataModel.js";
+import type { Doc } from "../_generated/dataModel.js";
+import type { CellIDToken, PolylineKey } from "../schema.js";
 
 const polylineDoc = v.object({
   key: v.string(),
@@ -32,21 +34,24 @@ const polylineDocWithDistance = polylineDoc.extend({
 
 async function gatherCandidates(
   ctx: QueryCtx,
-  cellTokens: string[],
-): Promise<Map<Id<"polylines">, Doc<"polylines">>> {
-  const map = new Map<Id<"polylines">, Doc<"polylines">>();
+  cellTokens: CellIDToken[],
+): Promise<Map<PolylineKey, Doc<"polylines">>> {
+  const map = new Map<PolylineKey, Doc<"polylines">>();
   for (const token of cellTokens) {
     const cells = await ctx.db
       .query("polylineCells")
-      .withIndex("byCellToken", (q) =>
-        q.gte("cellToken", token).lt("cellToken", token + "~"),
+      .withIndex("by_cell_and_cursor", (q) =>
+        q.gte("cell", token).lt("cell", (token + "~") as CellIDToken),
       )
       .collect();
     for (const cell of cells) {
-      if (!map.has(cell.geometryId)) {
-        const geometry = await ctx.db.get(cell.geometryId);
+      if (!map.has(cell.key)) {
+        const geometry = await ctx.db
+          .query("polylines")
+          .withIndex("by_key", (q) => q.eq("key", cell.key))
+          .first();
         if (geometry) {
-          map.set(cell.geometryId, geometry);
+          map.set(cell.key, geometry);
         }
       }
     }
@@ -55,9 +60,9 @@ async function gatherCandidates(
 }
 
 function matchesFilters(
-  geometry: any,
-  mustFilters: any[],
-  shouldFilters: any[],
+  geometry: Doc<"polylines">,
+  mustFilters: FilterCondition[],
+  shouldFilters: FilterCondition[],
 ): boolean {
   for (const f of mustFilters) {
     const value = geometry.filterKeys?.[f.filterKey];
@@ -75,22 +80,22 @@ function matchesFilters(
 
 export const intersects = query({
   args: {
-    shape: queryShape,
     config: config,
-    logLevel: v.optional(logLevel),
-    filtering: v.optional(v.array(equalityCondition)),
-    limit: v.optional(v.number()),
+    query: v.object({
+      shape: queryShape,
+      filtering: v.optional(v.array(filterCondition)),
+      limit: v.number(),
+    }),
     cursor: v.optional(v.string()),
+    logLevel: v.optional(logLevel),
   },
   returns: paginationResultValidator(polylineDoc),
   handler: async (ctx, args) => {
     const {
-      limit = 100,
-      filtering = [],
       config,
-      shape,
-      logLevel,
+      query: { limit = 100, filtering = [], shape },
       cursor,
+      logLevel,
     } = args;
 
     const logger = createLogger(logLevel);
@@ -100,7 +105,7 @@ export const intersects = query({
     const mustFilters = filtering.filter((f) => f.occur === "must");
     const shouldFilters = filtering.filter((f) => f.occur === "should");
 
-    let cellTokens: string[];
+    let cellTokens: CellIDToken[];
     if (shape.type === "rectangle") {
       cellTokens = s2
         .coverRectangle(
@@ -126,12 +131,12 @@ export const intersects = query({
       cellTokens = pointCells.map((c) => s2.cellIDToken(c));
     }
 
-    const candidateMap = await gatherCandidates(ctx, cellTokens);
+    const candidates = await gatherCandidates(ctx, cellTokens);
     const cursorData = cursor ? decodeCursor(cursor) : undefined;
     const page = [];
     let lastInfo: { sortKey: number; key: string } | null = null;
 
-    for (const [_geometryId, geometry] of candidateMap) {
+    for (const [_key, geometry] of candidates) {
       if (!matchesFilters(geometry, mustFilters, shouldFilters)) {
         continue;
       }
@@ -200,24 +205,23 @@ export const intersects = query({
 
 export const nearest = query({
   args: {
-    point: point,
-    maxDistance: v.optional(v.number()),
     config: config,
-    logLevel: v.optional(logLevel),
-    filtering: v.optional(v.array(equalityCondition)),
-    limit: v.optional(v.number()),
+    query: v.object({
+      point: point,
+      maxDistance: v.optional(v.number()),
+      filtering: v.optional(v.array(filterCondition)),
+      limit: v.number(),
+    }),
     cursor: v.optional(v.string()),
+    logLevel: v.optional(logLevel),
   },
   returns: paginationResultValidator(polylineDocWithDistance),
   handler: async (ctx, args) => {
     const {
-      limit = 100,
-      filtering = [],
-      maxDistance,
-      cursor,
       config,
+      query: { limit = 100, filtering = [], maxDistance, point },
+      cursor,
       logLevel,
-      point,
     } = args;
 
     const logger = createLogger(logLevel);
@@ -227,7 +231,7 @@ export const nearest = query({
     const mustFilters = filtering.filter((f) => f.occur === "must");
     const shouldFilters = filtering.filter((f) => f.occur === "should");
 
-    let cellTokens: string[];
+    let cellTokens: CellIDToken[];
     if (maxDistance !== undefined) {
       const METERS_PER_DEGREE = 111000;
       const latDelta = maxDistance / METERS_PER_DEGREE;
@@ -264,11 +268,11 @@ export const nearest = query({
         .map((c) => s2.cellIDToken(c));
     }
 
-    const candidateMap = await gatherCandidates(ctx, cellTokens);
+    const candidates = await gatherCandidates(ctx, cellTokens);
     const cursorData = cursor ? decodeCursor(cursor) : undefined;
     const page = [];
 
-    for (const [_geometryId, geometry] of candidateMap) {
+    for (const [_key, geometry] of candidates) {
       if (!matchesFilters(geometry, mustFilters, shouldFilters)) {
         continue;
       }

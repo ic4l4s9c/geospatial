@@ -50,15 +50,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
       del: FunctionReference<
         "mutation",
         "internal",
-        {
-          config: {
-            levelMod: number;
-            maxCells: number;
-            maxLevel: number;
-            minLevel: number;
-          };
-          key: string;
-        },
+        { key: string },
         boolean,
         Name
       >;
@@ -115,14 +107,13 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           "query",
           "internal",
           {
+            config: {
+              levelMod: number;
+              maxCells: number;
+              maxLevel: number;
+              minLevel: number;
+            };
             cursor?: string;
-            filtering?: Array<{
-              filterKey: string;
-              filterValue: string | number | boolean | null | bigint;
-              occur: "should" | "must";
-            }>;
-            levelMod: number;
-            limit: number;
             logLevel?:
               | "EMERGENCY"
               | "ALERT"
@@ -132,12 +123,18 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               | "NOTICE"
               | "INFO"
               | "DEBUG";
-            maxDistance?: number;
-            maxLevel: number;
-            minLevel: number;
-            point: { latitude: number; longitude: number };
-            sorting: {
-              interval: { endExclusive?: number; startInclusive?: number };
+            query: {
+              filtering?: Array<{
+                filterKey: string;
+                filterValue: string | number | boolean | null | bigint;
+                occur: "should" | "must";
+              }>;
+              limit: number;
+              maxDistance?: number;
+              point: { latitude: number; longitude: number };
+              sorting: {
+                interval: { endExclusive?: number; startInclusive?: number };
+              };
             };
           },
           {
@@ -237,15 +234,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
       del: FunctionReference<
         "mutation",
         "internal",
-        {
-          config?: {
-            levelMod: number;
-            maxCells: number;
-            maxLevel: number;
-            minLevel: number;
-          };
-          key: string;
-        },
+        { key: string },
         boolean,
         Name
       >;
@@ -282,7 +271,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "mutation",
         "internal",
         {
-          config?: {
+          config: {
             levelMod: number;
             maxCells: number;
             maxLevel: number;
@@ -359,12 +348,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               minLevel: number;
             };
             cursor?: string;
-            filtering?: Array<{
-              filterKey: string;
-              filterValue: string | number | boolean | null | bigint;
-              occur: "should" | "must";
-            }>;
-            limit?: number;
             logLevel?:
               | "EMERGENCY"
               | "ALERT"
@@ -374,29 +357,37 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               | "NOTICE"
               | "INFO"
               | "DEBUG";
-            shape:
-              | {
-                  rectangle: {
-                    east: number;
-                    north: number;
-                    south: number;
-                    west: number;
+            query: {
+              filtering?: Array<{
+                filterKey: string;
+                filterValue: string | number | boolean | null | bigint;
+                occur: "should" | "must";
+              }>;
+              limit: number;
+              shape:
+                | {
+                    rectangle: {
+                      east: number;
+                      north: number;
+                      south: number;
+                      west: number;
+                    };
+                    type: "rectangle";
+                  }
+                | {
+                    polygon: {
+                      exterior: Array<{ latitude: number; longitude: number }>;
+                      holes?: Array<
+                        Array<{ latitude: number; longitude: number }>
+                      >;
+                    };
+                    type: "polygon";
+                  }
+                | {
+                    point: { latitude: number; longitude: number };
+                    type: "point";
                   };
-                  type: "rectangle";
-                }
-              | {
-                  polygon: {
-                    exterior: Array<{ latitude: number; longitude: number }>;
-                    holes?: Array<
-                      Array<{ latitude: number; longitude: number }>
-                    >;
-                  };
-                  type: "polygon";
-                }
-              | {
-                  point: { latitude: number; longitude: number };
-                  type: "point";
-                };
+            };
           },
           {
             continueCursor: string;
@@ -431,12 +422,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               minLevel: number;
             };
             cursor?: string;
-            filtering?: Array<{
-              filterKey: string;
-              filterValue: string | number | boolean | null | bigint;
-              occur: "should" | "must";
-            }>;
-            limit?: number;
             logLevel?:
               | "EMERGENCY"
               | "ALERT"
@@ -446,29 +431,37 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               | "NOTICE"
               | "INFO"
               | "DEBUG";
-            shape:
-              | {
-                  rectangle: {
-                    east: number;
-                    north: number;
-                    south: number;
-                    west: number;
+            query: {
+              filtering?: Array<{
+                filterKey: string;
+                filterValue: string | number | boolean | null | bigint;
+                occur: "should" | "must";
+              }>;
+              limit: number;
+              shape:
+                | {
+                    rectangle: {
+                      east: number;
+                      north: number;
+                      south: number;
+                      west: number;
+                    };
+                    type: "rectangle";
+                  }
+                | {
+                    polygon: {
+                      exterior: Array<{ latitude: number; longitude: number }>;
+                      holes?: Array<
+                        Array<{ latitude: number; longitude: number }>
+                      >;
+                    };
+                    type: "polygon";
+                  }
+                | {
+                    point: { latitude: number; longitude: number };
+                    type: "point";
                   };
-                  type: "rectangle";
-                }
-              | {
-                  polygon: {
-                    exterior: Array<{ latitude: number; longitude: number }>;
-                    holes?: Array<
-                      Array<{ latitude: number; longitude: number }>
-                    >;
-                  };
-                  type: "polygon";
-                }
-              | {
-                  point: { latitude: number; longitude: number };
-                  type: "point";
-                };
+            };
           },
           {
             continueCursor: string;
@@ -503,12 +496,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               minLevel: number;
             };
             cursor?: string;
-            filtering?: Array<{
-              filterKey: string;
-              filterValue: string | number | boolean | null | bigint;
-              occur: "should" | "must";
-            }>;
-            limit?: number;
             logLevel?:
               | "EMERGENCY"
               | "ALERT"
@@ -518,8 +505,16 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               | "NOTICE"
               | "INFO"
               | "DEBUG";
-            maxDistance?: number;
-            point: { latitude: number; longitude: number };
+            query: {
+              filtering?: Array<{
+                filterKey: string;
+                filterValue: string | number | boolean | null | bigint;
+                occur: "should" | "must";
+              }>;
+              limit: number;
+              maxDistance?: number;
+              point: { latitude: number; longitude: number };
+            };
           },
           {
             continueCursor: string;
@@ -549,7 +544,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "mutation",
         "internal",
         {
-          config?: {
+          config: {
             levelMod: number;
             maxCells: number;
             maxLevel: number;
@@ -581,15 +576,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
       del: FunctionReference<
         "mutation",
         "internal",
-        {
-          config?: {
-            levelMod: number;
-            maxCells: number;
-            maxLevel: number;
-            minLevel: number;
-          };
-          key: string;
-        },
+        { key: string },
         boolean,
         Name
       >;
@@ -623,7 +610,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "mutation",
         "internal",
         {
-          config?: {
+          config: {
             levelMod: number;
             maxCells: number;
             maxLevel: number;
@@ -675,12 +662,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               minLevel: number;
             };
             cursor?: string;
-            filtering?: Array<{
-              filterKey: string;
-              filterValue: string | number | boolean | null | bigint;
-              occur: "should" | "must";
-            }>;
-            limit?: number;
             logLevel?:
               | "EMERGENCY"
               | "ALERT"
@@ -690,29 +671,37 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               | "NOTICE"
               | "INFO"
               | "DEBUG";
-            shape:
-              | {
-                  rectangle: {
-                    east: number;
-                    north: number;
-                    south: number;
-                    west: number;
+            query: {
+              filtering?: Array<{
+                filterKey: string;
+                filterValue: string | number | boolean | null | bigint;
+                occur: "should" | "must";
+              }>;
+              limit: number;
+              shape:
+                | {
+                    rectangle: {
+                      east: number;
+                      north: number;
+                      south: number;
+                      west: number;
+                    };
+                    type: "rectangle";
+                  }
+                | {
+                    polygon: {
+                      exterior: Array<{ latitude: number; longitude: number }>;
+                      holes?: Array<
+                        Array<{ latitude: number; longitude: number }>
+                      >;
+                    };
+                    type: "polygon";
+                  }
+                | {
+                    point: { latitude: number; longitude: number };
+                    type: "point";
                   };
-                  type: "rectangle";
-                }
-              | {
-                  polygon: {
-                    exterior: Array<{ latitude: number; longitude: number }>;
-                    holes?: Array<
-                      Array<{ latitude: number; longitude: number }>
-                    >;
-                  };
-                  type: "polygon";
-                }
-              | {
-                  point: { latitude: number; longitude: number };
-                  type: "point";
-                };
+            };
           },
           {
             continueCursor: string;
@@ -744,12 +733,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               minLevel: number;
             };
             cursor?: string;
-            filtering?: Array<{
-              filterKey: string;
-              filterValue: string | number | boolean | null | bigint;
-              occur: "should" | "must";
-            }>;
-            limit?: number;
             logLevel?:
               | "EMERGENCY"
               | "ALERT"
@@ -759,8 +742,16 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               | "NOTICE"
               | "INFO"
               | "DEBUG";
-            maxDistance?: number;
-            point: { latitude: number; longitude: number };
+            query: {
+              filtering?: Array<{
+                filterKey: string;
+                filterValue: string | number | boolean | null | bigint;
+                occur: "should" | "must";
+              }>;
+              limit: number;
+              maxDistance?: number;
+              point: { latitude: number; longitude: number };
+            };
           },
           {
             continueCursor: string;
@@ -787,7 +778,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "mutation",
         "internal",
         {
-          config?: {
+          config: {
             levelMod: number;
             maxCells: number;
             maxLevel: number;

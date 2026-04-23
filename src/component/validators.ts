@@ -48,11 +48,12 @@ export const filterKeys = v.optional(
   v.record(v.string(), v.union(primitive, v.array(primitive))),
 );
 
-export const equalityCondition = v.object({
+export const filterCondition = v.object({
   occur: v.union(v.literal("should"), v.literal("must")),
   filterKey: v.string(),
   filterValue: primitive,
 });
+export type FilterCondition = Infer<typeof filterCondition>;
 
 export const config = v.object({
   minLevel: v.number(),
@@ -60,6 +61,7 @@ export const config = v.object({
   levelMod: v.number(),
   maxCells: v.number(),
 });
+export type Config = Infer<typeof config>;
 
 export type Meters = number;
 export type ChordAngle = number;

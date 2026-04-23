@@ -5,6 +5,7 @@ import { serialize, type Primitive } from "../validators/primitive.js";
 import { encodeBound, type Cursor } from "../lib/cursor.js";
 import { DatabaseRange } from "./databaseRange.js";
 import type { Stats } from "./zigzag.js";
+import type { CounterKey } from "../schema.js";
 
 export class FilterKeyRange extends DatabaseRange {
   constructor(
@@ -22,24 +23,24 @@ export class FilterKeyRange extends DatabaseRange {
 
   async initialQuery(): Promise<Cursor[]> {
     const docs = await this.ctx.db
-      .query("pointsByFilterKey")
-      .withIndex("filterKey", (q) => {
+      .query("pointFilters")
+      .withIndex("by_filter_and_cursor", (q) => {
         const withFilter = q
           .eq("filterKey", this.filterKey)
           .eq("filterValue", this.filterValue);
         let withStart;
         if (this.cursor !== undefined) {
-          withStart = withFilter.gt("tupleKey", this.cursor);
+          withStart = withFilter.gt("cursor", this.cursor);
         } else if (this.interval.startInclusive !== undefined) {
           const bound = encodeBound(this.interval.startInclusive);
-          withStart = withFilter.gte("tupleKey", bound);
+          withStart = withFilter.gte("cursor", bound);
         } else {
           withStart = withFilter;
         }
         let withEnd;
         if (this.interval.endExclusive !== undefined) {
           const bound = encodeBound(this.interval.endExclusive);
-          withEnd = withStart.lt("tupleKey", bound);
+          withEnd = withStart.lt("cursor", bound);
         } else {
           withEnd = withStart;
         }
@@ -49,21 +50,21 @@ export class FilterKeyRange extends DatabaseRange {
     this.logger.debug(
       `Initial query for filter key ${this.filterKey} returned ${docs.length} results`,
     );
-    return docs.map((doc) => doc.tupleKey);
+    return docs.map((doc) => doc.cursor);
   }
 
   async advanceQuery(lastKey: Cursor): Promise<Cursor[]> {
     const docs = await this.ctx.db
-      .query("pointsByFilterKey")
-      .withIndex("filterKey", (q) => {
+      .query("pointFilters")
+      .withIndex("by_filter_and_cursor", (q) => {
         const withStart = q
           .eq("filterKey", this.filterKey)
           .eq("filterValue", this.filterValue)
-          .gt("tupleKey", lastKey);
+          .gt("cursor", lastKey);
         let withEnd;
         if (this.interval.endExclusive !== undefined) {
           const bound = encodeBound(this.interval.endExclusive);
-          withEnd = withStart.lt("tupleKey", bound);
+          withEnd = withStart.lt("cursor", bound);
         } else {
           withEnd = withStart;
         }
@@ -73,21 +74,21 @@ export class FilterKeyRange extends DatabaseRange {
     this.logger.debug(
       `Advance query for filter key ${this.filterKey} returned ${docs.length} results`,
     );
-    return docs.map((doc) => doc.tupleKey);
+    return docs.map((doc) => doc.cursor);
   }
 
   async seekQuery(tuple: Cursor): Promise<Cursor[]> {
     const docs = await this.ctx.db
-      .query("pointsByFilterKey")
-      .withIndex("filterKey", (q) => {
+      .query("pointFilters")
+      .withIndex("by_filter_and_cursor", (q) => {
         const withStart = q
           .eq("filterKey", this.filterKey)
           .eq("filterValue", this.filterValue)
-          .gte("tupleKey", tuple);
+          .gte("cursor", tuple);
         let withEnd;
         if (this.interval.endExclusive !== undefined) {
           const bound = encodeBound(this.interval.endExclusive);
-          withEnd = withStart.lt("tupleKey", bound);
+          withEnd = withStart.lt("cursor", bound);
         } else {
           withEnd = withStart;
         }
@@ -97,10 +98,10 @@ export class FilterKeyRange extends DatabaseRange {
     this.logger.debug(
       `Seek query for filter key ${this.filterKey} returned ${docs.length} results`,
     );
-    return docs.map((doc) => doc.tupleKey);
+    return docs.map((doc) => doc.cursor);
   }
 
-  getCounterKey(): string {
+  getCounterKey(): CounterKey {
     return filterCounterKey(this.filterKey, this.filterValue);
   }
 }
@@ -108,6 +109,6 @@ export class FilterKeyRange extends DatabaseRange {
 export function filterCounterKey(
   filterKey: string,
   filterValue: Primitive,
-): string {
-  return "filter:" + filterKey + ":" + serialize(filterValue);
+): CounterKey {
+  return ("filter:" + filterKey + ":" + serialize(filterValue)) as CounterKey;
 }

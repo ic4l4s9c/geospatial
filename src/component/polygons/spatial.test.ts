@@ -3,6 +3,7 @@ import { expect, test, describe } from "vitest";
 import { api } from "../_generated/api.js";
 import schema from "../schema.js";
 import { modules } from "../test.setup.js";
+import { type PolygonKey } from "../schema.js";
 
 const MANHATTAN_POLYGON = {
   exterior: [
@@ -40,23 +41,28 @@ describe("polygon queries", () => {
 
       await t.mutation(api.polygons.insert, {
         document: {
-          key: "manhattan",
+          key: "manhattan" as PolygonKey,
           coordinates: MANHATTAN_POLYGON,
           sortKey: 1,
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
       await t.mutation(api.polygons.insert, {
         document: {
-          key: "central-park",
+          key: "central-park" as PolygonKey,
           coordinates: CENTRAL_PARK_POLYGON,
           sortKey: 2,
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       const result = await t.query(api.polygons.spatial.intersects, {
-        shape: {
-          type: "rectangle",
-          rectangle: { south: 40.75, north: 40.85, west: -74, east: -73.9 },
+        query: {
+          shape: {
+            type: "rectangle",
+            rectangle: { south: 40.75, north: 40.85, west: -74, east: -73.9 },
+          },
+          limit: 64,
         },
         config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
@@ -69,14 +75,18 @@ describe("polygon queries", () => {
 
       await t.mutation(api.polygons.insert, {
         document: {
-          key: "unit-square",
+          key: "unit-square" as PolygonKey,
           coordinates: UNIT_SQUARE_POLYGON,
           sortKey: 1,
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       const result = await t.query(api.polygons.spatial.intersects, {
-        shape: { type: "point", point: { latitude: 0.5, longitude: 0.5 } },
+        query: {
+          shape: { type: "point", point: { latitude: 0.5, longitude: 0.5 } },
+          limit: 64,
+        },
         config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
@@ -89,23 +99,27 @@ describe("polygon queries", () => {
 
       await t.mutation(api.polygons.insert, {
         document: {
-          key: "unit-square",
+          key: "unit-square" as PolygonKey,
           coordinates: UNIT_SQUARE_POLYGON,
           sortKey: 1,
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       const result = await t.query(api.polygons.spatial.intersects, {
-        shape: {
-          type: "polygon",
-          polygon: {
-            exterior: [
-              { latitude: 0.25, longitude: 0.25 },
-              { latitude: 0.25, longitude: 0.75 },
-              { latitude: 0.75, longitude: 0.75 },
-              { latitude: 0.75, longitude: 0.25 },
-            ],
+        query: {
+          shape: {
+            type: "polygon",
+            polygon: {
+              exterior: [
+                { latitude: 0.25, longitude: 0.25 },
+                { latitude: 0.25, longitude: 0.75 },
+                { latitude: 0.75, longitude: 0.75 },
+                { latitude: 0.75, longitude: 0.25 },
+              ],
+            },
           },
+          limit: 64,
         },
         config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
@@ -119,16 +133,20 @@ describe("polygon queries", () => {
 
       await t.mutation(api.polygons.insert, {
         document: {
-          key: "unit-square",
+          key: "unit-square" as PolygonKey,
           coordinates: UNIT_SQUARE_POLYGON,
           sortKey: 1,
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       const result = await t.query(api.polygons.spatial.intersects, {
-        shape: {
-          type: "rectangle",
-          rectangle: { south: 10, north: 11, west: 10, east: 11 },
+        query: {
+          shape: {
+            type: "rectangle",
+            rectangle: { south: 10, north: 11, west: 10, east: 11 },
+          },
+          limit: 64,
         },
         config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
@@ -141,14 +159,18 @@ describe("polygon queries", () => {
 
       await t.mutation(api.polygons.insert, {
         document: {
-          key: "unit-square",
+          key: "unit-square" as PolygonKey,
           coordinates: UNIT_SQUARE_POLYGON,
           sortKey: 1,
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       const result = await t.query(api.polygons.spatial.intersects, {
-        shape: { type: "point", point: { latitude: 5, longitude: 5 } },
+        query: {
+          shape: { type: "point", point: { latitude: 5, longitude: 5 } },
+          limit: 64,
+        },
         config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
@@ -160,24 +182,29 @@ describe("polygon queries", () => {
 
       await t.mutation(api.polygons.insert, {
         document: {
-          key: "polygon-a",
+          key: "polygon-a" as PolygonKey,
           coordinates: UNIT_SQUARE_POLYGON,
           sortKey: 1,
           filterKeys: { type: "a" },
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
       await t.mutation(api.polygons.insert, {
         document: {
-          key: "polygon-b",
+          key: "polygon-b" as PolygonKey,
           coordinates: UNIT_SQUARE_POLYGON,
           sortKey: 2,
           filterKeys: { type: "b" },
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       const result = await t.query(api.polygons.spatial.intersects, {
-        shape: { type: "point", point: { latitude: 0.5, longitude: 0.5 } },
-        filtering: [{ occur: "must", filterKey: "type", filterValue: "a" }],
+        query: {
+          shape: { type: "point", point: { latitude: 0.5, longitude: 0.5 } },
+          filtering: [{ occur: "must", filterKey: "type", filterValue: "a" }],
+          limit: 64,
+        },
         config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
@@ -190,24 +217,29 @@ describe("polygon queries", () => {
 
       await t.mutation(api.polygons.insert, {
         document: {
-          key: "polygon-a",
+          key: "polygon-a" as PolygonKey,
           coordinates: UNIT_SQUARE_POLYGON,
           sortKey: 1,
           filterKeys: { type: "a" },
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
       await t.mutation(api.polygons.insert, {
         document: {
-          key: "polygon-b",
+          key: "polygon-b" as PolygonKey,
           coordinates: UNIT_SQUARE_POLYGON,
           sortKey: 2,
           filterKeys: { type: "b" },
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       const result = await t.query(api.polygons.spatial.intersects, {
-        shape: { type: "point", point: { latitude: 0.5, longitude: 0.5 } },
-        filtering: [{ occur: "should", filterKey: "type", filterValue: "a" }],
+        query: {
+          shape: { type: "point", point: { latitude: 0.5, longitude: 0.5 } },
+          filtering: [{ occur: "should", filterKey: "type", filterValue: "a" }],
+          limit: 64,
+        },
         config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
@@ -221,16 +253,19 @@ describe("polygon queries", () => {
       for (let i = 0; i < 5; i++) {
         await t.mutation(api.polygons.insert, {
           document: {
-            key: `polygon-${i}`,
+            key: `polygon-${i}` as PolygonKey,
             coordinates: UNIT_SQUARE_POLYGON,
             sortKey: i,
           },
+          config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
         });
       }
 
       const result = await t.query(api.polygons.spatial.intersects, {
-        shape: { type: "point", point: { latitude: 0.5, longitude: 0.5 } },
-        limit: 2,
+        query: {
+          shape: { type: "point", point: { latitude: 0.5, longitude: 0.5 } },
+          limit: 2,
+        },
         config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
@@ -244,22 +279,27 @@ describe("polygon queries", () => {
       for (let i = 0; i < 5; i++) {
         await t.mutation(api.polygons.insert, {
           document: {
-            key: `polygon-${i}`,
+            key: `polygon-${i}` as PolygonKey,
             coordinates: UNIT_SQUARE_POLYGON,
             sortKey: i,
           },
+          config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
         });
       }
 
       const firstPage = await t.query(api.polygons.spatial.intersects, {
-        shape: { type: "point", point: { latitude: 0.5, longitude: 0.5 } },
-        limit: 2,
+        query: {
+          shape: { type: "point", point: { latitude: 0.5, longitude: 0.5 } },
+          limit: 2,
+        },
         config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       const secondPage = await t.query(api.polygons.spatial.intersects, {
-        shape: { type: "point", point: { latitude: 0.5, longitude: 0.5 } },
-        limit: 2,
+        query: {
+          shape: { type: "point", point: { latitude: 0.5, longitude: 0.5 } },
+          limit: 2,
+        },
         cursor: firstPage.continueCursor,
         config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
@@ -275,14 +315,18 @@ describe("polygon queries", () => {
 
       await t.mutation(api.polygons.insert, {
         document: {
-          key: "unit-square",
+          key: "unit-square" as PolygonKey,
           coordinates: UNIT_SQUARE_POLYGON,
           sortKey: 1,
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       const result = await t.query(api.polygons.spatial.contains, {
-        shape: { type: "point", point: { latitude: 0.5, longitude: 0.5 } },
+        query: {
+          shape: { type: "point", point: { latitude: 0.5, longitude: 0.5 } },
+          limit: 64,
+        },
         config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
@@ -295,14 +339,18 @@ describe("polygon queries", () => {
 
       await t.mutation(api.polygons.insert, {
         document: {
-          key: "unit-square",
+          key: "unit-square" as PolygonKey,
           coordinates: UNIT_SQUARE_POLYGON,
           sortKey: 1,
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       const result = await t.query(api.polygons.spatial.contains, {
-        shape: { type: "point", point: { latitude: 5, longitude: 5 } },
+        query: {
+          shape: { type: "point", point: { latitude: 5, longitude: 5 } },
+          limit: 64,
+        },
         config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
@@ -314,23 +362,27 @@ describe("polygon queries", () => {
 
       await t.mutation(api.polygons.insert, {
         document: {
-          key: "unit-square",
+          key: "unit-square" as PolygonKey,
           coordinates: UNIT_SQUARE_POLYGON,
           sortKey: 1,
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       const result = await t.query(api.polygons.spatial.contains, {
-        shape: {
-          type: "polygon",
-          polygon: {
-            exterior: [
-              { latitude: 0.25, longitude: 0.25 },
-              { latitude: 0.25, longitude: 0.75 },
-              { latitude: 0.75, longitude: 0.75 },
-              { latitude: 0.75, longitude: 0.25 },
-            ],
+        query: {
+          shape: {
+            type: "polygon",
+            polygon: {
+              exterior: [
+                { latitude: 0.25, longitude: 0.25 },
+                { latitude: 0.25, longitude: 0.75 },
+                { latitude: 0.75, longitude: 0.75 },
+                { latitude: 0.75, longitude: 0.25 },
+              ],
+            },
           },
+          limit: 64,
         },
         config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
@@ -344,23 +396,27 @@ describe("polygon queries", () => {
 
       await t.mutation(api.polygons.insert, {
         document: {
-          key: "unit-square",
+          key: "unit-square" as PolygonKey,
           coordinates: UNIT_SQUARE_POLYGON,
           sortKey: 1,
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       const result = await t.query(api.polygons.spatial.contains, {
-        shape: {
-          type: "polygon",
-          polygon: {
-            exterior: [
-              { latitude: 5, longitude: 5 },
-              { latitude: 5, longitude: 6 },
-              { latitude: 6, longitude: 6 },
-              { latitude: 6, longitude: 5 },
-            ],
+        query: {
+          shape: {
+            type: "polygon",
+            polygon: {
+              exterior: [
+                { latitude: 5, longitude: 5 },
+                { latitude: 5, longitude: 6 },
+                { latitude: 6, longitude: 6 },
+                { latitude: 6, longitude: 5 },
+              ],
+            },
           },
+          limit: 64,
         },
         config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
@@ -373,14 +429,18 @@ describe("polygon queries", () => {
 
       await t.mutation(api.polygons.insert, {
         document: {
-          key: "unit-square",
+          key: "unit-square" as PolygonKey,
           coordinates: UNIT_SQUARE_POLYGON,
           sortKey: 1,
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       const result = await t.query(api.polygons.spatial.contains, {
-        shape: { type: "point", point: { latitude: 0, longitude: 0.5 } },
+        query: {
+          shape: { type: "point", point: { latitude: 0, longitude: 0.5 } },
+          limit: 64,
+        },
         config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
@@ -393,24 +453,29 @@ describe("polygon queries", () => {
 
       await t.mutation(api.polygons.insert, {
         document: {
-          key: "polygon-a",
+          key: "polygon-a" as PolygonKey,
           coordinates: UNIT_SQUARE_POLYGON,
           sortKey: 1,
           filterKeys: { type: "a" },
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
       await t.mutation(api.polygons.insert, {
         document: {
-          key: "polygon-b",
+          key: "polygon-b" as PolygonKey,
           coordinates: UNIT_SQUARE_POLYGON,
           sortKey: 2,
           filterKeys: { type: "b" },
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       const result = await t.query(api.polygons.spatial.contains, {
-        shape: { type: "point", point: { latitude: 0.5, longitude: 0.5 } },
-        filtering: [{ occur: "must", filterKey: "type", filterValue: "a" }],
+        query: {
+          shape: { type: "point", point: { latitude: 0.5, longitude: 0.5 } },
+          filtering: [{ occur: "must", filterKey: "type", filterValue: "a" }],
+          limit: 64,
+        },
         config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
@@ -425,21 +490,26 @@ describe("polygon queries", () => {
 
       await t.mutation(api.polygons.insert, {
         document: {
-          key: "unit-square",
+          key: "unit-square" as PolygonKey,
           coordinates: UNIT_SQUARE_POLYGON,
           sortKey: 1,
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
       await t.mutation(api.polygons.insert, {
         document: {
-          key: "manhattan",
+          key: "manhattan" as PolygonKey,
           coordinates: MANHATTAN_POLYGON,
           sortKey: 2,
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       const result = await t.query(api.polygons.spatial.nearest, {
-        point: { latitude: 0.1, longitude: 0.1 },
+        query: {
+          point: { latitude: 0.1, longitude: 0.1 },
+          limit: 64,
+        },
         config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
@@ -452,7 +522,7 @@ describe("polygon queries", () => {
 
       await t.mutation(api.polygons.insert, {
         document: {
-          key: "far-polygon",
+          key: "far-polygon" as PolygonKey,
           coordinates: {
             exterior: [
               { latitude: 10, longitude: 10 },
@@ -463,17 +533,22 @@ describe("polygon queries", () => {
           },
           sortKey: 2,
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
       await t.mutation(api.polygons.insert, {
         document: {
-          key: "near-polygon",
+          key: "near-polygon" as PolygonKey,
           coordinates: UNIT_SQUARE_POLYGON,
           sortKey: 1,
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       const result = await t.query(api.polygons.spatial.nearest, {
-        point: { latitude: 0, longitude: 0 },
+        query: {
+          point: { latitude: 0, longitude: 0 },
+          limit: 64,
+        },
         config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
@@ -485,14 +560,18 @@ describe("polygon queries", () => {
 
       await t.mutation(api.polygons.insert, {
         document: {
-          key: "unit-square",
+          key: "unit-square" as PolygonKey,
           coordinates: UNIT_SQUARE_POLYGON,
           sortKey: 1,
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       const result = await t.query(api.polygons.spatial.nearest, {
-        point: { latitude: 0.5, longitude: 0.5 },
+        query: {
+          point: { latitude: 0.5, longitude: 0.5 },
+          limit: 64,
+        },
         config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
@@ -504,15 +583,19 @@ describe("polygon queries", () => {
 
       await t.mutation(api.polygons.insert, {
         document: {
-          key: "unit-square",
+          key: "unit-square" as PolygonKey,
           coordinates: UNIT_SQUARE_POLYGON,
           sortKey: 1,
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       const result = await t.query(api.polygons.spatial.nearest, {
-        point: { latitude: 2, longitude: 2 },
-        maxDistance: 100000,
+        query: {
+          point: { latitude: 2, longitude: 2 },
+          maxDistance: 100000,
+          limit: 64,
+        },
         config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
@@ -524,24 +607,29 @@ describe("polygon queries", () => {
 
       await t.mutation(api.polygons.insert, {
         document: {
-          key: "polygon-a",
+          key: "polygon-a" as PolygonKey,
           coordinates: UNIT_SQUARE_POLYGON,
           sortKey: 1,
           filterKeys: { type: "a" },
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
       await t.mutation(api.polygons.insert, {
         document: {
-          key: "polygon-b",
+          key: "polygon-b" as PolygonKey,
           coordinates: UNIT_SQUARE_POLYGON,
           sortKey: 2,
           filterKeys: { type: "b" },
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       const result = await t.query(api.polygons.spatial.nearest, {
-        point: { latitude: 0.5, longitude: 0.5 },
-        filtering: [{ occur: "must", filterKey: "type", filterValue: "a" }],
+        query: {
+          point: { latitude: 0.5, longitude: 0.5 },
+          filtering: [{ occur: "must", filterKey: "type", filterValue: "a" }],
+          limit: 64,
+        },
         config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
@@ -555,16 +643,19 @@ describe("polygon queries", () => {
       for (let i = 0; i < 5; i++) {
         await t.mutation(api.polygons.insert, {
           document: {
-            key: `polygon-${i}`,
+            key: `polygon-${i}` as PolygonKey,
             coordinates: UNIT_SQUARE_POLYGON,
             sortKey: i,
           },
+          config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
         });
       }
 
       const result = await t.query(api.polygons.spatial.nearest, {
-        point: { latitude: 0.5, longitude: 0.5 },
-        limit: 2,
+        query: {
+          point: { latitude: 0.5, longitude: 0.5 },
+          limit: 2,
+        },
         config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
@@ -578,22 +669,27 @@ describe("polygon queries", () => {
       for (let i = 0; i < 5; i++) {
         await t.mutation(api.polygons.insert, {
           document: {
-            key: `polygon-${i}`,
+            key: `polygon-${i}` as PolygonKey,
             coordinates: UNIT_SQUARE_POLYGON,
             sortKey: i,
           },
+          config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
         });
       }
 
       const firstPage = await t.query(api.polygons.spatial.nearest, {
-        point: { latitude: 0.5, longitude: 0.5 },
-        limit: 2,
+        query: {
+          point: { latitude: 0.5, longitude: 0.5 },
+          limit: 2,
+        },
         config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       const secondPage = await t.query(api.polygons.spatial.nearest, {
-        point: { latitude: 0.5, longitude: 0.5 },
-        limit: 2,
+        query: {
+          point: { latitude: 0.5, longitude: 0.5 },
+          limit: 2,
+        },
         cursor: firstPage.continueCursor,
         config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });

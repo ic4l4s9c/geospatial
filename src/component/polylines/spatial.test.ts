@@ -3,6 +3,7 @@ import { expect, test, describe } from "vitest";
 import { api } from "../_generated/api.js";
 import schema from "../schema.js";
 import { modules } from "../test.setup.js";
+import { type PolylineKey } from "../schema.js";
 
 const SIMPLE_LINE = [
   { latitude: 0, longitude: 0 },
@@ -21,13 +22,21 @@ describe("polyline queries", () => {
       const t = convexTest(schema, modules);
 
       await t.mutation(api.polylines.insert, {
-        document: { key: "diagonal", coordinates: DIAGONAL_LINE, sortKey: 1 },
+        document: {
+          key: "diagonal" as PolylineKey,
+          coordinates: DIAGONAL_LINE,
+          sortKey: 1,
+        },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       const result = await t.query(api.polylines.spatial.intersects, {
-        shape: {
-          type: "rectangle",
-          rectangle: { south: 4, north: 7, west: 4, east: 7 },
+        query: {
+          shape: {
+            type: "rectangle",
+            rectangle: { south: 4, north: 7, west: 4, east: 7 },
+          },
+          limit: 64,
         },
         config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
@@ -40,11 +49,19 @@ describe("polyline queries", () => {
       const t = convexTest(schema, modules);
 
       await t.mutation(api.polylines.insert, {
-        document: { key: "diagonal", coordinates: DIAGONAL_LINE, sortKey: 1 },
+        document: {
+          key: "diagonal" as PolylineKey,
+          coordinates: DIAGONAL_LINE,
+          sortKey: 1,
+        },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       const result = await t.query(api.polylines.spatial.intersects, {
-        shape: { type: "point", point: { latitude: 5.5, longitude: 5.5 } },
+        query: {
+          shape: { type: "point", point: { latitude: 5.5, longitude: 5.5 } },
+          limit: 64,
+        },
         config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
@@ -55,20 +72,28 @@ describe("polyline queries", () => {
       const t = convexTest(schema, modules);
 
       await t.mutation(api.polylines.insert, {
-        document: { key: "diagonal", coordinates: DIAGONAL_LINE, sortKey: 1 },
+        document: {
+          key: "diagonal" as PolylineKey,
+          coordinates: DIAGONAL_LINE,
+          sortKey: 1,
+        },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       const result = await t.query(api.polylines.spatial.intersects, {
-        shape: {
-          type: "polygon",
-          polygon: {
-            exterior: [
-              { latitude: 5, longitude: 5 },
-              { latitude: 5, longitude: 6 },
-              { latitude: 6, longitude: 6 },
-              { latitude: 6, longitude: 5 },
-            ],
+        query: {
+          shape: {
+            type: "polygon",
+            polygon: {
+              exterior: [
+                { latitude: 5, longitude: 5 },
+                { latitude: 5, longitude: 6 },
+                { latitude: 6, longitude: 6 },
+                { latitude: 6, longitude: 5 },
+              ],
+            },
           },
+          limit: 64,
         },
         config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
@@ -81,13 +106,21 @@ describe("polyline queries", () => {
       const t = convexTest(schema, modules);
 
       await t.mutation(api.polylines.insert, {
-        document: { key: "diagonal", coordinates: DIAGONAL_LINE, sortKey: 1 },
+        document: {
+          key: "diagonal" as PolylineKey,
+          coordinates: DIAGONAL_LINE,
+          sortKey: 1,
+        },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       const result = await t.query(api.polylines.spatial.intersects, {
-        shape: {
-          type: "rectangle",
-          rectangle: { south: 0, north: 1, west: 0, east: 1 },
+        query: {
+          shape: {
+            type: "rectangle",
+            rectangle: { south: 0, north: 1, west: 0, east: 1 },
+          },
+          limit: 64,
         },
         config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
@@ -100,24 +133,29 @@ describe("polyline queries", () => {
 
       await t.mutation(api.polylines.insert, {
         document: {
-          key: "line-a",
+          key: "line-a" as PolylineKey,
           coordinates: SIMPLE_LINE,
           sortKey: 1,
           filterKeys: { type: "a" },
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
       await t.mutation(api.polylines.insert, {
         document: {
-          key: "line-b",
+          key: "line-b" as PolylineKey,
           coordinates: SIMPLE_LINE,
           sortKey: 2,
           filterKeys: { type: "b" },
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       const result = await t.query(api.polylines.spatial.intersects, {
-        shape: { type: "point", point: { latitude: 0.5, longitude: 0.5 } },
-        filtering: [{ occur: "must", filterKey: "type", filterValue: "a" }],
+        query: {
+          shape: { type: "point", point: { latitude: 0.5, longitude: 0.5 } },
+          filtering: [{ occur: "must", filterKey: "type", filterValue: "a" }],
+          limit: 64,
+        },
         config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
@@ -130,13 +168,20 @@ describe("polyline queries", () => {
 
       for (let i = 0; i < 5; i++) {
         await t.mutation(api.polylines.insert, {
-          document: { key: `line-${i}`, coordinates: SIMPLE_LINE, sortKey: i },
+          document: {
+            key: `line-${i}` as PolylineKey,
+            coordinates: SIMPLE_LINE,
+            sortKey: i,
+          },
+          config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
         });
       }
 
       const result = await t.query(api.polylines.spatial.intersects, {
-        shape: { type: "point", point: { latitude: 0.5, longitude: 0.5 } },
-        limit: 2,
+        query: {
+          shape: { type: "point", point: { latitude: 0.5, longitude: 0.5 } },
+          limit: 2,
+        },
         config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
@@ -149,19 +194,28 @@ describe("polyline queries", () => {
 
       for (let i = 0; i < 5; i++) {
         await t.mutation(api.polylines.insert, {
-          document: { key: `line-${i}`, coordinates: SIMPLE_LINE, sortKey: i },
+          document: {
+            key: `line-${i}` as PolylineKey,
+            coordinates: SIMPLE_LINE,
+            sortKey: i,
+          },
+          config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
         });
       }
 
       const firstPage = await t.query(api.polylines.spatial.intersects, {
-        shape: { type: "point", point: { latitude: 0.5, longitude: 0.5 } },
-        limit: 2,
+        query: {
+          shape: { type: "point", point: { latitude: 0.5, longitude: 0.5 } },
+          limit: 2,
+        },
         config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       const secondPage = await t.query(api.polylines.spatial.intersects, {
-        shape: { type: "point", point: { latitude: 0.5, longitude: 0.5 } },
-        limit: 2,
+        query: {
+          shape: { type: "point", point: { latitude: 0.5, longitude: 0.5 } },
+          limit: 2,
+        },
         cursor: firstPage.continueCursor,
         config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
@@ -176,14 +230,27 @@ describe("polyline queries", () => {
       const t = convexTest(schema, modules);
 
       await t.mutation(api.polylines.insert, {
-        document: { key: "simple", coordinates: SIMPLE_LINE, sortKey: 1 },
+        document: {
+          key: "simple" as PolylineKey,
+          coordinates: SIMPLE_LINE,
+          sortKey: 1,
+        },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
       await t.mutation(api.polylines.insert, {
-        document: { key: "diagonal", coordinates: DIAGONAL_LINE, sortKey: 2 },
+        document: {
+          key: "diagonal" as PolylineKey,
+          coordinates: DIAGONAL_LINE,
+          sortKey: 2,
+        },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       const result = await t.query(api.polylines.spatial.nearest, {
-        point: { latitude: 0.1, longitude: 0.1 },
+        query: {
+          point: { latitude: 0.1, longitude: 0.1 },
+          limit: 64,
+        },
         config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
@@ -195,14 +262,27 @@ describe("polyline queries", () => {
       const t = convexTest(schema, modules);
 
       await t.mutation(api.polylines.insert, {
-        document: { key: "far-line", coordinates: DIAGONAL_LINE, sortKey: 2 },
+        document: {
+          key: "far-line" as PolylineKey,
+          coordinates: DIAGONAL_LINE,
+          sortKey: 2,
+        },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
       await t.mutation(api.polylines.insert, {
-        document: { key: "near-line", coordinates: SIMPLE_LINE, sortKey: 1 },
+        document: {
+          key: "near-line" as PolylineKey,
+          coordinates: SIMPLE_LINE,
+          sortKey: 1,
+        },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       const result = await t.query(api.polylines.spatial.nearest, {
-        point: { latitude: 0, longitude: 0 },
+        query: {
+          point: { latitude: 0, longitude: 0 },
+          limit: 64,
+        },
         config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
@@ -213,11 +293,19 @@ describe("polyline queries", () => {
       const t = convexTest(schema, modules);
 
       await t.mutation(api.polylines.insert, {
-        document: { key: "simple", coordinates: SIMPLE_LINE, sortKey: 1 },
+        document: {
+          key: "simple" as PolylineKey,
+          coordinates: SIMPLE_LINE,
+          sortKey: 1,
+        },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       const result = await t.query(api.polylines.spatial.nearest, {
-        point: { latitude: 0.5, longitude: 0.5 },
+        query: {
+          point: { latitude: 0.5, longitude: 0.5 },
+          limit: 64,
+        },
         config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
@@ -228,12 +316,20 @@ describe("polyline queries", () => {
       const t = convexTest(schema, modules);
 
       await t.mutation(api.polylines.insert, {
-        document: { key: "simple", coordinates: SIMPLE_LINE, sortKey: 1 },
+        document: {
+          key: "simple" as PolylineKey,
+          coordinates: SIMPLE_LINE,
+          sortKey: 1,
+        },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       const result = await t.query(api.polylines.spatial.nearest, {
-        point: { latitude: 2, longitude: 2 },
-        maxDistance: 100000,
+        query: {
+          point: { latitude: 2, longitude: 2 },
+          maxDistance: 100000,
+          limit: 64,
+        },
         config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
@@ -244,15 +340,28 @@ describe("polyline queries", () => {
       const t = convexTest(schema, modules);
 
       await t.mutation(api.polylines.insert, {
-        document: { key: "far-line", coordinates: DIAGONAL_LINE, sortKey: 2 },
+        document: {
+          key: "far-line" as PolylineKey,
+          coordinates: DIAGONAL_LINE,
+          sortKey: 2,
+        },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
       await t.mutation(api.polylines.insert, {
-        document: { key: "near-line", coordinates: SIMPLE_LINE, sortKey: 1 },
+        document: {
+          key: "near-line" as PolylineKey,
+          coordinates: SIMPLE_LINE,
+          sortKey: 1,
+        },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       const result = await t.query(api.polylines.spatial.nearest, {
-        point: { latitude: 0.5, longitude: 0.5 },
-        maxDistance: 100000,
+        query: {
+          point: { latitude: 0.5, longitude: 0.5 },
+          maxDistance: 100000,
+          limit: 64,
+        },
         config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
@@ -265,24 +374,29 @@ describe("polyline queries", () => {
 
       await t.mutation(api.polylines.insert, {
         document: {
-          key: "line-a",
+          key: "line-a" as PolylineKey,
           coordinates: SIMPLE_LINE,
           sortKey: 1,
           filterKeys: { type: "a" },
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
       await t.mutation(api.polylines.insert, {
         document: {
-          key: "line-b",
+          key: "line-b" as PolylineKey,
           coordinates: SIMPLE_LINE,
           sortKey: 2,
           filterKeys: { type: "b" },
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       const result = await t.query(api.polylines.spatial.nearest, {
-        point: { latitude: 0.5, longitude: 0.5 },
-        filtering: [{ occur: "must", filterKey: "type", filterValue: "a" }],
+        query: {
+          point: { latitude: 0.5, longitude: 0.5 },
+          filtering: [{ occur: "must", filterKey: "type", filterValue: "a" }],
+          limit: 64,
+        },
         config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
@@ -295,13 +409,20 @@ describe("polyline queries", () => {
 
       for (let i = 0; i < 5; i++) {
         await t.mutation(api.polylines.insert, {
-          document: { key: `line-${i}`, coordinates: SIMPLE_LINE, sortKey: i },
+          document: {
+            key: `line-${i}` as PolylineKey,
+            coordinates: SIMPLE_LINE,
+            sortKey: i,
+          },
+          config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
         });
       }
 
       const result = await t.query(api.polylines.spatial.nearest, {
-        point: { latitude: 0.5, longitude: 0.5 },
-        limit: 2,
+        query: {
+          point: { latitude: 0.5, longitude: 0.5 },
+          limit: 2,
+        },
         config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
@@ -314,19 +435,28 @@ describe("polyline queries", () => {
 
       for (let i = 0; i < 5; i++) {
         await t.mutation(api.polylines.insert, {
-          document: { key: `line-${i}`, coordinates: SIMPLE_LINE, sortKey: i },
+          document: {
+            key: `line-${i}` as PolylineKey,
+            coordinates: SIMPLE_LINE,
+            sortKey: i,
+          },
+          config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
         });
       }
 
       const firstPage = await t.query(api.polylines.spatial.nearest, {
-        point: { latitude: 0.5, longitude: 0.5 },
-        limit: 2,
+        query: {
+          point: { latitude: 0.5, longitude: 0.5 },
+          limit: 2,
+        },
         config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       const secondPage = await t.query(api.polylines.spatial.nearest, {
-        point: { latitude: 0.5, longitude: 0.5 },
-        limit: 2,
+        query: {
+          point: { latitude: 0.5, longitude: 0.5 },
+          limit: 2,
+        },
         cursor: firstPage.continueCursor,
         config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });

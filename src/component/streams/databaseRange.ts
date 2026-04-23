@@ -4,6 +4,7 @@ import type { Interval } from "../lib/interval.js";
 import type { Logger } from "../lib/logging.js";
 import { encodeBound, type Cursor } from "../lib/cursor.js";
 import type { PointSet, Stats } from "./zigzag.js";
+import type { CounterKey } from "../schema.js";
 
 export abstract class DatabaseRange implements PointSet {
   private state:
@@ -23,7 +24,7 @@ export abstract class DatabaseRange implements PointSet {
   abstract initialQuery(): Promise<Cursor[]>;
   abstract advanceQuery(lastKey: Cursor): Promise<Cursor[]>;
   abstract seekQuery(tuple: Cursor): Promise<Cursor[]>;
-  abstract getCounterKey(): string;
+  abstract getCounterKey(): CounterKey;
 
   async current(): Promise<Cursor | null> {
     if (this.state.type === "done") {

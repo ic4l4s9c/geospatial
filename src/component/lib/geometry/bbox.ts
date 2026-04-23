@@ -5,8 +5,8 @@ export function computeBoundingBox(points: Point[]): Rectangle {
     throw new Error("Cannot compute bounding box for empty points array");
   }
   let south = Infinity,
-    north = -Infinity;
-  let west = Infinity,
+    north = -Infinity,
+    west = Infinity,
     east = -Infinity;
 
   for (const p of points) {

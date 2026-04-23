@@ -147,14 +147,14 @@ func polygonContainsPoint(numPoints int, pLat float64, pLng float64) bool {
 
 //export cellVertexLatDegrees
 func cellVertexLatDegrees(cellID uint64, k int) float64 {
-	cell := s2.CellFromCellID((s2.CellID(cellID)))
+	cell := s2.CellFromCellID(s2.CellID(cellID))
 	point := cell.Vertex(k)
 	return s2.LatLngFromPoint(point).Lat.Degrees()
 }
 
 //export cellVertexLngDegrees
 func cellVertexLngDegrees(cellID uint64, k int) float64 {
-	cell := s2.CellFromCellID((s2.CellID(cellID)))
+	cell := s2.CellFromCellID(s2.CellID(cellID))
 	point := cell.Vertex(k)
 	return s2.LatLngFromPoint(point).Lng.Degrees()
 }

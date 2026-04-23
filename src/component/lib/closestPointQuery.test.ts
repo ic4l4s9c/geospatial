@@ -8,6 +8,7 @@ import { S2Bindings } from "./s2Bindings.js";
 import { ClosestPointQuery } from "./closestPointQuery.js";
 import { createLogger } from "./logging.js";
 import { api } from "../_generated/api.js";
+import type { PointKey } from "../schema.js";
 
 const config = {
   minLevel: 4,
@@ -24,19 +25,19 @@ test("closest point query - basic functionality", async () => {
   // Insert some test points
   const points = [
     {
-      key: "point1",
+      key: "point1" as PointKey,
       coordinates: { latitude: 0, longitude: 0 },
       sortKey: 1,
       filterKeys: { category: "coffee" },
     },
     {
-      key: "point2",
+      key: "point2" as PointKey,
       coordinates: { latitude: 1, longitude: 1 },
       sortKey: 2,
       filterKeys: { category: "tea" },
     },
     {
-      key: "point3",
+      key: "point3" as PointKey,
       coordinates: { latitude: -1, longitude: -1 },
       sortKey: 3,
       filterKeys: { category: "coffee" },
@@ -199,31 +200,31 @@ test("closest point query - cursor pagination", async () => {
 
   const points = [
     {
-      key: "p0",
+      key: "p0" as PointKey,
       coordinates: { latitude: 0, longitude: 0 },
       sortKey: 1,
       filterKeys: { category: "a" },
     },
     {
-      key: "p1",
+      key: "p1" as PointKey,
       coordinates: { latitude: 0.01, longitude: 0 },
       sortKey: 2,
       filterKeys: { category: "a" },
     },
     {
-      key: "p2",
+      key: "p2" as PointKey,
       coordinates: { latitude: 0.02, longitude: 0 },
       sortKey: 3,
       filterKeys: { category: "a" },
     },
     {
-      key: "p3",
+      key: "p3" as PointKey,
       coordinates: { latitude: 0.03, longitude: 0 },
       sortKey: 4,
       filterKeys: { category: "a" },
     },
     {
-      key: "p4",
+      key: "p4" as PointKey,
       coordinates: { latitude: 0.04, longitude: 0 },
       sortKey: 5,
       filterKeys: { category: "a" },
@@ -286,7 +287,7 @@ fcTest.prop({ documents: arbitraryDocuments })(
     // Insert all documents
     for (const document of documents) {
       await t.mutation(api.points.insert, {
-        document,
+        document: { ...document, key: document.key as PointKey },
         config,
       });
     }

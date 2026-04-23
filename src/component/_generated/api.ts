@@ -14,6 +14,7 @@ import type * as lib_closestPointQuery from "../lib/closestPointQuery.js";
 import type * as lib_cursor from "../lib/cursor.js";
 import type * as lib_d64 from "../lib/d64.js";
 import type * as lib_geometry_bbox from "../lib/geometry/bbox.js";
+import type * as lib_geometry_cells from "../lib/geometry/cells.js";
 import type * as lib_geometry_points from "../lib/geometry/points.js";
 import type * as lib_goRuntime from "../lib/goRuntime.js";
 import type * as lib_interval from "../lib/interval.js";
@@ -53,6 +54,7 @@ const fullApi: ApiFromModules<{
   "lib/cursor": typeof lib_cursor;
   "lib/d64": typeof lib_d64;
   "lib/geometry/bbox": typeof lib_geometry_bbox;
+  "lib/geometry/cells": typeof lib_geometry_cells;
   "lib/geometry/points": typeof lib_geometry_points;
   "lib/goRuntime": typeof lib_goRuntime;
   "lib/interval": typeof lib_interval;

@@ -1,6 +1,7 @@
 import type { ChordAngle, Point, Rectangle } from "../validators.js";
 import { Go } from "./goRuntime.js";
 import { wasmSource } from "./s2wasm.js";
+import type { CellIDToken } from "../schema.js";
 
 // Cell level bounds matching Go implementation (Standard S2 Inverted Index)
 export const MIN_CELL_LEVEL = 4;
@@ -41,7 +42,7 @@ export class S2Bindings {
     return this.exports.cellIDFromLatLng(point.latitude, point.longitude);
   }
 
-  cellIDToken(cellID: CellID): string {
+  cellIDToken(cellID: CellID): CellIDToken {
     const len = this.exports.cellIDToken(cellID);
     if (len < 0) {
       throw new Error(`Failed to get cell ID token`);
@@ -49,7 +50,7 @@ export class S2Bindings {
     const ptr = this.exports.tokenBufferPtr();
     const wasmMemory = new Uint8Array(this.exports.memory.buffer);
     const buffer = wasmMemory.slice(ptr + 0, ptr + len);
-    return this.decoder.decode(buffer.buffer);
+    return this.decoder.decode(buffer.buffer) as CellIDToken;
   }
 
   cellIDParent(cellID: CellID, level: number): CellID {

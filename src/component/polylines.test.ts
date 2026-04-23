@@ -4,6 +4,7 @@ import { api } from "./_generated/api.js";
 import schema from "./schema.js";
 import { modules } from "./test.setup.js";
 import { validatePolyline } from "./polylines.js";
+import { type PolylineKey } from "./schema.js";
 
 const MANHATTAN_STREET_POLYLINE = [
   { latitude: 40.748, longitude: -73.985 },
@@ -74,13 +75,14 @@ describe("polyline storage", () => {
       await t.mutation(api.polylines.insert, {
         document: {
           sortKey: 0,
-          key: "manhattan-street",
+          key: "manhattan-street" as PolylineKey,
           coordinates: MANHATTAN_STREET_POLYLINE,
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       const polyline = await t.query(api.polylines.get, {
-        key: "manhattan-street",
+        key: "manhattan-street" as PolylineKey,
       });
 
       expect(polyline).not.toBeNull();
@@ -98,18 +100,20 @@ describe("polyline storage", () => {
       await t.mutation(api.polylines.insert, {
         document: {
           sortKey: 0,
-          key: "manhattan-street",
+          key: "manhattan-street" as PolylineKey,
           coordinates: MANHATTAN_STREET_POLYLINE,
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       await expect(
         t.mutation(api.polylines.insert, {
           document: {
             sortKey: 0,
-            key: "manhattan-street",
+            key: "manhattan-street" as PolylineKey,
             coordinates: MANHATTAN_STREET_POLYLINE,
           },
+          config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
         }),
       ).rejects.toThrow(/already exists/);
     });
@@ -121,9 +125,10 @@ describe("polyline storage", () => {
         t.mutation(api.polylines.insert, {
           document: {
             sortKey: 0,
-            key: "single-point",
+            key: "single-point" as PolylineKey,
             coordinates: [{ latitude: 0, longitude: 0 }],
           },
+          config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
         }),
       ).rejects.toThrow(/at least 2 points/);
     });
@@ -136,15 +141,18 @@ describe("polyline storage", () => {
       await t.mutation(api.polylines.insert, {
         document: {
           sortKey: 0,
-          key: "manhattan-street",
+          key: "manhattan-street" as PolylineKey,
           coordinates: MANHATTAN_STREET_POLYLINE,
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
-      await t.mutation(api.polylines.del, { key: "manhattan-street" });
+      await t.mutation(api.polylines.del, {
+        key: "manhattan-street" as PolylineKey,
+      });
 
       const polyline = await t.query(api.polylines.get, {
-        key: "manhattan-street",
+        key: "manhattan-street" as PolylineKey,
       });
       expect(polyline).toBeNull();
     });
@@ -153,7 +161,7 @@ describe("polyline storage", () => {
       const t = convexTest(schema, modules);
 
       const result = await t.mutation(api.polylines.del, {
-        key: "nonexistent",
+        key: "nonexistent" as PolylineKey,
       });
 
       expect(result).toBe(false);
@@ -165,13 +173,14 @@ describe("polyline storage", () => {
       await t.mutation(api.polylines.insert, {
         document: {
           sortKey: 0,
-          key: "manhattan-street",
+          key: "manhattan-street" as PolylineKey,
           coordinates: MANHATTAN_STREET_POLYLINE,
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       const result = await t.mutation(api.polylines.del, {
-        key: "manhattan-street",
+        key: "manhattan-street" as PolylineKey,
       });
 
       expect(result).toBe(true);
@@ -185,19 +194,23 @@ describe("polyline storage", () => {
       await t.mutation(api.polylines.insert, {
         document: {
           sortKey: 0,
-          key: "diagonal",
+          key: "diagonal" as PolylineKey,
           coordinates: DIAGONAL_POLYLINE,
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       await t.mutation(api.polylines.update, {
         document: {
-          key: "diagonal",
+          key: "diagonal" as PolylineKey,
           coordinates: SHIFTED_DIAGONAL_POLYLINE,
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
-      const polyline = await t.query(api.polylines.get, { key: "diagonal" });
+      const polyline = await t.query(api.polylines.get, {
+        key: "diagonal" as PolylineKey,
+      });
 
       expect(polyline?.boundingBox).toMatchObject({
         south: 10,
@@ -212,9 +225,10 @@ describe("polyline storage", () => {
 
       const result = await t.mutation(api.polylines.update, {
         document: {
-          key: "nonexistent",
+          key: "nonexistent" as PolylineKey,
           coordinates: DIAGONAL_POLYLINE,
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       expect(result).toBe(false);
@@ -226,16 +240,18 @@ describe("polyline storage", () => {
       await t.mutation(api.polylines.insert, {
         document: {
           sortKey: 0,
-          key: "diagonal",
+          key: "diagonal" as PolylineKey,
           coordinates: DIAGONAL_POLYLINE,
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       const result = await t.mutation(api.polylines.update, {
         document: {
-          key: "diagonal",
+          key: "diagonal" as PolylineKey,
           coordinates: SHIFTED_DIAGONAL_POLYLINE,
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       expect(result).toBe(true);
@@ -247,19 +263,23 @@ describe("polyline storage", () => {
       await t.mutation(api.polylines.insert, {
         document: {
           sortKey: 0,
-          key: "diagonal",
+          key: "diagonal" as PolylineKey,
           coordinates: DIAGONAL_POLYLINE,
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       await t.mutation(api.polylines.update, {
         document: {
-          key: "diagonal",
+          key: "diagonal" as PolylineKey,
           sortKey: 99,
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
-      const polyline = await t.query(api.polylines.get, { key: "diagonal" });
+      const polyline = await t.query(api.polylines.get, {
+        key: "diagonal" as PolylineKey,
+      });
 
       expect(polyline?.sortKey).toBe(99);
       expect(polyline?.coordinates).toEqual(DIAGONAL_POLYLINE);
@@ -271,22 +291,26 @@ describe("polyline storage", () => {
       await t.mutation(api.polylines.insert, {
         document: {
           sortKey: 0,
-          key: "diagonal",
+          key: "diagonal" as PolylineKey,
           coordinates: DIAGONAL_POLYLINE,
           filterKeys: { category: "original" },
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       const result = await t.mutation(api.polylines.update, {
         document: {
-          key: "diagonal",
+          key: "diagonal" as PolylineKey,
           filterKeys: { category: "updated" },
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       expect(result).toBe(true);
 
-      const polyline = await t.query(api.polylines.get, { key: "diagonal" });
+      const polyline = await t.query(api.polylines.get, {
+        key: "diagonal" as PolylineKey,
+      });
       expect(polyline?.filterKeys).toEqual({ category: "updated" });
       expect(polyline?.coordinates).toEqual(DIAGONAL_POLYLINE);
     });
@@ -297,24 +321,28 @@ describe("polyline storage", () => {
       await t.mutation(api.polylines.insert, {
         document: {
           sortKey: 0,
-          key: "diagonal",
+          key: "diagonal" as PolylineKey,
           coordinates: DIAGONAL_POLYLINE,
           filterKeys: { category: "original" },
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       const result = await t.mutation(api.polylines.update, {
         document: {
-          key: "diagonal",
+          key: "diagonal" as PolylineKey,
           coordinates: SHIFTED_DIAGONAL_POLYLINE,
           sortKey: 99,
           filterKeys: { category: "updated" },
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       expect(result).toBe(true);
 
-      const polyline = await t.query(api.polylines.get, { key: "diagonal" });
+      const polyline = await t.query(api.polylines.get, {
+        key: "diagonal" as PolylineKey,
+      });
       expect(polyline?.sortKey).toBe(99);
       expect(polyline?.filterKeys).toEqual({ category: "updated" });
       expect(polyline?.coordinates).toEqual(SHIFTED_DIAGONAL_POLYLINE);
@@ -326,7 +354,7 @@ describe("polyline storage", () => {
       const t = convexTest(schema, modules);
 
       const polyline = await t.query(api.polylines.get, {
-        key: "nonexistent",
+        key: "nonexistent" as PolylineKey,
       });
 
       expect(polyline).toBeNull();
@@ -338,12 +366,15 @@ describe("polyline storage", () => {
       await t.mutation(api.polylines.insert, {
         document: {
           sortKey: 0,
-          key: "diagonal",
+          key: "diagonal" as PolylineKey,
           coordinates: DIAGONAL_POLYLINE,
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
-      const polyline = await t.query(api.polylines.get, { key: "diagonal" });
+      const polyline = await t.query(api.polylines.get, {
+        key: "diagonal" as PolylineKey,
+      });
 
       expect(polyline?.coordinates).toEqual(DIAGONAL_POLYLINE);
     });

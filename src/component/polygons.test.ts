@@ -4,6 +4,7 @@ import { api } from "./_generated/api.js";
 import schema from "./schema.js";
 import { modules } from "./test.setup.js";
 import { validatePolygonCoordinates } from "./polygons.js";
+import { type PolygonKey } from "./schema.js";
 
 const MANHATTAN_POLYGON = {
   exterior: [
@@ -146,12 +147,15 @@ describe("polygon storage", () => {
       await t.mutation(api.polygons.insert, {
         document: {
           sortKey: 0,
-          key: "manhattan",
+          key: "manhattan" as PolygonKey,
           coordinates: MANHATTAN_POLYGON,
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
-      const polygon = await t.query(api.polygons.get, { key: "manhattan" });
+      const polygon = await t.query(api.polygons.get, {
+        key: "manhattan" as PolygonKey,
+      });
 
       expect(polygon).not.toBeNull();
       expect(polygon?.boundingBox).toMatchObject({
@@ -168,18 +172,20 @@ describe("polygon storage", () => {
       await t.mutation(api.polygons.insert, {
         document: {
           sortKey: 0,
-          key: "manhattan",
+          key: "manhattan" as PolygonKey,
           coordinates: MANHATTAN_POLYGON,
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       await expect(
         t.mutation(api.polygons.insert, {
           document: {
             sortKey: 0,
-            key: "manhattan",
+            key: "manhattan" as PolygonKey,
             coordinates: MANHATTAN_POLYGON,
           },
+          config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
         }),
       ).rejects.toThrow(/already exists/);
     });
@@ -192,17 +198,20 @@ describe("polygon storage", () => {
       await t.mutation(api.polygons.insert, {
         document: {
           sortKey: 0,
-          key: "manhattan",
+          key: "manhattan" as PolygonKey,
           coordinates: MANHATTAN_POLYGON,
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       const removed = await t.mutation(api.polygons.del, {
-        key: "manhattan",
+        key: "manhattan" as PolygonKey,
       });
       expect(removed).toBe(true);
 
-      const polygon = await t.query(api.polygons.get, { key: "manhattan" });
+      const polygon = await t.query(api.polygons.get, {
+        key: "manhattan" as PolygonKey,
+      });
       expect(polygon).toBeNull();
     });
 
@@ -210,7 +219,7 @@ describe("polygon storage", () => {
       const t = convexTest(schema, modules);
 
       const removed = await t.mutation(api.polygons.del, {
-        key: "nonexistent",
+        key: "nonexistent" as PolygonKey,
       });
       expect(removed).toBe(false);
     });
@@ -223,19 +232,23 @@ describe("polygon storage", () => {
       await t.mutation(api.polygons.insert, {
         document: {
           sortKey: 0,
-          key: "square",
+          key: "square" as PolygonKey,
           coordinates: UNIT_SQUARE_POLYGON,
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       await t.mutation(api.polygons.update, {
         document: {
-          key: "square",
+          key: "square" as PolygonKey,
           coordinates: SHIFTED_SQUARE_POLYGON,
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
-      const polygon = await t.query(api.polygons.get, { key: "square" });
+      const polygon = await t.query(api.polygons.get, {
+        key: "square" as PolygonKey,
+      });
 
       expect(polygon?.boundingBox).toMatchObject({
         south: 10,
@@ -250,9 +263,10 @@ describe("polygon storage", () => {
 
       const updated = await t.mutation(api.polygons.update, {
         document: {
-          key: "nonexistent",
+          key: "nonexistent" as PolygonKey,
           sortKey: 99,
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
       expect(updated).toBe(false);
     });
@@ -263,20 +277,24 @@ describe("polygon storage", () => {
       await t.mutation(api.polygons.insert, {
         document: {
           sortKey: 0,
-          key: "square",
+          key: "square" as PolygonKey,
           coordinates: UNIT_SQUARE_POLYGON,
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       const updated = await t.mutation(api.polygons.update, {
         document: {
-          key: "square",
+          key: "square" as PolygonKey,
           sortKey: 42,
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
       expect(updated).toBe(true);
 
-      const polygon = await t.query(api.polygons.get, { key: "square" });
+      const polygon = await t.query(api.polygons.get, {
+        key: "square" as PolygonKey,
+      });
       expect(polygon?.sortKey).toBe(42);
       // Coordinates must be unchanged
       expect(polygon?.coordinates).toEqual(UNIT_SQUARE_POLYGON);
@@ -288,21 +306,25 @@ describe("polygon storage", () => {
       await t.mutation(api.polygons.insert, {
         document: {
           sortKey: 0,
-          key: "square",
+          key: "square" as PolygonKey,
           coordinates: UNIT_SQUARE_POLYGON,
           filterKeys: { category: "original" },
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       const updated = await t.mutation(api.polygons.update, {
         document: {
-          key: "square",
+          key: "square" as PolygonKey,
           filterKeys: { category: "updated" },
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
       expect(updated).toBe(true);
 
-      const polygon = await t.query(api.polygons.get, { key: "square" });
+      const polygon = await t.query(api.polygons.get, {
+        key: "square" as PolygonKey,
+      });
       expect(polygon?.filterKeys).toEqual({ category: "updated" });
       expect(polygon?.coordinates).toEqual(UNIT_SQUARE_POLYGON);
     });
@@ -313,23 +335,27 @@ describe("polygon storage", () => {
       await t.mutation(api.polygons.insert, {
         document: {
           sortKey: 0,
-          key: "square",
+          key: "square" as PolygonKey,
           coordinates: UNIT_SQUARE_POLYGON,
           filterKeys: { category: "original" },
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
 
       const updated = await t.mutation(api.polygons.update, {
         document: {
-          key: "square",
+          key: "square" as PolygonKey,
           coordinates: SHIFTED_SQUARE_POLYGON,
           sortKey: 99,
           filterKeys: { category: "updated" },
         },
+        config: { minLevel: 4, maxLevel: 16, levelMod: 2, maxCells: 30 },
       });
       expect(updated).toBe(true);
 
-      const polygon = await t.query(api.polygons.get, { key: "square" });
+      const polygon = await t.query(api.polygons.get, {
+        key: "square" as PolygonKey,
+      });
       expect(polygon?.coordinates).toEqual(SHIFTED_SQUARE_POLYGON);
       expect(polygon?.sortKey).toBe(99);
       expect(polygon?.filterKeys).toEqual({ category: "updated" });
@@ -340,7 +366,9 @@ describe("polygon storage", () => {
     test("returns null for a key that does not exist", async () => {
       const t = convexTest(schema, modules);
 
-      const polygon = await t.query(api.polygons.get, { key: "nonexistent" });
+      const polygon = await t.query(api.polygons.get, {
+        key: "nonexistent" as PolygonKey,
+      });
       expect(polygon).toBeNull();
     });
   });

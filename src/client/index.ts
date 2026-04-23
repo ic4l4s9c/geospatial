@@ -229,15 +229,15 @@ class NearestQueryBuilder<
     const result = await this.ctx.runQuery(
       this.component.points.spatial.nearest,
       {
-        point: this.point,
-        maxDistance: this.maxDistance,
-        limit: this.#limit ?? 64,
-        minLevel: this.config.minLevel,
-        maxLevel: this.config.maxLevel,
-        levelMod: this.config.levelMod,
+        config: this.config,
+        query: {
+          point: this.point,
+          maxDistance: this.maxDistance,
+          limit: this.#limit ?? 64,
+          filtering: filterBuilder.filterConditions,
+          sorting: { interval: filterBuilder.interval ?? {} },
+        },
         logLevel: this.config.logLevel,
-        filtering: filterBuilder.filterConditions,
-        sorting: { interval: filterBuilder.interval ?? {} },
       },
     );
     return result.page as Narrow<(typeof result.page)[number], { key: Key }>[];
@@ -441,7 +441,6 @@ class PointsNamespace<Key extends string, Filters extends GeospatialFilters> {
   async delete(ctx: MutationCtx, key: Key): Promise<boolean> {
     return await ctx.runMutation(this.component.points.del, {
       key,
-      config: this.config,
     });
   }
 
@@ -521,7 +520,6 @@ class PolygonsNamespace<Key extends string, Filters extends GeospatialFilters> {
   async delete(ctx: MutationCtx, key: Key): Promise<boolean> {
     return await ctx.runMutation(this.component.polygons.del, {
       key,
-      config: this.config,
     });
   }
 }
@@ -538,7 +536,7 @@ class PolylinesNamespace<
    *
    * @example
    * ```ts
-   * const lengthM = await geospatial.polylines.measure.length(ctx, myPolyline);
+   * const length = await geospatial.polylines.measure.length(ctx, myPolyline);
    * const center  = await geospatial.polylines.measure.centroid(ctx, myPolyline);
    * ```
    */
@@ -595,7 +593,6 @@ class PolylinesNamespace<
   async delete(ctx: MutationCtx, key: Key): Promise<boolean> {
     return await ctx.runMutation(this.component.polylines.del, {
       key,
-      config: this.config,
     });
   }
 }

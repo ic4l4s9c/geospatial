@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import {
   config,
-  equalityCondition,
+  filterCondition,
   type Point,
   point,
   rectangle,
@@ -21,12 +21,13 @@ import { S2Bindings } from "../lib/s2Bindings.js";
 import { ClosestPointQuery } from "../lib/closestPointQuery.js";
 import { PREFETCH_SIZE } from "../streams/constants.js";
 import { paginationResultValidator } from "convex/server";
+import type { CellIDToken } from "../schema.js";
 
 export { PREFETCH_SIZE } from "../streams/constants.js";
 
 const geospatialQuery = v.object({
   rectangle,
-  filtering: v.optional(v.array(equalityCondition)),
+  filtering: v.optional(v.array(filterCondition)),
   sorting: v.object({
     // TODO: Support reverse order.
     // order: v.union(v.literal("asc"), v.literal("desc")),
@@ -59,7 +60,7 @@ export const within = query({
 
     logger.time("execute");
     // First, validate the query.
-    const { sorting } = args.query;
+    const { sorting, rectangle } = args.query;
     if (
       sorting.interval.startInclusive !== undefined &&
       sorting.interval.endExclusive !== undefined
@@ -72,7 +73,6 @@ export const within = query({
         return { page: [], isDone: true, continueCursor: "" };
       }
     }
-    const { rectangle } = args.query;
     const cells = s2
       .coverRectangle(
         rectangle,
@@ -140,20 +140,23 @@ export const within = query({
 
     // Finally, consume the stream and fetch the resulting IDs.
     const channel = new Channel<{
-      tupleKey: Cursor<number, Id<"points">>;
-      docPromise: Promise<Doc<"points"> | null>;
+      cursor: Cursor<number, Id<"points">>;
+      promise: Promise<Doc<"points"> | null>;
     }>(8);
     const producer = async () => {
       try {
         // eslint-disable-next-line no-constant-condition
         while (true) {
-          const tupleKey = await stream.current();
-          if (tupleKey === null) {
+          const cursor = await stream.current();
+          if (cursor === null) {
             break;
           }
-          const { id } = decodeCursor<number, Id<"points">>(tupleKey);
+          const { id } = decodeCursor<number, Id<"points">>(cursor);
           try {
-            await channel.push({ tupleKey, docPromise: ctx.db.get(id) });
+            await channel.push({
+              cursor: cursor,
+              promise: ctx.db.get(id),
+            });
           } catch (e) {
             if (e instanceof ChannelClosedError) {
               break;
@@ -175,8 +178,8 @@ export const within = query({
     let continueCursor: Cursor = "";
     const consumer = async () => {
       try {
-        for await (const { tupleKey, docPromise } of channel) {
-          const doc = await docPromise;
+        for await (const { cursor, promise } of channel) {
+          const doc = await promise;
           if (doc === null) {
             throw new Error("Internal error: document not found");
           }
@@ -192,16 +195,16 @@ export const within = query({
           });
           if (page.length >= args.query.limit) {
             logger.debug(
-              `Consumer reached max results of ${args.query.limit} at ${tupleKey}`,
+              `Consumer reached max results of ${args.query.limit} at ${cursor}`,
             );
-            continueCursor = tupleKey;
+            continueCursor = cursor;
             return;
           }
           if (stats.rowsRead >= 1024) {
             logger.warn(
-              `Consumer reached Convex query limit of 1024 rows at ${tupleKey}`,
+              `Consumer reached Convex query limit of 1024 rows at ${cursor}`,
             );
-            continueCursor = tupleKey;
+            continueCursor = cursor;
             return;
           }
         }
@@ -230,37 +233,35 @@ export const within = query({
 
 export const nearest = query({
   args: {
-    point,
-    maxDistance: v.optional(v.number()),
-    limit: v.number(),
-    minLevel: v.number(),
-    maxLevel: v.number(),
-    levelMod: v.number(),
-    cursor: v.optional(v.string()),
-    filtering: v.optional(v.array(equalityCondition)),
-    sorting: v.object({
-      interval,
+    config: config,
+    query: v.object({
+      point: point,
+      maxDistance: v.optional(v.number()),
+      limit: v.number(),
+      filtering: v.optional(v.array(filterCondition)),
+      sorting: v.object({ interval: interval }),
     }),
+    cursor: v.optional(v.string()),
     logLevel: v.optional(logLevel),
   },
   returns: paginationResultValidator(pointDocWithDistance),
   handler: async (ctx, args) => {
     const logger = createLogger(args.logLevel);
     const s2 = await S2Bindings.load();
-    if (args.limit === 0) {
+    if (args.query.limit === 0) {
       return { page: [], isDone: true, continueCursor: "" };
     }
     const query = new ClosestPointQuery(
       s2,
       logger,
-      args.point,
-      args.maxDistance,
-      args.limit,
-      args.minLevel,
-      args.maxLevel,
-      args.levelMod,
-      args.filtering,
-      args.sorting.interval,
+      args.query.point,
+      args.query.maxDistance,
+      args.query.limit,
+      args.config.minLevel,
+      args.config.maxLevel,
+      args.config.levelMod,
+      args.query.filtering,
+      args.query.sorting.interval,
       args.cursor,
     );
     return await query.execute(ctx);

@@ -1,10 +1,21 @@
-import { mutation, query } from "./_generated/server.js";
+import { mutation, query, type MutationCtx } from "./_generated/server.js";
 import { v } from "convex/values";
 import { S2Bindings } from "./lib/s2Bindings.js";
-import { config, filterKeys, polygon, rectangle } from "./validators.js";
+import {
+  config,
+  filterKeys,
+  polygon,
+  rectangle,
+} from "./validators.js";
 import type { Point, Polygon } from "./validators.js";
 import { validatePointBounds } from "./lib/geometry/points.js";
 import { computeBoundingBox } from "./lib/geometry/bbox.js";
+import { polygonKey, type PolygonKey } from "./schema.js";
+import { encodeCursor } from "./lib/cursor.js";
+import { filterCounterKey } from "./streams/filterKeyRange.js";
+import { cellCounterKey } from "./streams/cellRange.js";
+import * as approximateCounter from "./lib/approximateCounter.js";
+import { s2CellTokens } from "./lib/geometry/cells.js";
 
 export function validatePolygonCoordinates(coordinates: unknown): Point[] {
   const poly = coordinates as Polygon & {
@@ -32,7 +43,7 @@ export function validatePolygonCoordinates(coordinates: unknown): Point[] {
 }
 
 const document = v.object({
-  key: v.string(),
+  key: polygonKey,
   coordinates: polygon,
   filterKeys: filterKeys,
   sortKey: v.number(),
@@ -45,44 +56,19 @@ const document = v.object({
 export const insert = mutation({
   args: {
     document: document,
-    config: v.optional(config),
+    config: config,
   },
   returns: v.null(),
   handler: async (ctx, args) => {
     const s2 = await S2Bindings.load();
 
-    const config = args.config ?? {
-      minLevel: 4,
-      maxLevel: 16,
-      levelMod: 2,
-      maxCells: 30,
-    };
-    const maxCells = config.maxCells;
-    const minLevel = config.minLevel;
-    const maxLevel = config.maxLevel;
-    const levelMod = config.levelMod;
+    await removePolygonByKey(ctx, args.document.key);
 
-    const existing = await ctx.db
-      .query("polygons")
-      .withIndex("byKey", (q) => q.eq("key", args.document.key))
-      .first();
-    if (existing) {
-      throw new Error(`Polygon with key "${args.document.key}" already exists`);
-    }
+    const exterior = validatePolygonCoordinates(args.document.coordinates);
+    validatePointBounds(exterior);
+    const bbox = computeBoundingBox(exterior);
 
-    const points = validatePolygonCoordinates(args.document.coordinates);
-    validatePointBounds(points);
-    const bbox = computeBoundingBox(points);
-
-    const polygonCells = s2.coverPolygonForIndex(points, maxCells);
-    const coveringCells = s2.filterCellsByLevel(
-      polygonCells,
-      minLevel,
-      maxLevel,
-      levelMod,
-    );
-
-    const geometryId = await ctx.db.insert("polygons", {
+    const polygonId = await ctx.db.insert("polygons", {
       key: args.document.key,
       coordinates: args.document.coordinates,
       ...bbox,
@@ -90,15 +76,34 @@ export const insert = mutation({
       filterKeys: args.document.filterKeys,
     });
 
-    for (const cellId of coveringCells) {
-      const token = s2.cellIDToken(cellId);
-      const level = s2.cellIDLevel(cellId);
+    const cellTokens = s2CellTokens(s2, exterior, args.config);
+    const cursor = encodeCursor(args.document.sortKey, polygonId);
+
+    for (const cell of cellTokens) {
       await ctx.db.insert("polygonCells", {
-        geometryId,
-        geometryKey: args.document.key,
-        cellToken: token,
-        level,
+        key: args.document.key,
+        cell,
+        cursor,
       });
+      await approximateCounter.increment(ctx, polygonId, cellCounterKey(cell));
+    }
+
+    for (const [filterKey, filterDoc] of Object.entries(
+      args.document.filterKeys ?? {},
+    )) {
+      const valueArray = Array.isArray(filterDoc) ? filterDoc : [filterDoc];
+      for (const filterValue of valueArray) {
+        await ctx.db.insert("polygonFilters", {
+          filterKey,
+          filterValue,
+          cursor,
+        });
+        await approximateCounter.increment(
+          ctx,
+          polygonId,
+          filterCounterKey(filterKey, filterValue),
+        );
+      }
     }
   },
 });
@@ -108,7 +113,7 @@ export const insert = mutation({
  * @internal
  */
 export const get = query({
-  args: { key: v.string() },
+  args: { key: polygonKey },
   returns: v.union(
     document.extend({
       boundingBox: rectangle,
@@ -118,7 +123,7 @@ export const get = query({
   handler: async (ctx, args) => {
     const geometry = await ctx.db
       .query("polygons")
-      .withIndex("byKey", (q) => q.eq("key", args.key))
+      .withIndex("by_key", (q) => q.eq("key", args.key))
       .first();
 
     if (!geometry) {
@@ -149,78 +154,73 @@ export const update = mutation({
     document: document.omit("key").partial().extend({
       key: document.fields.key,
     }),
-    config: v.optional(config),
+    config: config,
   },
   returns: v.boolean(),
   handler: async (ctx, args) => {
     const s2 = await S2Bindings.load();
 
-    const maxCells = args.config?.maxCells;
-    const minLevel = args.config?.minLevel;
-    const maxLevel = args.config?.maxLevel;
-    const levelMod = args.config?.levelMod;
-
     const existing = await ctx.db
       .query("polygons")
-      .withIndex("byKey", (q) => q.eq("key", args.document.key))
+      .withIndex("by_key", (q) => q.eq("key", args.document.key))
       .first();
     if (!existing) {
       return false;
     }
 
-    if (args.document.coordinates !== undefined) {
-      const oldCells = await ctx.db
-        .query("polygonCells")
-        .withIndex("byGeometryKey", (q) =>
-          q.eq("geometryKey", args.document.key),
-        )
-        .collect();
-      for (const cell of oldCells) {
-        await ctx.db.delete(cell._id);
-      }
+    // Merge partial updates over the existing document.
+    const merged = {
+      key: existing.key,
+      coordinates: args.document.coordinates ?? existing.coordinates,
+      sortKey: args.document.sortKey ?? existing.sortKey,
+      filterKeys: args.document.filterKeys ?? existing.filterKeys,
+    };
 
-      const points = validatePolygonCoordinates(args.document.coordinates);
-      validatePointBounds(points);
-      const bbox = computeBoundingBox(points);
+    await removePolygonByKey(ctx, existing.key);
 
-      const coveringCells = s2.filterCellsByLevel(
-        s2.coverPolygonForIndex(points, maxCells),
-        minLevel,
-        maxLevel,
-        levelMod,
-      );
+    // Reinsert with merged data, mirroring insert handler exactly.
+    const points = validatePolygonCoordinates(merged.coordinates);
+    validatePointBounds(points);
+    const bbox = computeBoundingBox(points);
 
-      for (const cellId of coveringCells) {
-        const token = s2.cellIDToken(cellId);
-        const level = s2.cellIDLevel(cellId);
-        await ctx.db.insert("polygonCells", {
-          geometryId: existing._id,
-          geometryKey: args.document.key,
-          cellToken: token,
-          level,
-        });
-      }
+    const polygonId = await ctx.db.insert("polygons", {
+      key: merged.key,
+      coordinates: merged.coordinates,
+      ...bbox,
+      sortKey: merged.sortKey,
+      filterKeys: merged.filterKeys,
+    });
 
-      await ctx.db.patch(existing._id, {
-        coordinates: args.document.coordinates,
-        ...bbox,
-        ...(args.document.filterKeys !== undefined && {
-          filterKeys: args.document.filterKeys,
-        }),
-        ...(args.document.sortKey !== undefined && {
-          sortKey: args.document.sortKey,
-        }),
+    const cellTokens = s2CellTokens(s2, points, args.config);
+    const cursor = encodeCursor(merged.sortKey, polygonId);
+
+    for (const cell of cellTokens) {
+      await ctx.db.insert("polygonCells", {
+        key: merged.key,
+        cell,
+        cursor,
       });
-    } else {
-      await ctx.db.patch(existing._id, {
-        ...(args.document.filterKeys !== undefined && {
-          filterKeys: args.document.filterKeys,
-        }),
-        ...(args.document.sortKey !== undefined && {
-          sortKey: args.document.sortKey,
-        }),
-      });
+      await approximateCounter.increment(ctx, polygonId, cellCounterKey(cell));
     }
+
+    for (const [filterKey, filterDoc] of Object.entries(
+      merged.filterKeys ?? {},
+    )) {
+      const valueArray = Array.isArray(filterDoc) ? filterDoc : [filterDoc];
+      for (const filterValue of valueArray) {
+        await ctx.db.insert("polygonFilters", {
+          filterKey,
+          filterValue,
+          cursor,
+        });
+        await approximateCounter.increment(
+          ctx,
+          polygonId,
+          filterCounterKey(filterKey, filterValue),
+        );
+      }
+    }
+
     return true;
   },
 });
@@ -231,27 +231,69 @@ export const update = mutation({
  */
 export const del = mutation({
   args: {
-    key: v.string(),
-    config: v.optional(config),
+    key: polygonKey,
   },
   returns: v.boolean(),
   handler: async (ctx, args) => {
-    const geometry = await ctx.db
-      .query("polygons")
-      .withIndex("byKey", (q) => q.eq("key", args.key))
-      .first();
-    if (!geometry) {
-      return false;
-    }
-    await ctx.db.delete(geometry._id);
-
-    const cells = await ctx.db
-      .query("polygonCells")
-      .withIndex("byGeometryKey", (q) => q.eq("geometryKey", args.key))
-      .collect();
-    for (const cell of cells) {
-      await ctx.db.delete(cell._id);
-    }
-    return true;
+    return await removePolygonByKey(ctx, args.key);
   },
 });
+
+async function removePolygonByKey(
+  ctx: MutationCtx,
+  key: PolygonKey,
+): Promise<boolean> {
+  const existing = await ctx.db
+    .query("polygons")
+    .withIndex("by_key", (q) => q.eq("key", key))
+    .first();
+  if (!existing) {
+    return false;
+  }
+
+  const cellRecords = await ctx.db
+    .query("polygonCells")
+    .withIndex("by_key", (q) => q.eq("key", key))
+    .collect();
+
+  for (const cellRecord of cellRecords) {
+    await ctx.db.delete(cellRecord._id);
+    await approximateCounter.decrement(
+      ctx,
+      existing._id,
+      cellCounterKey(cellRecord.cell),
+    );
+  }
+
+  const cursor = encodeCursor(existing.sortKey, existing._id);
+  for (const [filterKey, filterDoc] of Object.entries(
+    existing.filterKeys ?? {},
+  )) {
+    const valueArray = Array.isArray(filterDoc) ? filterDoc : [filterDoc];
+    for (const filterValue of valueArray) {
+      const existingFilterKey = await ctx.db
+        .query("polygonFilters")
+        .withIndex("by_filter_and_cursor", (q) =>
+          q
+            .eq("filterKey", filterKey)
+            .eq("filterValue", filterValue)
+            .eq("cursor", cursor),
+        )
+        .unique();
+      if (!existingFilterKey) {
+        throw new Error(
+          `Invariant failed: Missing filterKey ${filterKey}:${filterValue} for polygon ${existing._id}`,
+        );
+      }
+      await ctx.db.delete(existingFilterKey._id);
+      await approximateCounter.decrement(
+        ctx,
+        existing._id,
+        filterCounterKey(filterKey, filterValue),
+      );
+    }
+  }
+
+  await ctx.db.delete(existing._id);
+  return true;
+}

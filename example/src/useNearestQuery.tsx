@@ -18,7 +18,7 @@ export function useNearestQuery(point: Point | null, maxResults: number) {
   }
 
   const rows = results.map((result) => ({
-    _id: result.key as any,
+    _id: result.key,
     _creationTime: 0,
     name: result.coordinates.name,
     coordinates: result.coordinates,

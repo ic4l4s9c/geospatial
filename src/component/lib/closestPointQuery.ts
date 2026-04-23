@@ -1,5 +1,10 @@
 import { Heap } from "heap-js";
-import type { ChordAngle, Meters, Point, Primitive } from "../validators.js";
+import type {
+  ChordAngle,
+  FilterCondition,
+  Meters,
+  Point,
+} from "../validators.js";
 import type { Doc, Id } from "../_generated/dataModel.js";
 import { S2Bindings } from "./s2Bindings.js";
 import type { QueryCtx } from "../_generated/server.js";
@@ -13,12 +18,7 @@ import { PREFETCH_SIZE } from "../streams/constants.js";
 import { type Cursor, decodeCursor, encodeCursor } from "./cursor.js";
 import type { Logger } from "./logging.js";
 import type { Interval } from "./interval.js";
-
-type FilterCondition = {
-  filterKey: string;
-  filterValue: Primitive;
-  occur: "must" | "should";
-};
+import type { CellIDToken } from "../schema.js";
 
 export class ClosestPointQuery {
   // Min-heap of cells to process.
@@ -223,7 +223,7 @@ export class ClosestPointQuery {
 
   private getOrCreateStreamForCell(
     ctx: QueryCtx,
-    cellIDToken: string,
+    cellIDToken: CellIDToken,
   ): CellStreamState {
     const existing = this.cellStreams.get(cellIDToken);
     if (existing) {
