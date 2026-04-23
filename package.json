@@ -21,7 +21,7 @@
   ],
   "type": "module",
   "scripts": {
-    "predev": "convex dev --once --start 'bun run build'",
+    "predev": "bun run build",
     "dev": "convex dev --start 'bun run dev:build'",
     "dev:frontend": "cd example && vite --clearScreen false",
     "dev:build": "chokidar 'tsconfig*.json' 'src/**/*.ts' -i '**/*.test.ts'",
@@ -86,10 +86,10 @@
     "@typescript-eslint/eslint-plugin": "8.54.0",
     "@typescript-eslint/parser": "8.54.0",
     "@vitejs/plugin-react": "5.1.2",
-    "@vitest/coverage-v8": "^4.1.4",
+    "@vitest/coverage-v8": "4.1.5",
     "antd": "6.3.5",
     "chokidar-cli": "3.0.0",
-    "convex": "1.35.1",
+    "convex": "1.36.0",
     "convex-test": "^0.0.49",
     "d3-array": "3.2.4",
     "eslint": "8.57.1",
@@ -105,7 +105,7 @@
     "typescript": "5.9.3",
     "typescript-eslint": "8.54.0",
     "vite": "6.4.2",
-    "vitest": "4.1.4"
+    "vitest": "4.1.5"
   },
   "types": "./dist/client/index.d.ts",
   "module": "./dist/client/index.js"
